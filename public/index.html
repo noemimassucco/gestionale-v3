@@ -375,8 +375,18 @@ tr:hover td{background:rgba(37,99,235,.04);}
 
     <!-- RIEPILOGO -->
     <div id="sec-riepilogo" class="section">
-      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;margin-bottom:16px;">Riepilogo Economico</h2>
+      <div class="flex-between mb-16">
+        <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">Riepilogo Economico</h2>
+        <button class="btn btn-sm" style="background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3);" onclick="extractAllPrices()">🔍 Estrai prezzi da descrizioni</button>
+      </div>
       <div class="stats-grid" id="riep-stats"></div>
+      <div class="tab-btns" id="riep-tabs">
+        <button class="tab-btn active" onclick="setRiepTab('sub',this)">🏠 Per SUB</button>
+        <button class="tab-btn" onclick="setRiepTab('fornitore',this)">🔧 Per Fornitore</button>
+        <button class="tab-btn" onclick="setRiepTab('anno',this)">📅 Per Anno</button>
+        <button class="tab-btn" onclick="setRiepTab('mese',this)">📆 Per Mese</button>
+        <button class="tab-btn" onclick="setRiepTab('sede',this)">📍 Per Sede</button>
+      </div>
       <div id="riep-list"></div>
     </div>
 
@@ -978,10 +988,159 @@ async function commitS(){
   toast(`✓ ${r.added} importati${r.errors?.length?' ('+r.errors.length+' errori)':''}!`);
 }
 
-// ── RIEPILOGO ──
-async function renderRiep(){
-  // Reload fresh data first
+// ── RIEPILOGO COMPLETO ──
+let currentRiepTab = 'sub';
+
+function setRiepTab(tab, btn) {
+  currentRiepTab = tab;
+  document.querySelectorAll('#riep-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderRiepTab(tab);
+}
+
+async function renderRiep() {
   await loadDD();
+  // Stats globali sempre visibili
+  const dash = await api('/api/dashboard');
+  if (!dash) return;
+  const tot = parseFloat(dash.totali.totale_spese || 0);
+  document.getElementById('riep-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Totale spese</div><div class="stat-value text-gold">€ ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card"><div class="stat-label">Interventi</div><div class="stat-value">${dash.totali.num_interventi}</div></div>
+    <div class="stat-card"><div class="stat-label">SUB gestiti</div><div class="stat-value">${dash.totali.num_subs}</div></div>
+    <div class="stat-card"><div class="stat-label">Fornitori</div><div class="stat-value">${dash.totali.num_fornitori}</div></div>`;
+  renderRiepTab(currentRiepTab);
+}
+
+async function renderRiepTab(tab) {
+  const el = document.getElementById('riep-list');
+  el.innerHTML = '<div class="empty" style="padding:20px;">Caricamento…</div>';
+
+  if (tab === 'sub') {
+    const data = await api('/api/riepilogo');
+    if (!data) return;
+    if (!data.length) { el.innerHTML='<div class="empty">Nessun SUB trovato. Aggiungili da Anagrafiche → SUB</div>'; return; }
+    const bySede = {};
+    data.forEach(d => { const s=d.sede||'Senza sede'; if(!bySede[s])bySede[s]=[]; bySede[s].push(d); });
+    el.innerHTML = Object.entries(bySede).map(([sede, subs]) => {
+      const sedeTot = subs.reduce((s,x)=>s+(parseFloat(x.totale)||0),0);
+      return `<div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(90deg,rgba(37,99,235,.2),rgba(37,99,235,.05));border:1px solid rgba(37,99,235,.3);border-radius:10px 10px 0 0;">
+          <span style="font-family:'Playfair Display',serif;font-size:16px;color:#fff;">📍 ${esc(sede)}</span>
+          <span style="color:var(--gold);font-weight:700;">€ ${sedeTot.toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
+        </div>
+        <div style="border:1px solid rgba(37,99,235,.2);border-top:none;border-radius:0 0 10px 10px;padding:10px;">
+          ${subs.map(d => `
+            <div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('ff-sub').value='${d.sub_id}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">
+              <div class="flex-between" style="margin-bottom:8px;">
+                <div class="flex">
+                  <span style="font-size:14px;">${d.stato_salute==='rosso'?'🔴':d.stato_salute==='giallo'?'🟡':'🟢'}</span>
+                  <span style="font-family:'Playfair Display',serif;font-size:15px;color:#fff;font-weight:700;">SUB ${esc(d.sub||'N/D')}</span>
+                  ${d.ex_sub?`<span class="ex-sub">ex ${esc(d.ex_sub)}</span>`:''}
+                  ${d.inquilino?`<span style="color:var(--muted);font-size:11px;">👤 ${esc(d.inquilino)}</span>`:''}
+                  ${!d.num_interventi?`<span style="font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;">Nessun intervento</span>`:''}
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:17px;font-weight:700;color:${d.totale>0?'var(--gold)':'var(--muted)'};">${d.totale>0?'€ '+parseFloat(d.totale).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}</div>
+                  <div style="font-size:10px;color:var(--muted);">${d.num_interventi} intervent${d.num_interventi!==1?'i':'o'}</div>
+                </div>
+              </div>
+              ${d.anni?.length?`<div style="font-size:10px;color:var(--muted);margin-bottom:7px;">Anni: ${d.anni.join(' · ')}</div>`:''}
+              ${Object.entries(d.fornitori).length?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${Object.entries(d.fornitori).sort((a,b)=>b[1]-a[1]).map(([fn,tot])=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 9px;"><div style="font-size:9px;color:var(--muted);">${esc(fn)}</div><div style="font-weight:700;font-size:11px;">€ ${parseFloat(tot).toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>`).join('')}</div>`:''}</div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+
+  } else if (tab === 'fornitore') {
+    const data = await api('/api/riepilogo/fornitori');
+    if (!data?.length) { el.innerHTML='<div class="empty">Nessun dato. Importa prima i fornitori e gli interventi.</div>'; return; }
+    el.innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>Fornitore</th><th>Specializzazione</th><th>N° Interventi</th><th>SUB coinvolti</th><th>Primo intervento</th><th>Ultimo intervento</th><th>Totale fatturato</th></tr></thead>
+          <tbody>${data.map((f,i)=>`<tr>
+            <td style="font-size:12px;color:var(--muted);">${i+1}</td>
+            <td class="td-bold">${esc(f.ragione_sociale)}</td>
+            <td class="td-muted">${esc(f.spec||'—')}</td>
+            <td style="text-align:center;">${f.num_interventi}</td>
+            <td style="text-align:center;">${f.num_subs}</td>
+            <td>${f.prima_data?fmt(f.prima_data):'—'}</td>
+            <td>${f.ultima_data?fmt(f.ultima_data):'—'}</td>
+            <td class="td-price" style="font-size:14px;">${f.totale?'€ '+parseFloat(f.totale).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+
+  } else if (tab === 'anno') {
+    const data = await api('/api/riepilogo/anni');
+    if (!data?.anni?.length) { el.innerHTML='<div class="empty">Nessun dato. Importa prima gli interventi.</div>'; return; }
+    const maxTot = Math.max(...data.anni.map(a=>a.totale));
+    el.innerHTML = data.anni.map(a => {
+      const pct = maxTot > 0 ? (a.totale/maxTot*100) : 0;
+      const mesiAnno = data.mesi.filter(m=>m.anno===a.anno);
+      const nomiMesi = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+      return `<div class="card" style="margin-bottom:12px;">
+        <div class="flex-between" style="margin-bottom:12px;">
+          <div class="flex">
+            <span style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;font-weight:700;">${a.anno}</span>
+            <span style="color:var(--muted);font-size:12px;">${a.num_interventi} interventi · ${a.num_subs} SUB · ${a.num_fornitori} fornitori</span>
+          </div>
+          <span style="font-size:22px;font-weight:700;color:var(--gold);">€ ${parseFloat(a.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;margin-bottom:10px;">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:4px;transition:width .5s;"></div>
+        </div>
+        ${mesiAnno.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;">${mesiAnno.map(m=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;min-width:70px;"><div style="font-size:9px;color:var(--muted);">${nomiMesi[(m.mese||1)-1]||m.mese}</div><div style="font-size:11px;font-weight:700;">€ ${parseFloat(m.totale).toLocaleString('it-IT',{maximumFractionDigits:0})}</div><div style="font-size:9px;color:var(--muted);">${m.num} int.</div></div>`).join('')}</div>`:''}</div>`;
+    }).join('');
+
+  } else if (tab === 'mese') {
+    const data = await api('/api/riepilogo/mesi');
+    if (!data?.length) { el.innerHTML='<div class="empty">Nessun dato mensile. Assicurati che gli interventi abbiano la data fattura compilata.</div>'; return; }
+    const maxTot = Math.max(...data.map(m=>m.totale));
+    el.innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Mese</th><th>N° Interventi</th><th>Totale</th><th>Andamento</th></tr></thead>
+          <tbody>${data.map(m=>{
+            const pct = maxTot>0?(m.totale/maxTot*100):0;
+            return`<tr>
+              <td class="td-bold">${esc(m.etichetta?.trim()||m.mese_anno)}</td>
+              <td style="text-align:center;">${m.num_interventi}</td>
+              <td class="td-price">€ ${parseFloat(m.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</td>
+              <td style="min-width:150px;">
+                <div style="height:6px;background:var(--border);border-radius:3px;">
+                  <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>`;
+
+  } else if (tab === 'sede') {
+    const data = await api('/api/riepilogo/sedi');
+    if (!data?.length) { el.innerHTML='<div class="empty">Nessuna sede trovata.</div>'; return; }
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">` +
+      data.map(s=>`<div class="card">
+        <div style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;margin-bottom:12px;">📍 ${esc(s.sede||'—')}</div>
+        <div style="font-size:26px;font-weight:700;color:var(--gold);margin-bottom:8px;">€ ${parseFloat(s.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_interventi}</div><div style="font-size:9px;color:var(--muted);">Interventi</div></div>
+          <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_subs}</div><div style="font-size:9px;color:var(--muted);">SUB</div></div>
+          <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_fornitori}</div><div style="font-size:9px;color:var(--muted);">Fornitori</div></div>
+        </div>
+      </div>`).join('') + `</div>`;
+  }
+}
+
+async function extractAllPrices() {
+  if(!confirm('Scansiono tutte le descrizioni degli interventi senza prezzo e cerco importi in euro. Continuare?')) return;
+  toast('Estrazione in corso…','warning');
+  const r = await api('/api/interventi/extract-prices',{method:'POST'});
+  toast(`✓ Estratti ${r?.updated||0} prezzi dalle descrizioni`,'success');
+  loadInt();
+  if(currentRiepTab) renderRiepTab(currentRiepTab);
+}
   const data=await api('/api/riepilogo');
   if(!data)return;
   const tot=data.reduce((s,x)=>s+(parseFloat(x.totale)||0),0);
