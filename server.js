@@ -797,8 +797,151 @@ app.get('/api/riepilogo', authMiddleware, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// IMPORT STORICO
+// ESTRAZIONE PREZZI DA TESTO (regex, no API needed)
 // ═══════════════════════════════════════════════════════════
+function extractPriceFromText(text) {
+  if (!text) return null;
+  const t = String(text);
+  const found = [];
+
+  // Pattern €1.500,00 o € 1500,00
+  const p1 = /€\s*([\d]{1,3}(?:[.,]\d{3})*(?:[,\.]\d{1,2})?)/g;
+  // Pattern 1.500,00€ o 1500 €
+  const p2 = /([\d]{1,3}(?:[.,]\d{3})*(?:[,\.]\d{1,2})?)\s*€/g;
+  // Pattern totale/importo/imponibile/costo: 1500
+  const p3 = /(?:totale|importo|imponibile|costo|prezzo)[:\s]+(?:di\s+)?€?\s*([\d]{1,3}(?:[.,]\d{3})*(?:[,\.]\d{1,2})?)/gi;
+  // Pattern euro 1500
+  const p4 = /(?:euro|eur)\s+([\d]{1,3}(?:[.,]\d{3})*(?:[,\.]\d{1,2})?)/gi;
+
+  const parseItalian = raw => {
+    if (!raw) return NaN;
+    // Es: 1.500,00 → 1500.00 | 1500,00 → 1500.00 | 1.500 → 1500
+    if (raw.includes(',') && raw.includes('.')) {
+      const li = raw.lastIndexOf(','), ld = raw.lastIndexOf('.');
+      return li > ld
+        ? parseFloat(raw.replace(/\./g,'').replace(',','.'))
+        : parseFloat(raw.replace(/,/g,''));
+    }
+    if (raw.includes(',')) {
+      const parts = raw.split(',');
+      return parts[parts.length-1].length <= 2
+        ? parseFloat(raw.replace(',','.'))
+        : parseFloat(raw.replace(/,/g,''));
+    }
+    if (raw.includes('.')) {
+      const parts = raw.split('.');
+      return parts[parts.length-1].length <= 2 && parts.length === 2
+        ? parseFloat(raw)
+        : parseFloat(raw.replace(/\./g,''));
+    }
+    return parseFloat(raw);
+  };
+
+  for (const pat of [p1,p2,p3,p4]) {
+    let m;
+    const re = new RegExp(pat.source, pat.flags);
+    while ((m = re.exec(t)) !== null) {
+      const n = parseItalian(m[1]);
+      if (!isNaN(n) && n > 0 && n < 10000000) found.push(n);
+    }
+  }
+  if (!found.length) return null;
+  return Math.max(...found); // Restituisce il valore più alto (di solito il totale)
+}
+
+// Estrai prezzi da tutti gli interventi senza prezzo
+app.post('/api/interventi/extract-prices', authMiddleware, async (req, res) => {
+  const rows = await pool.query(`SELECT id, descrizione, note FROM interventi WHERE (prezzo IS NULL OR prezzo = 0)`);
+  let updated = 0;
+  for (const row of rows.rows) {
+    const prezzo = extractPriceFromText(row.descrizione) || extractPriceFromText(row.note);
+    if (prezzo) {
+      await pool.query('UPDATE interventi SET prezzo=$1 WHERE id=$2', [prezzo, row.id]);
+      updated++;
+    }
+  }
+  // Ricalcola salute tutti i SUB
+  const subs = await pool.query('SELECT DISTINCT id FROM subs');
+  for (const s of subs.rows) await updateSaluteImmobile(s.id);
+  res.json({ updated });
+});
+
+// ═══════════════════════════════════════════════════════════
+// RIEPILOGO AVANZATO
+// ═══════════════════════════════════════════════════════════
+
+// Per Fornitore
+app.get('/api/riepilogo/fornitori', authMiddleware, async (req, res) => {
+  const r = await pool.query(`
+    SELECT f.id, f.ragione_sociale, f.spec,
+      COUNT(i.id) as num_interventi,
+      COALESCE(SUM(i.prezzo),0) as totale,
+      MIN(i.data_intervento) as prima_data,
+      MAX(i.data_intervento) as ultima_data,
+      COUNT(DISTINCT i.sub_id) as num_subs
+    FROM fornitori f
+    LEFT JOIN interventi i ON i.fornitore_id=f.id
+    GROUP BY f.id, f.ragione_sociale, f.spec
+    ORDER BY totale DESC`);
+  res.json(r.rows.map(x => ({...x, totale: parseFloat(x.totale), num_interventi: parseInt(x.num_interventi)})));
+});
+
+// Per Anno
+app.get('/api/riepilogo/anni', authMiddleware, async (req, res) => {
+  const r = await pool.query(`
+    SELECT
+      COALESCE(anno_fattura::text, 'Anno non specificato') as anno,
+      COUNT(*) as num_interventi,
+      COALESCE(SUM(prezzo),0) as totale,
+      COUNT(DISTINCT sub_id) as num_subs,
+      COUNT(DISTINCT fornitore_id) as num_fornitori
+    FROM interventi
+    GROUP BY anno_fattura
+    ORDER BY anno_fattura DESC NULLS LAST`);
+  // Per anno: anche mesi
+  const mesi = await pool.query(`
+    SELECT
+      COALESCE(anno_fattura::text,'?') as anno,
+      EXTRACT(MONTH FROM data_fattura)::integer as mese,
+      COUNT(*) as num,
+      COALESCE(SUM(prezzo),0) as totale
+    FROM interventi
+    WHERE data_fattura IS NOT NULL
+    GROUP BY anno_fattura, EXTRACT(MONTH FROM data_fattura)
+    ORDER BY anno_fattura DESC, mese ASC`);
+  res.json({ anni: r.rows.map(x=>({...x,totale:parseFloat(x.totale)})), mesi: mesi.rows.map(x=>({...x,totale:parseFloat(x.totale)})) });
+});
+
+// Per Mese (ultimi 24 mesi)
+app.get('/api/riepilogo/mesi', authMiddleware, async (req, res) => {
+  const r = await pool.query(`
+    SELECT
+      TO_CHAR(data_fattura,'YYYY-MM') as mese_anno,
+      TO_CHAR(data_fattura,'Month YYYY') as etichetta,
+      COUNT(*) as num_interventi,
+      COALESCE(SUM(prezzo),0) as totale
+    FROM interventi
+    WHERE data_fattura IS NOT NULL AND data_fattura >= NOW() - INTERVAL '24 months'
+    GROUP BY TO_CHAR(data_fattura,'YYYY-MM'), TO_CHAR(data_fattura,'Month YYYY')
+    ORDER BY mese_anno DESC`);
+  res.json(r.rows.map(x=>({...x,totale:parseFloat(x.totale)})));
+});
+
+// Per Sede
+app.get('/api/riepilogo/sedi', authMiddleware, async (req, res) => {
+  const r = await pool.query(`
+    SELECT sd.nome as sede,
+      COUNT(i.id) as num_interventi,
+      COALESCE(SUM(i.prezzo),0) as totale,
+      COUNT(DISTINCT i.sub_id) as num_subs,
+      COUNT(DISTINCT i.fornitore_id) as num_fornitori
+    FROM sedi sd
+    LEFT JOIN interventi i ON i.sede_id=sd.id
+    GROUP BY sd.nome ORDER BY totale DESC`);
+  res.json(r.rows.map(x=>({...x,totale:parseFloat(x.totale)})));
+});
+
+
 app.post('/api/interventi/import-storico', authMiddleware, async (req, res) => {
   const { rows } = req.body;
   const client = await pool.connect();
@@ -840,12 +983,17 @@ app.post('/api/interventi/import-storico', authMiddleware, async (req, res) => {
         const { tags, hasNotifica } = generateTags(row.descrizione, row.note);
         const di = parseDate(row.data_intervento);
         const df = parseDate(row.data_fattura);
-        const anno = di ? parseInt(di.split('-')[0]) : null;
+        const anno = di ? parseInt(di.split('-')[0]) : (df ? parseInt(df.split('-')[0]) : null);
+        // Estrai prezzo dalla descrizione se mancante
+        let prezzo = parseFloat(row.prezzo) || null;
+        if (!prezzo && row.descrizione) {
+          prezzo = extractPriceFromText(row.descrizione);
+        }
         await client.query(`INSERT INTO interventi (sub_id,sede_id,fornitore_id,inquilino_id,protocollo,num_fattura,
           data_intervento,data_fattura,anno_fattura,prezzo,descrizione,note,tags,ha_notifica,created_by,updated_by)
           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$15)`,
           [sub?.id||null, sede?.id||sub?.sede_id||null, fornitore_id, inquilino_id, row.protocollo||null, row.num_fattura||null,
-           di, df, anno, parseFloat(row.prezzo)||null, row.descrizione||null, row.note||null, tags, hasNotifica, req.user.id]);
+           di, df, anno, prezzo, row.descrizione||null, row.note||null, tags, hasNotifica, req.user.id]);
         if (sub?.id) await updateSaluteImmobile(sub.id);
         added++;
       } catch(e) { errors.push({ row: row.sub_codice, error: e.message }); }
