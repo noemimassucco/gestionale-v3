@@ -311,7 +311,49 @@ app.post('/api/subs', authMiddleware, async (req, res) => {
   );
   res.json(r.rows[0]);
 });
-app.put('/api/subs/:id', authMiddleware, async (req, res) => {
+app.post('/api/subs/import-bulk', authMiddleware, async (req, res) => {
+  const { items } = req.body;
+  const client = await pool.connect();
+  let added = 0, skipped = 0, errors = [];
+  try {
+    await client.query('BEGIN');
+    const sedi = (await client.query('SELECT * FROM sedi')).rows;
+    const inquilini = (await client.query('SELECT * FROM inquilini')).rows;
+    const norm = s => (s||'').toLowerCase().trim();
+
+    for (const item of items) {
+      if (!item.codice) { skipped++; continue; }
+      // Controlla duplicati per codice
+      const ex = await client.query('SELECT id FROM subs WHERE LOWER(TRIM(codice))=LOWER(TRIM($1))', [item.codice]);
+      if (ex.rows.length) { skipped++; continue; }
+
+      // Trova sede per nome
+      let sede_id = null;
+      if (item.sede) {
+        const sedeM = sedi.find(s => norm(s.nome) === norm(item.sede) || norm(s.citta) === norm(item.sede) || norm(s.nome).includes(norm(item.sede)));
+        sede_id = sedeM?.id || null;
+      }
+
+      // Trova inquilino per nome
+      let inquilino_id = null;
+      if (item.inquilino) {
+        const inqM = inquilini.find(i => norm(i.ragione_sociale) === norm(item.inquilino) || norm(i.ragione_sociale).includes(norm(item.inquilino)));
+        inquilino_id = inqM?.id || null;
+      }
+
+      await client.query(
+        'INSERT INTO subs (codice, ex_sub, sede_id, piano, inquilino_id, note) VALUES ($1,$2,$3,$4,$5,$6)',
+        [item.codice.trim(), item.ex_sub||null, sede_id, item.piano||null, inquilino_id, item.note||null]
+      );
+      added++;
+    }
+    await client.query('COMMIT');
+    res.json({ added, skipped, errors });
+  } catch(e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally { client.release(); }
+});
   const { codice, ex_sub, sede_id, piano, inquilino_id, note } = req.body;
   const r = await pool.query(
     'UPDATE subs SET codice=$1,ex_sub=$2,sede_id=$3,piano=$4,inquilino_id=$5,note=$6 WHERE id=$7 RETURNING *',
@@ -711,26 +753,43 @@ app.get('/api/dashboard', authMiddleware, async (req, res) => {
 });
 
 app.get('/api/riepilogo', authMiddleware, async (req, res) => {
-  const r = await pool.query(`
-    SELECT s.id as sub_id, s.codice as sub, s.ex_sub, sd.nome as sede,
-      inq.ragione_sociale as inquilino,
-      s.stato_salute,
-      COUNT(i.id) as num_interventi,
-      COALESCE(SUM(i.prezzo),0) as totale,
-      json_agg(json_build_object('fornitore', f.ragione_sociale, 'prezzo', COALESCE(i.prezzo,0))) as dettagli
+  // All subs, even those with 0 interventions
+  const subsR = await pool.query(`
+    SELECT s.id, s.codice, s.ex_sub, s.stato_salute,
+      sd.nome as sede, sd.id as sede_id,
+      inq.ragione_sociale as inquilino
     FROM subs s
     LEFT JOIN sedi sd ON s.sede_id=sd.id
     LEFT JOIN inquilini inq ON s.inquilino_id=inq.id
-    LEFT JOIN interventi i ON i.sub_id=s.id
-    LEFT JOIN fornitori f ON i.fornitore_id=f.id
-    GROUP BY s.id, s.codice, s.ex_sub, sd.nome, inq.ragione_sociale, s.stato_salute
-    ORDER BY totale DESC`);
-  const result = r.rows.map(row => {
+    ORDER BY sd.nome, s.codice`);
+
+  const intR = await pool.query(`
+    SELECT i.sub_id, i.fornitore_id, COALESCE(i.prezzo,0) as prezzo,
+      i.anno_fattura, f.ragione_sociale as fornitore
+    FROM interventi i
+    LEFT JOIN fornitori f ON i.fornitore_id=f.id`);
+
+  const result = subsR.rows.map(sub => {
+    const ints = intR.rows.filter(x => x.sub_id === sub.id);
+    const totale = ints.reduce((s, x) => s + parseFloat(x.prezzo || 0), 0);
     const fornitori = {};
-    (row.dettagli || []).forEach(d => {
-      if (d.fornitore) fornitori[d.fornitore] = (fornitori[d.fornitore] || 0) + parseFloat(d.prezzo || 0);
+    ints.forEach(x => {
+      if (x.fornitore) fornitori[x.fornitore] = (fornitori[x.fornitore] || 0) + parseFloat(x.prezzo || 0);
     });
-    return { ...row, totale: parseFloat(row.totale), num_interventi: parseInt(row.num_interventi), fornitori };
+    const anniSet = [...new Set(ints.map(x => x.anno_fattura).filter(Boolean))].sort();
+    return {
+      sub_id: sub.id,
+      sub: sub.codice,
+      ex_sub: sub.ex_sub,
+      sede: sub.sede,
+      sede_id: sub.sede_id,
+      inquilino: sub.inquilino,
+      stato_salute: sub.stato_salute,
+      num_interventi: ints.length,
+      totale,
+      fornitori,
+      anni: anniSet,
+    };
   });
   res.json(result);
 });
@@ -793,6 +852,70 @@ app.post('/api/interventi/import-storico', authMiddleware, async (req, res) => {
     res.json({ added, errors });
   } catch(e) { await client.query('ROLLBACK'); res.status(500).json({ error: e.message }); }
   finally { client.release(); }
+});
+
+// ═══════════════════════════════════════════════════════════
+// OCR FATTURA (AI)
+// ═══════════════════════════════════════════════════════════
+app.post('/api/ocr', authMiddleware, upload.single('file'), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'Nessun file' });
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.status(400).json({ error: 'ANTHROPIC_API_KEY non configurata nelle variabili Railway' });
+
+  // Determina media_type
+  const mimeMap = {
+    'image/jpeg': 'image/jpeg',
+    'image/png': 'image/png',
+    'image/gif': 'image/gif',
+    'image/webp': 'image/webp',
+    'application/pdf': 'application/pdf',
+  };
+  const mediaType = mimeMap[file.mimetype] || 'image/jpeg';
+  const b64 = file.buffer.toString('base64');
+
+  try {
+    const content = mediaType === 'application/pdf'
+      ? [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } },
+          { type: 'text', text: 'Leggi questa fattura e restituisci SOLO un oggetto JSON valido (senza backtick, senza testo extra) con questi campi esatti: {"fornitore":"","piva_fornitore":"","num_fattura":"","data_fattura":"","data_intervento":"","protocollo":"","importo":"","descrizione":"","note":"","sub":"","sede":""}. Estrai tutti i dati presenti. Se un campo non è leggibile lascialo stringa vuota.' }
+        ]
+      : [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+          { type: 'text', text: 'Leggi questa fattura e restituisci SOLO un oggetto JSON valido (senza backtick, senza testo extra) con questi campi esatti: {"fornitore":"","piva_fornitore":"","num_fattura":"","data_fattura":"","data_intervento":"","protocollo":"","importo":"","descrizione":"","note":"","sub":"","sede":""}. Estrai tutti i dati presenti. Se un campo non è leggibile lascialo stringa vuota.' }
+        ];
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    // Clean JSON
+    const clean = text.replace(/```json|```/g, '').trim();
+    let extracted = {};
+    try { extracted = JSON.parse(clean); } catch(e) {
+      // Try to extract JSON from text
+      const match = clean.match(/\{[\s\S]*\}/);
+      if (match) extracted = JSON.parse(match[0]);
+    }
+    res.json({ ok: true, data: extracted });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════
