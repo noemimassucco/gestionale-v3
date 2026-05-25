@@ -1141,57 +1141,6 @@ async function extractAllPrices() {
   loadInt();
   if(currentRiepTab) renderRiepTab(currentRiepTab);
 }
-  const data=await api('/api/riepilogo');
-  if(!data)return;
-  const tot=data.reduce((s,x)=>s+(parseFloat(x.totale)||0),0);
-  const totI=data.reduce((s,x)=>s+(parseInt(x.num_interventi)||0),0);
-  const conInt=data.filter(x=>x.num_interventi>0).length;
-
-  document.getElementById('riep-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-label">Totale spese</div><div class="stat-value text-gold">€ ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
-    <div class="stat-card"><div class="stat-label">Interventi</div><div class="stat-value">${totI}</div></div>
-    <div class="stat-card"><div class="stat-label">SUB con interventi</div><div class="stat-value">${conInt} / ${data.length}</div></div>
-    <div class="stat-card"><div class="stat-label">Fornitori</div><div class="stat-value">${DB.fornitori.length}</div></div>`;
-
-  // Raggruppa per sede
-  const bySede = {};
-  data.forEach(d => {
-    const sede = d.sede || 'Senza sede';
-    if (!bySede[sede]) bySede[sede] = [];
-    bySede[sede].push(d);
-  });
-
-  document.getElementById('riep-list').innerHTML = Object.entries(bySede).map(([sede, subs]) => {
-    const sedeTot = subs.reduce((s,x)=>s+(parseFloat(x.totale)||0),0);
-    const subsHtml = subs.map(d => `
-      <div class="card" style="margin-bottom:10px;cursor:pointer;" onclick="document.getElementById('ff-sub').value='${d.sub_id}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">
-        <div class="flex-between" style="margin-bottom:10px;">
-          <div class="flex">
-            <span style="font-size:15px;">${d.stato_salute==='rosso'?'🔴':d.stato_salute==='giallo'?'🟡':'🟢'}</span>
-            <span style="font-family:'Playfair Display',serif;font-size:16px;color:#fff;font-weight:700;">SUB ${esc(d.sub||'N/D')}</span>
-            ${d.ex_sub?`<span class="ex-sub">ex ${esc(d.ex_sub)}</span>`:''}
-            ${d.inquilino?`<span style="color:var(--muted);font-size:11px;">👤 ${esc(d.inquilino)}</span>`:''}
-            ${d.num_interventi===0?`<span style="font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:1px 8px;">Nessun intervento</span>`:''}
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:18px;font-weight:700;color:${d.totale>0?'var(--gold)':'var(--muted)'};">
-              ${d.totale>0?'€ '+parseFloat(d.totale).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}
-            </div>
-            <div style="font-size:10px;color:var(--muted);">${d.num_interventi} intervent${d.num_interventi!==1?'i':'o'}</div>
-          </div>
-        </div>
-        ${d.anni?.length?`<div style="font-size:10px;color:var(--muted);margin-bottom:8px;">Anni: ${d.anni.join(' · ')}</div>`:''}
-        ${Object.entries(d.fornitori).length?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${Object.entries(d.fornitori).map(([fn,tot])=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:5px 10px;"><div style="font-size:9px;color:var(--muted);">${esc(fn)}</div><div style="font-weight:700;font-size:12px;">€ ${parseFloat(tot).toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>`).join('')}</div>`:''}</div>`).join('');
-
-    return `<div style="margin-bottom:20px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(90deg,rgba(37,99,235,.2),rgba(37,99,235,.05));border:1px solid rgba(37,99,235,.3);border-radius:10px 10px 0 0;">
-        <span style="font-family:'Playfair Display',serif;font-size:17px;color:#fff;">📍 ${esc(sede)}</span>
-        <span style="color:var(--gold);font-weight:700;">€ ${sedeTot.toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
-      </div>
-      <div style="border:1px solid rgba(37,99,235,.2);border-top:none;border-radius:0 0 10px 10px;padding:12px;">${subsHtml}</div>
-    </div>`;
-  }).join('') || '<div class="empty">Nessun SUB trovato. Aggiungili da Anagrafiche → SUB</div>';
-}
 
 // ── EXPORT ──
 function exportExcel(){window.open('/api/export',{headers:{Authorization:`Bearer ${token}`}});fetch('/api/export',{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.blob()).then(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='storico_v3.xlsx';a.click();});}
