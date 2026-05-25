@@ -354,6 +354,8 @@ app.post('/api/subs/import-bulk', authMiddleware, async (req, res) => {
     res.status(500).json({ error: e.message });
   } finally { client.release(); }
 });
+
+app.put('/api/subs/:id', authMiddleware, async (req, res) => {
   const { codice, ex_sub, sede_id, piano, inquilino_id, note } = req.body;
   const r = await pool.query(
     'UPDATE subs SET codice=$1,ex_sub=$2,sede_id=$3,piano=$4,inquilino_id=$5,note=$6 WHERE id=$7 RETURNING *',
