@@ -45,198 +45,48 @@ function authMiddleware(req, res, next) {
 async function initDB() {
   const client = await pool.connect();
   try {
+    // Step 1: Crea tabelle
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(200) UNIQUE NOT NULL,
-        password_hash VARCHAR(200) NOT NULL,
-        nome VARCHAR(100),
-        ruolo VARCHAR(50) DEFAULT 'operatore',
-        attivo BOOLEAN DEFAULT true,
-        ultimo_accesso TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS sedi (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(100) NOT NULL,
-        indirizzo TEXT,
-        citta VARCHAR(100),
-        note TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS inquilini (
-        id SERIAL PRIMARY KEY,
-        codice_zuc VARCHAR(50),
-        ragione_sociale VARCHAR(200) NOT NULL,
-        piva VARCHAR(20), cf VARCHAR(20),
-        indirizzo TEXT, cap VARCHAR(10),
-        citta VARCHAR(100), provincia VARCHAR(5),
-        tel VARCHAR(50), email VARCHAR(100),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS fornitori (
-        id SERIAL PRIMARY KEY,
-        codice_zuc VARCHAR(50),
-        ragione_sociale VARCHAR(200) NOT NULL,
-        piva VARCHAR(20), cf VARCHAR(20),
-        indirizzo TEXT, cap VARCHAR(10),
-        citta VARCHAR(100), provincia VARCHAR(5),
-        tel VARCHAR(50), email VARCHAR(100), spec VARCHAR(200),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS subs (
-        id SERIAL PRIMARY KEY,
-        codice VARCHAR(50) NOT NULL,
-        ex_sub VARCHAR(50),
-        sede_id INTEGER REFERENCES sedi(id),
-        piano VARCHAR(100),
-        inquilino_id INTEGER,
-        stato_salute VARCHAR(10) DEFAULT 'verde',
-        note TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS categorie (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(100) NOT NULL,
-        colore VARCHAR(20) DEFAULT '#2563eb',
-        icona VARCHAR(50) DEFAULT '🔧'
-      );
-      CREATE TABLE IF NOT EXISTS interventi (
-        id SERIAL PRIMARY KEY,
-        sub_id INTEGER REFERENCES subs(id),
-        sede_id INTEGER REFERENCES sedi(id),
-        fornitore_id INTEGER REFERENCES fornitori(id),
-        inquilino_id INTEGER,
-        categoria_id INTEGER REFERENCES categorie(id),
-        protocollo VARCHAR(100),
-        num_fattura VARCHAR(100),
-        data_intervento DATE,
-        data_fattura DATE,
-        anno_fattura INTEGER,
-        prezzo DECIMAL(12,2),
-        descrizione TEXT,
-        note TEXT,
-        tags TEXT[],
-        ha_notifica BOOLEAN DEFAULT false,
-        created_by INTEGER REFERENCES users(id),
-        updated_by INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS allegati (
-        id SERIAL PRIMARY KEY,
-        intervento_id INTEGER REFERENCES interventi(id) ON DELETE CASCADE,
-        tipo VARCHAR(50),
-        nome VARCHAR(200),
-        url TEXT,
-        cloudinary_id VARCHAR(200),
-        dimensione INTEGER,
-        created_by INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS contratti (
-        id SERIAL PRIMARY KEY,
-        sub_id INTEGER REFERENCES subs(id),
-        fornitore_id INTEGER REFERENCES fornitori(id),
-        tipo VARCHAR(100),
-        nome VARCHAR(200),
-        url TEXT,
-        cloudinary_id VARCHAR(200),
-        data_inizio DATE,
-        data_scadenza DATE,
-        note TEXT,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS sub_storia (
-        id SERIAL PRIMARY KEY,
-        sub_id INTEGER REFERENCES subs(id) ON DELETE CASCADE,
-        tipo VARCHAR(100) NOT NULL,
-        titolo VARCHAR(300),
-        descrizione TEXT,
-        dati_vecchi JSONB,
-        dati_nuovi JSONB,
-        created_by INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS documenti (
-        id SERIAL PRIMARY KEY,
-        sub_id INTEGER REFERENCES subs(id),
-        sede_id INTEGER REFERENCES sedi(id),
-        fornitore_id INTEGER REFERENCES fornitori(id),
-        tipo VARCHAR(80) DEFAULT 'documento',
-        nome VARCHAR(300),
-        url TEXT,
-        cloudinary_id VARCHAR(300),
-        data_documento DATE,
-        scadenza DATE,
-        importo DECIMAL(12,2),
-        descrizione TEXT,
-        note TEXT,
-        tags TEXT[],
-        created_by INTEGER REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS settings (
-        cfg_key VARCHAR(100) PRIMARY KEY,
-        value TEXT,
-        updated_by INTEGER,
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-      -- Default data
-      INSERT INTO settings (cfg_key, value) VALUES
-        ('app_name', 'Gestionale Immobili'),
-        ('logo_url', ''),
-        ('colore_primario', '#2563eb'),
-        ('footer_text', 'Gestionale Immobili — Storico Interventi')
-      ON CONFLICT (cfg_key) DO NOTHING;
-
-      INSERT INTO categorie (nome, colore, icona) VALUES
-        ('Elettrico', '#f59e0b', '⚡'),
-        ('Idraulico', '#3b82f6', '🔧'),
-        ('Climatizzazione', '#06b6d4', '❄️'),
-        ('Edile', '#8b5cf6', '🏗️'),
-        ('Sicurezza', '#ef4444', '🔒'),
-        ('Ascensori', '#6b7280', '🛗'),
-        ('Pulizie', '#10b981', '🧹'),
-        ('Manutenzione', '#f97316', '🔨'),
-        ('Altro', '#94a3b8', '📋')
-      ON CONFLICT DO NOTHING;
-
-      INSERT INTO sedi (nome, citta) VALUES
-        ('Orbassano', 'Orbassano'),
-        ('Rivoli', 'Rivoli')
-      ON CONFLICT DO NOTHING;
+      CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, email VARCHAR(200) UNIQUE NOT NULL, password_hash VARCHAR(200) NOT NULL, nome VARCHAR(100), ruolo VARCHAR(50) DEFAULT 'operatore', attivo BOOLEAN DEFAULT true, ultimo_accesso TIMESTAMP, created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS sedi (id SERIAL PRIMARY KEY, nome VARCHAR(100) NOT NULL, indirizzo TEXT, citta VARCHAR(100), note TEXT, created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS inquilini (id SERIAL PRIMARY KEY, codice_zuc VARCHAR(50), ragione_sociale VARCHAR(200) NOT NULL, piva VARCHAR(20), cf VARCHAR(20), indirizzo TEXT, cap VARCHAR(10), citta VARCHAR(100), provincia VARCHAR(5), tel VARCHAR(50), email VARCHAR(100), created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS fornitori (id SERIAL PRIMARY KEY, codice_zuc VARCHAR(50), ragione_sociale VARCHAR(200) NOT NULL, piva VARCHAR(20), cf VARCHAR(20), indirizzo TEXT, cap VARCHAR(10), citta VARCHAR(100), provincia VARCHAR(5), tel VARCHAR(50), email VARCHAR(100), spec VARCHAR(200), created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS subs (id SERIAL PRIMARY KEY, codice VARCHAR(50) NOT NULL, ex_sub VARCHAR(50), sede_id INTEGER REFERENCES sedi(id), piano VARCHAR(100), inquilino_id INTEGER, stato_salute VARCHAR(10) DEFAULT 'verde', note TEXT, created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS categorie (id SERIAL PRIMARY KEY, nome VARCHAR(100) NOT NULL, colore VARCHAR(20) DEFAULT '#2563eb', icona VARCHAR(50) DEFAULT '🔧');
+      CREATE TABLE IF NOT EXISTS interventi (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id), sede_id INTEGER REFERENCES sedi(id), fornitore_id INTEGER REFERENCES fornitori(id), inquilino_id INTEGER, categoria_id INTEGER REFERENCES categorie(id), protocollo VARCHAR(100), num_fattura VARCHAR(100), data_intervento DATE, data_fattura DATE, anno_fattura INTEGER, prezzo DECIMAL(12,2), descrizione TEXT, note TEXT, tags TEXT[], ha_notifica BOOLEAN DEFAULT false, created_by INTEGER REFERENCES users(id), updated_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS allegati (id SERIAL PRIMARY KEY, intervento_id INTEGER REFERENCES interventi(id) ON DELETE CASCADE, tipo VARCHAR(50), nome VARCHAR(200), url TEXT, cloudinary_id VARCHAR(200), dimensione INTEGER, created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS contratti (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id), fornitore_id INTEGER REFERENCES fornitori(id), tipo VARCHAR(100), nome VARCHAR(200), url TEXT, cloudinary_id VARCHAR(200), data_inizio DATE, data_scadenza DATE, note TEXT, created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS sub_storia (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id) ON DELETE CASCADE, tipo VARCHAR(100) NOT NULL, titolo VARCHAR(300), descrizione TEXT, dati_vecchi JSONB, dati_nuovi JSONB, created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS documenti (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id), sede_id INTEGER REFERENCES sedi(id), fornitore_id INTEGER REFERENCES fornitori(id), tipo VARCHAR(80) DEFAULT 'documento', nome VARCHAR(300), url TEXT, cloudinary_id VARCHAR(300), data_documento DATE, scadenza DATE, importo DECIMAL(12,2), descrizione TEXT, note TEXT, tags TEXT[], created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS settings (cfg_key VARCHAR(100) PRIMARY KEY, value TEXT, updated_by INTEGER, updated_at TIMESTAMP DEFAULT NOW());
     `);
 
-    // Admin user default
+    // Step 2: Migrazione colonna key -> cfg_key se esiste ancora
+    try {
+      const col = await client.query(`SELECT column_name FROM information_schema.columns WHERE table_name='settings' AND column_name='key'`);
+      if (col.rows.length) await client.query(`ALTER TABLE settings RENAME COLUMN "key" TO cfg_key`);
+    } catch(e) {}
+
+    // Step 3: Dati di default
+    await client.query(`
+      INSERT INTO settings (cfg_key, value) VALUES ('app_name','Gestionale Immobili'),('logo_url',''),('colore_primario','#2563eb'),('footer_text','Gestionale Immobili — Storico Interventi') ON CONFLICT (cfg_key) DO NOTHING;
+      INSERT INTO categorie (nome,colore,icona) VALUES ('Elettrico','#f59e0b','⚡'),('Idraulico','#3b82f6','🔧'),('Climatizzazione','#06b6d4','❄️'),('Edile','#8b5cf6','🏗️'),('Sicurezza','#ef4444','🔒'),('Ascensori','#6b7280','🛗'),('Pulizie','#10b981','🧹'),('Manutenzione','#f97316','🔨'),('Altro','#94a3b8','📋') ON CONFLICT DO NOTHING;
+      INSERT INTO sedi (nome,citta) VALUES ('Orbassano','Orbassano'),('Rivoli','Rivoli') ON CONFLICT DO NOTHING;
+    `);
+
+    // Step 4: Admin default
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@gestionale.it';
     const adminPwd = process.env.ADMIN_PASSWORD || 'Admin2024!';
     const existing = await client.query('SELECT id FROM users WHERE email=$1', [adminEmail]);
     if (!existing.rows.length) {
       const hash = await bcrypt.hash(adminPwd, 10);
-      await client.query(
-        "INSERT INTO users (email, password_hash, nome, ruolo) VALUES ($1,$2,'Amministratore','admin')",
-        [adminEmail, hash]
-      );
+      await client.query("INSERT INTO users (email,password_hash,nome,ruolo) VALUES ($1,$2,'Amministratore','admin')", [adminEmail, hash]);
     }
     console.log('✅ Database V3 inizializzato');
-
-    // Migrazione: se settings ha ancora la vecchia colonna 'key', rinominala
-    try {
-      const colCheck = await client.query(`
-        SELECT column_name FROM information_schema.columns
-        WHERE table_name='settings' AND column_name='key'`);
-      if (colCheck.rows.length > 0) {
-        await client.query('ALTER TABLE settings RENAME COLUMN "key" TO cfg_key');
-        console.log('✅ Migrazione settings: key → cfg_key');
-      }
-    } catch(e) { /* già migrata */ }
   } finally { client.release(); }
 }
 
-// ═══════════════════════════════════════════════════════════
-// AUTH
-// ═══════════════════════════════════════════════════════════
+
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   try {
