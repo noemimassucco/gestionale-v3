@@ -175,7 +175,27 @@ tr:hover td{background:rgba(37,99,235,.04);}
 .stat-value{font-size:22px;font-weight:700;font-family:'Playfair Display',serif;}
 .upload-zone{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;font-size:12px;color:var(--muted);transition:all .2s;}
 .upload-zone:hover{border-color:var(--accent);}
-@media(max-width:768px){
+.chat-msg{padding:10px 13px;border-radius:10px;font-size:12px;line-height:1.6;max-width:90%;}
+.chat-msg.bot{background:var(--surface2);border:1px solid var(--border);color:var(--text);align-self:flex-start;}
+.chat-msg.user{background:var(--accent);color:#fff;align-self:flex-end;}
+.chat-msg.bot strong{color:#fff;}
+.chat-result{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;margin-top:6px;font-size:11px;cursor:pointer;transition:background .15s;}
+.chat-result:hover{background:rgba(37,99,235,.1);}
+.timeline-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid rgba(30,48,84,.4);}
+.timeline-item:last-child{border-bottom:none;}
+.timeline-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px;}
+.timeline-body{flex:1;}
+.timeline-date{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.timeline-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;}
+.timeline-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.doc-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;transition:all .2s;}
+.doc-card:hover{border-color:rgba(37,99,235,.3);}
+.doc-icon{font-size:24px;flex-shrink:0;}
+.doc-info{flex:1;min-width:0;}
+.doc-name{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.doc-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+.doc-scad{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+@media(max-width:768px){#chat-panel{width:calc(100vw - 32px);right:16px;}#chat-btn{right:16px;}}
   .home-cards,.home-stats{grid-template-columns:1fr 1fr;}
   .app-header{flex-wrap:wrap;}
   .hcenter{max-width:100%;order:3;flex:0 0 100%;}
@@ -264,7 +284,8 @@ tr:hover td{background:rgba(37,99,235,.04);}
     <div class="hright">
       <nav>
         <button class="nb active" onclick="showSec('interventi',this)">📋 Interventi</button>
-        <button class="nb" onclick="showSec('anagrafiche',this)">📁 Anagrafiche</button>
+        <button class="nb" onclick="showSec('documenti',this)">📁 Documenti</button>
+        <button class="nb" onclick="showSec('anagrafiche',this)">👥 Anagrafiche</button>
         <button class="nb" onclick="showSec('riepilogo',this)">📊 Riepilogo</button>
         <button class="nb" onclick="showSec('import',this)">⬆️ Import</button>
         <button class="nb" onclick="showSec('impostazioni',this)">⚙️</button>
@@ -371,6 +392,44 @@ tr:hover td{background:rgba(37,99,235,.04);}
           <tbody id="tb-cat"><tr><td colspan="4" class="empty">Nessuna categoria</td></tr></tbody>
         </table></div></div>
       </div>
+    </div>
+
+    <!-- DOCUMENTI -->
+    <div id="sec-documenti" class="section">
+      <div class="flex-between mb-16">
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">Archivio Documenti</h2>
+          <p class="text-muted" style="font-size:12px;margin-top:2px;" id="docs-lbl">Fatture, contratti, preventivi, bollette, catastali e altro</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModalDoc()">+ Nuovo Documento</button>
+      </div>
+      <!-- Scadenze banner -->
+      <div id="scadenze-banner" class="hidden" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px;">📅 Documenti in scadenza</div>
+        <div id="scadenze-list"></div>
+      </div>
+      <!-- Filtri documenti -->
+      <div class="filter-bar mb-16">
+        <div class="filter-grid">
+          <div class="field"><label>Tipo</label>
+            <select id="df-tipo" onchange="loadDocs()">
+              <option value="">Tutti</option>
+              <option value="fattura">🧾 Fattura</option>
+              <option value="contratto">📄 Contratto</option>
+              <option value="preventivo">💼 Preventivo</option>
+              <option value="verbale">📋 Verbale</option>
+              <option value="bolletta">⚡ Bolletta</option>
+              <option value="catastale">🏛️ Catastale</option>
+              <option value="condominiale">🏢 Condominiale</option>
+              <option value="documento">📂 Altro</option>
+            </select>
+          </div>
+          <div class="field"><label>SUB</label><select id="df-sub" onchange="loadDocs()"><option value="">Tutti</option></select></div>
+          <div class="field"><label>Sede</label><select id="df-sede" onchange="loadDocs()"><option value="">Tutte</option></select></div>
+          <div class="field"><label>Cerca</label><input id="df-search" placeholder="nome, descrizione…" oninput="loadDocs()"></div>
+        </div>
+      </div>
+      <div id="docs-list"><div class="empty">Caricamento…</div></div>
     </div>
 
     <!-- RIEPILOGO -->
@@ -620,6 +679,83 @@ tr:hover td{background:rgba(37,99,235,.04);}
   </div>
 </div>
 
+<!-- MODAL DOCUMENTO -->
+<div id="modal-doc" class="overlay">
+  <div class="modal">
+    <div class="modal-title">📁 <span id="m-doc-ttl">Nuovo Documento</span></div>
+    <div class="form-grid">
+      <div class="field"><label>Tipo *</label>
+        <select id="doc-tipo">
+          <option value="fattura">🧾 Fattura</option>
+          <option value="contratto">📄 Contratto</option>
+          <option value="preventivo">💼 Preventivo</option>
+          <option value="verbale">📋 Verbale</option>
+          <option value="bolletta">⚡ Bolletta</option>
+          <option value="catastale">🏛️ Catastale</option>
+          <option value="condominiale">🏢 Condominiale</option>
+          <option value="documento">📂 Altro</option>
+        </select>
+      </div>
+      <div class="field"><label>Nome documento *</label><input id="doc-nome" placeholder="es. Contratto manutenzione CDZ 2024"></div>
+      <div class="field"><label>SUB collegato</label><select id="doc-sub"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Sede</label><select id="doc-sede"><option value="">— Nessuna —</option></select></div>
+      <div class="field"><label>Fornitore</label><select id="doc-forn"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Data documento</label><input type="date" id="doc-data"></div>
+      <div class="field"><label>Scadenza</label><input type="date" id="doc-scad"></div>
+      <div class="field"><label>Importo (€)</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="doc-imp" placeholder="0.00" step="0.01"></div></div>
+      <div class="field form-full"><label>Descrizione</label><textarea id="doc-desc" rows="2" placeholder="Note sul documento…"></textarea></div>
+      <div class="field form-full">
+        <label>File allegato</label>
+        <div class="upload-zone" onclick="document.getElementById('doc-file').click()" id="doc-file-zone">📎 Clicca per allegare file (PDF, immagine, Word…)</div>
+        <input type="file" id="doc-file" style="display:none" onchange="docFileSelected(this)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-doc')">Annulla</button>
+      <button class="btn btn-success" onclick="saveDoc()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TIMELINE SUB -->
+<div id="modal-timeline" class="overlay">
+  <div class="modal modal-wide">
+    <div class="modal-title">📜 <span id="timeline-sub-name">Timeline SUB</span></div>
+    <div id="timeline-content" style="max-height:520px;overflow-y:auto;"><div class="empty">Caricamento…</div></div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">+ Aggiungi nota manuale</div>
+      <div style="display:flex;gap:8px;">
+        <input id="nota-testo" placeholder="es. Sopralluogo effettuato, situazione stabile…" style="flex:1;background:#0b0f1a;border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:inherit;font-size:13px;">
+        <button class="btn btn-primary btn-sm" onclick="addNota()">+ Nota</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-timeline')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT PANEL -->
+<div id="chat-btn" onclick="toggleChat()" style="position:fixed;bottom:28px;right:28px;z-index:500;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 6px 24px rgba(37,99,235,.5);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:22px;transition:all .2s;" title="Assistente intelligente">💬</div>
+
+<div id="chat-panel" style="display:none;position:fixed;bottom:90px;right:28px;z-index:500;width:360px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:none;flex-direction:column;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,var(--accent),var(--accent2));padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-weight:600;font-size:14px;color:#fff;">💬 Assistente Gestionale</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.7);">Cerca interventi, spese, documenti…</div>
+    </div>
+    <button onclick="toggleChat()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
+  </div>
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;">
+    <div class="chat-msg bot">👋 Ciao! Sono il tuo assistente. Chiedimi qualsiasi cosa sul gestionale.<br><br>
+    Esempi:<br>• "Mostrami interventi idraulici"<br>• "Spese per fornitore"<br>• "Interventi urgenti"<br>• "Situazione SUB OB-01"<br>• "Scadenze documenti"</div>
+  </div>
+  <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+    <input id="chat-input" placeholder="Scrivi un messaggio…" style="flex:1;background:#0b0f1a;border:1px solid var(--border);border-radius:20px;padding:8px 14px;color:var(--text);font-size:13px;outline:none;font-family:inherit;" onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()" style="background:var(--accent);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;">→</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -657,6 +793,7 @@ async function doLogin(){
     sessionStorage.setItem('token',token);
     sessionStorage.setItem('user',JSON.stringify(currentUser));
     document.getElementById('login-screen').style.display='none';
+    document.getElementById('chat-btn').style.display='flex';
     showHome();
   }catch(e){err.style.display='block';}
 }
@@ -888,7 +1025,7 @@ async function delAll(alId,intId){if(!confirm('Eliminare allegato?'))return;awai
 
 // ── ANAGRAFICHE ──
 function setAnaTab(tab,btn){['subs','fornitori','inquilini','sedi','categorie'].forEach(t=>document.getElementById('ana-'+t).style.display=t===tab?'':'none');document.querySelectorAll('#sec-anagrafiche .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-function renderTbSubs(){const tb=document.getElementById('tb-subs');if(!DB.subs.length){tb.innerHTML='<tr><td colspan="10" class="empty">Nessun SUB</td></tr>';return;}tb.innerHTML=DB.subs.map(s=>{const inq=DB.inquilini.find(i=>i.id==s.inquilino_id);const sede=DB.sedi.find(sd=>sd.id==s.sede_id);const sal=s.stato_salute==='rosso'?'🔴':s.stato_salute==='giallo'?'🟡':'🟢';return`<tr><td style="font-size:14px;">${sal}</td><td class="td-bold">${esc(s.codice)}</td><td>${s.ex_sub?`<span class="ex-sub">${esc(s.ex_sub)}</span>`:'<span class="td-muted">—</span>'}</td><td><span class="badge badge-sede">${sede?.nome||'—'}</span></td><td>${esc(s.piano||'—')}</td><td>${esc(inq?.ragione_sociale||'—')}</td><td style="text-align:center;">${s.num_interventi||0}</td><td class="td-price">${s.totale_spese?'€ '+parseFloat(s.totale_spese).toLocaleString('it-IT',{maximumFractionDigits:0}):'—'}</td><td class="td-muted">${esc(s.note||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("sub",${JSON.stringify(s)})'>✏️</button><button class="btn btn-danger" onclick="delAna('subs',${s.id})">✕</button></div></td></tr>`;}).join('');}
+function renderTbSubs(){const tb=document.getElementById('tb-subs');if(!DB.subs.length){tb.innerHTML='<tr><td colspan="10" class="empty">Nessun SUB</td></tr>';return;}tb.innerHTML=DB.subs.map(s=>{const inq=DB.inquilini.find(i=>i.id==s.inquilino_id);const sede=DB.sedi.find(sd=>sd.id==s.sede_id);const sal=s.stato_salute==='rosso'?'🔴':s.stato_salute==='giallo'?'🟡':'🟢';return`<tr><td style="font-size:14px;">${sal}</td><td class="td-bold">${esc(s.codice)}</td><td>${s.ex_sub?`<span class="ex-sub">${esc(s.ex_sub)}</span>`:'<span class="td-muted">—</span>'}</td><td><span class="badge badge-sede">${sede?.nome||'—'}</span></td><td>${esc(s.piano||'—')}</td><td>${esc(inq?.ragione_sociale||'—')}</td><td style="text-align:center;">${s.num_interventi||0}</td><td class="td-price">${s.totale_spese?'€ '+parseFloat(s.totale_spese).toLocaleString('it-IT',{maximumFractionDigits:0}):'—'}</td><td class="td-muted">${esc(s.note||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" o<button class="btn btn-sm" style="background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3);padding:4px 8px;font-size:11px;" onclick="openTimeline(${s.id},'\$\{s.codice\}')" title="Timeline">📜</button>nclick='openAna("sub",${JSON.stringify(s)})'>✏️</button><button class="btn btn-danger" onclick="delAna('subs',${s.id})">✕</button></div></td></tr>`;}).join('');}
 function renderTbForn(){const tb=document.getElementById('tb-forn');if(!DB.fornitori.length){tb.innerHTML='<tr><td colspan="10" class="empty">Nessun fornitore</td></tr>';return;}tb.innerHTML=DB.fornitori.map(f=>`<tr><td class="td-mono" style="font-size:9px;">${esc(f.codice_zuc||'—')}</td><td class="td-bold">${esc(f.ragione_sociale)}</td><td class="td-mono">${esc(f.piva||'—')}</td><td>${esc(f.tel||'—')}</td><td>${esc(f.email||'—')}</td><td>${esc(f.citta||'—')}</td><td>${esc(f.spec||'—')}</td><td style="text-align:center;">${f.num_interventi||0}</td><td class="td-price">${f.totale_fatturato?'€ '+parseFloat(f.totale_fatturato).toLocaleString('it-IT',{maximumFractionDigits:0}):'—'}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("fornitore",${JSON.stringify(f)})'>✏️</button><button class="btn btn-danger" onclick="delAna('fornitori',${f.id})">✕</button></div></td></tr>`).join('');}
 function renderTbInq(){const tb=document.getElementById('tb-inq');if(!DB.inquilini.length){tb.innerHTML='<tr><td colspan="8" class="empty">Nessun inquilino</td></tr>';return;}tb.innerHTML=DB.inquilini.map(i=>{const sub=DB.subs.find(s=>s.inquilino_id==i.id);return`<tr><td class="td-mono" style="font-size:9px;">${esc(i.codice_zuc||'—')}</td><td class="td-bold">${esc(i.ragione_sociale)}</td><td class="td-mono">${esc(i.piva||i.cf||'—')}</td><td>${esc(i.tel||'—')}</td><td>${esc(i.email||'—')}</td><td>${esc(i.citta||'—')}</td><td>${sub?`<span class="badge badge-sede">${esc(sub.codice)}</span>`:'—'}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("inquilino",${JSON.stringify(i)})'>✏️</button><button class="btn btn-danger" onclick="delAna('inquilini',${i.id})">✕</button></div></td></tr>`;}).join('');}
 function renderTbSedi(){const tb=document.getElementById('tb-sedi');if(!DB.sedi.length){tb.innerHTML='<tr><td colspan="5" class="empty">Nessuna sede</td></tr>';return;}tb.innerHTML=DB.sedi.map(s=>`<tr><td class="td-bold">${esc(s.nome)}</td><td>${esc(s.indirizzo||'—')}</td><td>${esc(s.citta||'—')}</td><td class="td-muted">${esc(s.note||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("sede",${JSON.stringify(s)})'>✏️</button><button class="btn btn-danger" onclick="delAna('sedi',${s.id})">✕</button></div></td></tr>`).join('');}
@@ -1170,6 +1307,11 @@ function showSec(name,btn){
   if(name==='riepilogo') renderRiep();
   if(name==='impostazioni') loadUsers();
   if(name==='anagrafiche') loadDD();
+  if(name==='documenti'){
+    document.getElementById('df-sub').innerHTML='<option value="">Tutti</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
+    document.getElementById('df-sede').innerHTML='<option value="">Tutte</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+    loadDocs();
+  }
 }
 
 // ── OCR FATTURA ──
@@ -1388,12 +1530,143 @@ let tT;
 function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className=type;el.style.display='block';clearTimeout(tT);tT=setTimeout(()=>el.style.display='none',4000);}
 function fmt(d){if(!d)return'—';const s=String(d).split('T')[0];const p=s.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── DOCUMENTI ──
+const DOC_ICONS={fattura:'🧾',contratto:'📄',preventivo:'💼',verbale:'📋',bolletta:'⚡',catastale:'🏛️',condominiale:'🏢',documento:'📂'};
+async function loadDocs(){
+  const p=new URLSearchParams();
+  const v=id=>document.getElementById(id)?.value||'';
+  if(v('df-tipo'))p.set('tipo',v('df-tipo'));
+  if(v('df-sub'))p.set('sub_id',v('df-sub'));
+  if(v('df-sede'))p.set('sede_id',v('df-sede'));
+  if(v('df-search'))p.set('search',v('df-search'));
+  const docs=await api('/api/documenti?'+p);
+  if(!docs)return;
+  document.getElementById('docs-lbl').textContent=`${docs.length} documenti trovati`;
+  const el=document.getElementById('docs-list');
+  if(!docs.length){el.innerHTML='<div class="empty">Nessun documento. Carica fatture, contratti, preventivi e altro.</div>';return;}
+  el.innerHTML=docs.map(d=>{
+    const icon=DOC_ICONS[d.tipo]||'📂';
+    const scadGiorni=d.scadenza?Math.floor((new Date(d.scadenza)-new Date())/(1000*60*60*24)):null;
+    const scadHtml=scadGiorni!==null?`<span class="doc-scad" style="background:${scadGiorni<30?'rgba(239,68,68,.2)':scadGiorni<90?'rgba(245,158,11,.2)':'rgba(16,185,129,.2)'};color:${scadGiorni<30?'#f87171':scadGiorni<90?'#fcd34d':'#6ee7b7'};">${scadGiorni===0?'Scade oggi':scadGiorni<0?`Scaduto ${-scadGiorni}gg fa`:`${scadGiorni}gg`}</span>`:'';
+    return`<div class="doc-card"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(d.nome)}</div><div class="doc-meta">${d.sub_codice?'SUB '+esc(d.sub_codice)+' · ':''}${d.sede_nome?esc(d.sede_nome)+' · ':''}${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · <strong style="color:var(--gold);">€ '+parseFloat(d.importo).toLocaleString('it-IT')+'</strong>':''}</div>${d.descrizione?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(d.descrizione.slice(0,80))}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">${scadHtml}${d.url?`<a href="${d.url}" target="_blank" class="btn btn-edit btn-sm">👁 Apri</a>`:''}<button class="btn btn-danger btn-sm" onclick="delDoc(${d.id})">✕</button></div></div>`;
+  }).join('');
+  loadScadenze();
+}
+async function loadScadenze(){
+  const sc=await api('/api/documenti/scadenze');
+  if(!sc?.length){document.getElementById('scadenze-banner').classList.add('hidden');return;}
+  const prossime=sc.filter(d=>parseInt(d.giorni_scadenza)<=60);
+  if(!prossime.length){document.getElementById('scadenze-banner').classList.add('hidden');return;}
+  document.getElementById('scadenze-banner').classList.remove('hidden');
+  document.getElementById('scadenze-list').innerHTML=prossime.map(d=>`<div style="font-size:12px;padding:3px 0;display:flex;justify-content:space-between;"><span>${DOC_ICONS[d.tipo]||'📄'} <strong>${esc(d.nome.slice(0,40))}</strong>${d.sub_codice?' — SUB '+esc(d.sub_codice):''}</span><span style="color:${parseInt(d.giorni_scadenza)<7?'var(--red)':'var(--gold)'};">${fmt(d.scadenza)} (${d.giorni_scadenza}gg)</span></div>`).join('');
+}
+let docFileInput=null;
+function openModalDoc(){
+  docFileInput=null;
+  document.getElementById('m-doc-ttl').textContent='Nuovo Documento';
+  document.getElementById('doc-tipo').value='fattura';
+  ['doc-nome','doc-data','doc-scad','doc-imp','doc-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('doc-sub').innerHTML='<option value="">— Nessuno —</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
+  document.getElementById('doc-sede').innerHTML='<option value="">— Nessuna —</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+  document.getElementById('doc-forn').innerHTML='<option value="">— Nessuno —</option>'+DB.fornitori.map(f=>`<option value="${f.id}">${f.ragione_sociale}</option>`).join('');
+  document.getElementById('doc-file-zone').textContent='📎 Clicca per allegare file (PDF, immagine, Word…)';
+  document.getElementById('doc-file').value='';
+  document.getElementById('modal-doc').classList.add('open');
+}
+function docFileSelected(input){docFileInput=input.files[0];if(docFileInput)document.getElementById('doc-file-zone').textContent=`✓ ${docFileInput.name} (${Math.round(docFileInput.size/1024)} KB)`;}
+async function saveDoc(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('doc-nome')){toast('Inserisci il nome del documento','error');return;}
+  const fd=new FormData();
+  fd.append('tipo',v('doc-tipo'));fd.append('nome',v('doc-nome'));
+  if(v('doc-sub'))fd.append('sub_id',v('doc-sub'));
+  if(v('doc-sede'))fd.append('sede_id',v('doc-sede'));
+  if(v('doc-forn'))fd.append('fornitore_id',v('doc-forn'));
+  if(v('doc-data'))fd.append('data_documento',v('doc-data'));
+  if(v('doc-scad'))fd.append('scadenza',v('doc-scad'));
+  if(v('doc-imp'))fd.append('importo',v('doc-imp'));
+  if(v('doc-desc'))fd.append('descrizione',v('doc-desc'));
+  if(docFileInput)fd.append('file',docFileInput);
+  toast('Salvataggio…','warning');
+  const r=await apiUp('/api/documenti',fd);
+  if(r?.error){toast('Errore: '+r.error,'error');return;}
+  closeM('modal-doc');loadDocs();toast('Documento salvato ✓');
+}
+async function delDoc(id){if(!confirm('Eliminare documento?'))return;await api('/api/documenti/'+id,{method:'DELETE'});loadDocs();toast('Eliminato','error');}
+
+// ── TIMELINE ──
+let timelineSubId=null;
+async function openTimeline(subId,subCodice){
+  timelineSubId=subId;
+  document.getElementById('timeline-sub-name').textContent='Timeline — SUB '+subCodice;
+  document.getElementById('nota-testo').value='';
+  document.getElementById('modal-timeline').classList.add('open');
+  document.getElementById('timeline-content').innerHTML='<div class="empty">Caricamento…</div>';
+  const data=await api('/api/subs/'+subId+'/storia');
+  if(!data?.length){document.getElementById('timeline-content').innerHTML='<div class="empty">Nessun evento ancora. Gli interventi, documenti e modifiche appariranno qui.</div>';return;}
+  document.getElementById('timeline-content').innerHTML=data.map(ev=>{
+    let icon,color,titolo,desc;
+    if(ev._tipo==='intervento'){icon=ev.icona||'🔧';color='rgba(37,99,235,.2)';titolo=esc(ev.descrizione?.slice(0,80)||'Intervento');desc=`${ev.fornitore?'Fornitore: '+esc(ev.fornitore)+' · ':''}${ev.prezzo?'€ '+parseFloat(ev.prezzo).toLocaleString('it-IT'):''}${ev.protocollo?' · Prot. '+esc(ev.protocollo):''}`;}
+    else if(ev._tipo==='documento'){icon=DOC_ICONS[ev.tipo]||'📄';color='rgba(124,58,237,.2)';titolo=esc(ev.nome||'Documento');desc=`Tipo: ${ev.tipo}${ev.importo?' · € '+parseFloat(ev.importo).toLocaleString('it-IT'):''}${ev.scadenza?' · Scad. '+fmt(ev.scadenza):''}`;}
+    else{const ti={modifica:'✏️',nota:'📝',documento:'📁',creazione:'🆕'};icon=ti[ev.tipo]||'📌';color='rgba(245,158,11,.15)';titolo=esc(ev.titolo||'Evento');desc=esc(ev.descrizione||'');}
+    return`<div class="timeline-item"><div class="timeline-dot" style="background:${color};">${icon}</div><div class="timeline-body"><div class="timeline-date">${ev._data?fmt(ev._data):'—'}${ev.autore?' · '+esc(ev.autore):''}</div><div class="timeline-title">${titolo}</div>${desc?`<div class="timeline-desc">${desc}</div>`:''}</div></div>`;
+  }).join('');
+}
+async function addNota(){
+  const testo=document.getElementById('nota-testo').value.trim();
+  if(!testo||!timelineSubId)return;
+  await api('/api/subs/'+timelineSubId+'/storia',{method:'POST',body:JSON.stringify({tipo:'nota',titolo:'Nota',descrizione:testo})});
+  document.getElementById('nota-testo').value='';
+  openTimeline(timelineSubId,document.getElementById('timeline-sub-name').textContent.split('SUB ')[1]||'');
+  toast('Nota aggiunta ✓');
+}
+
+// ── CHAT ──
+let chatOpen=false;
+function toggleChat(){
+  chatOpen=!chatOpen;
+  const panel=document.getElementById('chat-panel');
+  panel.style.display=chatOpen?'flex':'none';
+  if(chatOpen)setTimeout(()=>document.getElementById('chat-input')?.focus(),100);
+}
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim();if(!msg)return;
+  input.value='';
+  addChatMsg(msg,'user');
+  addChatMsg('⏳ Sto cercando…','bot','chat-loading');
+  const r=await api('/api/chat',{method:'POST',body:JSON.stringify({messaggio:msg})});
+  document.getElementById('chat-loading')?.remove();
+  if(!r){addChatMsg('Errore di connessione.','bot');return;}
+  let html=r.risposta.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  if(r.dati?.length){
+    html+=r.dati.slice(0,5).map(d=>{
+      if(r.tipo==='interventi')return`<div class="chat-result" onclick="openDet(${d.id})">📋 <strong>${esc(d.sub||'?')}</strong> — ${esc((d.descrizione||'').slice(0,50))} ${d.prezzo?'<strong style="color:var(--gold2);">€'+parseFloat(d.prezzo).toLocaleString('it-IT')+'</strong>':''}`;
+      if(r.tipo==='fornitori')return`<div class="chat-result">🔧 <strong>${esc(d.ragione_sociale)}</strong> — ${d.num_int} int · <strong style="color:var(--gold2);">€ ${parseFloat(d.totale||0).toLocaleString('it-IT')}</strong></div>`;
+      if(r.tipo==='subs')return`<div class="chat-result" onclick="document.getElementById('ff-sub').value='${d.id||''}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">🏠 <strong>SUB ${esc(d.sub||d.codice||'?')}</strong> (${esc(d.sede||'')}) — <strong style="color:var(--gold2);">€ ${parseFloat(d.totale||0).toLocaleString('it-IT')}</strong></div>`;
+      return`<div class="chat-result">📄 ${esc(d.nome||d.descrizione||'').slice(0,60)}</div>`;
+    }).join('');
+    if(r.dati.length>5)html+=`<div style="font-size:10px;color:var(--muted);margin-top:4px;">... e altri ${r.dati.length-5}</div>`;
+  }
+  addChatMsg(html,'bot',null,true);
+}
+function addChatMsg(html,role,id=null,isHtml=false){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='chat-msg '+role;
+  if(id)div.id=id;
+  if(isHtml)div.innerHTML=html;else div.textContent=html;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
 document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
 
 // ── INIT ──
 window.addEventListener('load',()=>{
   const t=sessionStorage.getItem('token'),u=sessionStorage.getItem('user');
-  if(t&&u){token=t;currentUser=JSON.parse(u);document.getElementById('login-screen').style.display='none';document.getElementById('user-badge').textContent=`👤 ${currentUser.nome||currentUser.email||''}`;showHome();}
+  if(t&&u){token=t;currentUser=JSON.parse(u);document.getElementById('login-screen').style.display='none';document.getElementById('user-badge').textContent=`👤 ${currentUser.nome||currentUser.email||''}`;document.getElementById('chat-btn').style.display='flex';showHome();}
 });
 </script>
 </body>
