@@ -176,27 +176,19 @@ async function initDB() {
         created_by INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT NOW()
       );
-
-        skey VARCHAR(100) PRIMARY KEY,
+      CREATE TABLE IF NOT EXISTS settings (
+        cfg_key VARCHAR(100) PRIMARY KEY,
         value TEXT,
         updated_by INTEGER,
         updated_at TIMESTAMP DEFAULT NOW()
       );
-
-
-      -- Migrazione: rinomina colonna key -> skey se esiste ancora
-      DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='settings' AND column_name='key') THEN
-          ALTER TABLE settings RENAME COLUMN key TO skey;
-        END IF;
-      END $$;
       -- Default data
-      INSERT INTO settings (skey, value) VALUES
+      INSERT INTO settings (cfg_key, value) VALUES
         ('app_name', 'Gestionale Immobili'),
         ('logo_url', ''),
         ('colore_primario', '#2563eb'),
         ('footer_text', 'Gestionale Immobili — Storico Interventi')
-      ON CONFLICT (skey) DO NOTHING;
+      ON CONFLICT (cfg_key) DO NOTHING;
 
       INSERT INTO categorie (nome, colore, icona) VALUES
         ('Elettrico', '#f59e0b', '⚡'),
@@ -228,6 +220,17 @@ async function initDB() {
       );
     }
     console.log('✅ Database V3 inizializzato');
+
+    // Migrazione: se settings ha ancora la vecchia colonna 'key', rinominala
+    try {
+      const colCheck = await client.query(`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name='settings' AND column_name='key'`);
+      if (colCheck.rows.length > 0) {
+        await client.query('ALTER TABLE settings RENAME COLUMN "key" TO cfg_key');
+        console.log('✅ Migrazione settings: key → cfg_key');
+      }
+    } catch(e) { /* già migrata */ }
   } finally { client.release(); }
 }
 
@@ -287,16 +290,16 @@ app.put('/api/users/:id', authMiddleware, async (req, res) => {
 // SETTINGS
 // ═══════════════════════════════════════════════════════════
 app.get('/api/settings', authMiddleware, async (req, res) => {
-  const r = await pool.query('SELECT skey,value FROM settings');
+  const r = await pool.query('SELECT cfg_key,value FROM settings');
   const obj = {};
-  r.rows.forEach(row => obj[row.skey] = row.value);
+  r.rows.forEach(row => obj[row.cfg_key] = row.value);
   res.json(obj);
 });
 app.post('/api/settings', authMiddleware, async (req, res) => {
   const { settings } = req.body;
   for (const [key, value] of Object.entries(settings)) {
     await pool.query(
-      'INSERT INTO settings (skey,value,updated_by,updated_at) VALUES ($1,$2,$3,NOW()) ON CONFLICT(skey) DO UPDATE SET value=$2,updated_by=$3,updated_at=NOW()',
+      'INSERT INTO settings (cfg_key,value,updated_by,updated_at) VALUES ($1,$2,$3,NOW()) ON CONFLICT(cfg_key) DO UPDATE SET value=$2,updated_by=$3,updated_at=NOW()',
       [key, value, req.user.id]
     );
   }
