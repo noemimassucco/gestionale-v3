@@ -177,19 +177,26 @@ async function initDB() {
         created_at TIMESTAMP DEFAULT NOW()
       );
 
-        "key" VARCHAR(100) PRIMARY KEY,
+        skey VARCHAR(100) PRIMARY KEY,
         value TEXT,
         updated_by INTEGER,
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
+
+      -- Migrazione: rinomina colonna key -> skey se esiste ancora
+      DO $$ BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='settings' AND column_name='key') THEN
+          ALTER TABLE settings RENAME COLUMN key TO skey;
+        END IF;
+      END $$;
       -- Default data
-      INSERT INTO settings ("key", value) VALUES
+      INSERT INTO settings (skey, value) VALUES
         ('app_name', 'Gestionale Immobili'),
         ('logo_url', ''),
         ('colore_primario', '#2563eb'),
         ('footer_text', 'Gestionale Immobili — Storico Interventi')
-      ON CONFLICT ("key") DO NOTHING;
+      ON CONFLICT (skey) DO NOTHING;
 
       INSERT INTO categorie (nome, colore, icona) VALUES
         ('Elettrico', '#f59e0b', '⚡'),
@@ -280,16 +287,16 @@ app.put('/api/users/:id', authMiddleware, async (req, res) => {
 // SETTINGS
 // ═══════════════════════════════════════════════════════════
 app.get('/api/settings', authMiddleware, async (req, res) => {
-  const r = await pool.query('SELECT "key",value FROM settings');
+  const r = await pool.query('SELECT skey,value FROM settings');
   const obj = {};
-  r.rows.forEach(row => obj[row.key] = row.value);
+  r.rows.forEach(row => obj[row.skey] = row.value);
   res.json(obj);
 });
 app.post('/api/settings', authMiddleware, async (req, res) => {
   const { settings } = req.body;
   for (const [key, value] of Object.entries(settings)) {
     await pool.query(
-      'INSERT INTO settings ("key",value,updated_by,updated_at) VALUES ($1,$2,$3,NOW()) ON CONFLICT("key") DO UPDATE SET value=$2,updated_by=$3,updated_at=NOW()',
+      'INSERT INTO settings (skey,value,updated_by,updated_at) VALUES ($1,$2,$3,NOW()) ON CONFLICT(skey) DO UPDATE SET value=$2,updated_by=$3,updated_at=NOW()',
       [key, value, req.user.id]
     );
   }
