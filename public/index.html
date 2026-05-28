@@ -1,0 +1,2032 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title id="app-title">Gestionale Immobili</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f1a;--surface:#111827;--surface2:#1a2236;--border:#1e3054;--accent:#2563eb;--accent2:#7c3aed;--gold:#f59e0b;--green:#10b981;--red:#ef4444;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+.hidden{display:none!important;}
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#070b14,#1e3054);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.login-box{background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:100%;max-width:400px;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,.8);}
+.login-logo{width:72px;height:72px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 20px;}
+.login-box h2{font-family:'Playfair Display',serif;font-size:24px;color:#fff;margin-bottom:4px;}
+.login-box p{color:var(--muted);font-size:13px;margin-bottom:28px;}
+.lf{text-align:left;margin-bottom:14px;}
+.lf label{display:block;font-size:11px;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;font-weight:600;}
+.lf input{width:100%;background:rgba(11,15,26,.8);border:1px solid var(--border);border-radius:9px;padding:12px 16px;color:var(--text);font-size:14px;outline:none;transition:border-color .2s;}
+.lf input:focus{border-color:var(--accent);}
+.login-err{color:var(--red);font-size:12px;margin-bottom:12px;display:none;}
+.btn-login{width:100%;padding:13px;background:linear-gradient(135deg,var(--accent),#1d4ed8);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,99,235,.4);}
+/* HOME */
+#home-screen{display:none;min-height:100vh;}
+.home-hero{position:relative;height:360px;background:linear-gradient(135deg,#0d1929,#1e3a5f 40%,#2d1b4e);overflow:hidden;cursor:pointer;}
+.home-hero:hover{filter:brightness(1.05);}
+.home-hero-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:32px;}
+.home-hero h1{font-family:'Playfair Display',serif;font-size:42px;color:#fff;margin-bottom:12px;}
+.home-hero p{font-size:16px;color:rgba(255,255,255,.7);margin-bottom:28px;}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:8px 20px;font-size:13px;color:rgba(255,255,255,.85);}
+.home-building{position:absolute;right:5%;bottom:0;opacity:.08;font-size:240px;line-height:1;pointer-events:none;}
+.home-stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-bottom:1px solid var(--border);}
+.home-stat{padding:22px 26px;border-right:1px solid var(--border);cursor:pointer;transition:background .2s;}
+.home-stat:last-child{border-right:none;}
+.home-stat:hover{background:var(--surface2);}
+.home-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:7px;}
+.home-stat-value{font-size:24px;font-weight:700;font-family:'Playfair Display',serif;}
+.home-stat-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.home-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding:24px 32px;}
+.home-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;}
+.home-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 12px 32px rgba(37,99,235,.15);}
+.home-card-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px;}
+.home-card h3{font-size:14px;font-weight:600;color:#fff;margin-bottom:5px;}
+.home-card p{font-size:12px;color:var(--muted);line-height:1.5;}
+.home-card-arr{position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--muted);transition:all .2s;font-size:17px;}
+.home-card:hover .home-card-arr{color:var(--accent);transform:translateY(-50%) translateX(4px);}
+.home-recent{padding:0 32px 28px;}
+.home-recent h2{font-family:'Playfair Display',serif;font-size:17px;color:#fff;margin-bottom:14px;}
+.notif-banner{margin:16px 32px 0;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 18px;}
+.notif-banner h3{font-size:12px;color:var(--gold);margin-bottom:8px;font-weight:600;}
+/* APP */
+#app-screen{display:none;min-height:100vh;}
+.app-header{background:linear-gradient(135deg,#0f172a,#1e3054);border-bottom:1px solid var(--border);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.4);gap:12px;}
+.app-logo{display:flex;align-items:center;gap:11px;cursor:pointer;text-decoration:none;flex-shrink:0;}
+.app-logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.app-logo h1{font-family:'Playfair Display',serif;font-size:16px;color:#fff;}
+.app-logo span{display:block;font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+.hcenter{flex:1;max-width:380px;position:relative;}
+.srch{width:100%;background:rgba(11,15,26,.8);border:1px solid var(--border);border-radius:20px;padding:7px 14px 7px 34px;color:var(--text);font-size:12px;outline:none;transition:all .2s;}
+.srch:focus{border-color:var(--accent);}
+.srch-ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
+.srch-res{position:absolute;top:calc(100%+6px);left:0;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.5);z-index:200;max-height:380px;overflow-y:auto;}
+.sr-sec{padding:9px 13px 3px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;}
+.sr-item{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:9px;font-size:12px;transition:background .15s;}
+.sr-item:hover{background:var(--surface2);}
+.hright{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+nav{display:flex;gap:2px;}
+.nb{background:transparent;border:none;color:var(--muted);padding:6px 11px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .2s;white-space:nowrap;}
+.nb:hover{background:var(--surface2);color:var(--text);}
+.nb.active{background:var(--accent);color:#fff;}
+.ubtn{background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.3);color:#93c5fd;padding:5px 12px;border-radius:7px;cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;}
+.hbtn{background:transparent;border:1px solid var(--border);color:var(--muted);padding:5px 10px;border-radius:7px;cursor:pointer;font-size:12px;font-family:'DM Sans',sans-serif;}
+.hbtn:hover{border-color:var(--accent);color:var(--accent);}
+main{padding:22px 26px;max-width:1600px;margin:0 auto;}
+.section{display:none;}.section.active{display:block;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;}
+.card-title{font-family:'Playfair Display',serif;font-size:16px;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:13px;}
+.form-full{grid-column:1/-1;}
+.field label{display:block;font-size:10px;color:#7dd3fc;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;font-weight:600;}
+.field input,.field select,.field textarea{width:100%;background:#0b0f1a;border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.field textarea{resize:vertical;min-height:68px;}
+select option{background:#1a2236;}
+.btn{padding:8px 18px;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#1d4ed8);color:#fff;}
+.btn-primary:hover{transform:translateY(-1px);}
+.btn-success{background:linear-gradient(135deg,var(--green),#059669);color:#fff;}
+.btn-danger{background:transparent;border:1px solid #374151;color:var(--red);padding:4px 9px;font-size:11px;}
+.btn-danger:hover{background:rgba(239,68,68,.1);}
+.btn-edit{background:transparent;border:1px solid #374151;color:#93c5fd;padding:4px 9px;font-size:11px;}
+.btn-edit:hover{background:rgba(37,99,235,.1);}
+.btn-sm{padding:5px 11px;font-size:11px;}
+.btn-gold{background:linear-gradient(135deg,var(--gold),#d97706);color:#000;font-weight:700;}
+.btn-gray{background:var(--surface2);color:var(--muted);}
+.btn-orange{background:linear-gradient(135deg,var(--orange),#c2410c);color:#fff;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead tr{background:#0f172a;}
+th{padding:8px 11px;text-align:left;color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:2px;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 11px;border-bottom:1px solid rgba(30,48,84,.4);vertical-align:middle;}
+tr:hover td{background:rgba(37,99,235,.04);}
+.td-bold{font-weight:600;color:#fff;}
+.td-mono{font-family:monospace;color:#93c5fd;}
+.td-muted{color:var(--muted);font-style:italic;}
+.td-price{font-weight:700;color:var(--gold);font-family:monospace;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.badge-sede{background:rgba(37,99,235,.2);color:#93c5fd;border:1px solid rgba(37,99,235,.3);}
+.badge-tag{background:rgba(109,40,217,.15);color:#c4b5fd;border:1px solid rgba(109,40,217,.2);font-size:9px;padding:1px 6px;}
+.badge-warn{background:rgba(245,158,11,.2);color:#fcd34d;border:1px solid rgba(245,158,11,.3);}
+.ex-sub{background:rgba(100,116,139,.15);border:1px solid rgba(100,116,139,.3);color:#94a3b8;border-radius:5px;padding:1px 6px;font-size:9px;}
+.int-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;cursor:pointer;transition:all .2s;position:relative;}
+.int-card:hover{border-color:rgba(37,99,235,.4);transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,0,0,.3);}
+.int-card.selected{border-color:var(--accent);background:rgba(37,99,235,.04);}
+.int-card-hdr{display:flex;align-items:center;gap:9px;margin-bottom:9px;flex-wrap:wrap;}
+.int-card-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:7px;}
+.icf{font-size:11px;}.icf span{display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
+.int-chk{position:absolute;top:14px;right:14px;}
+.filter-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px;}
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;}
+.filter-grid .field{margin:0;}
+.filter-grid .field input,.filter-grid .field select{font-size:12px;padding:7px 10px;}
+.mass-bar{background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);border-radius:10px;padding:11px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;width:92%;max-width:720px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.6);animation:slideUp .22s ease;}
+.modal-wide{max-width:940px;}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-title{font-family:'Playfair Display',serif;font-size:18px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.modal-footer{margin-top:20px;display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.det-f{margin-bottom:12px;}
+.det-f label{display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:3px;}
+.det-val{font-size:13px;color:var(--text);}
+.det-bold{font-size:14px;color:#fff;font-weight:600;}
+.det-price{font-size:20px;color:var(--gold);font-weight:700;font-family:monospace;}
+.simili-box{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:9px;padding:12px;margin-top:14px;}
+.simili-box h4{font-size:11px;color:var(--gold);margin-bottom:8px;font-weight:600;}
+.all-item{display:flex;align-items:center;gap:9px;padding:7px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:7px;}
+.all-icon{font-size:18px;flex-shrink:0;}
+.all-nome{font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.all-dim{font-size:10px;color:var(--muted);}
+.alert-modal{max-width:480px;}
+.alert-icon{font-size:42px;text-align:center;margin-bottom:12px;}
+.alert-body{font-size:13px;color:#cbd5e1;line-height:1.7;}
+.alert-list{margin:10px 0;padding:10px 12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:7px;}
+.alert-item{padding:6px 0;border-bottom:1px solid rgba(245,158,11,.15);font-size:12px;}
+.alert-item:last-child{border-bottom:none;}
+#toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,.5);display:none;max-width:340px;}
+#toast.success{border-left:4px solid var(--green);}
+#toast.error{border-left:4px solid var(--red);}
+#toast.warning{border-left:4px solid var(--gold);}
+.tab-btns{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap;}
+.tab-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:20px;cursor:pointer;font-size:12px;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.tab-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.flex{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.flex-between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:9px;}
+.mb-16{margin-bottom:16px;}
+.empty{text-align:center;color:var(--muted);padding:36px;font-size:13px;}
+.divider{height:1px;background:var(--border);margin:16px 0;}
+.text-gold{color:var(--gold);}
+.text-green{color:var(--green);}
+.text-muted{color:var(--muted);}
+.price-wrap{position:relative;}
+.price-sym{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gold);font-weight:700;}
+.price-wrap input{padding-left:22px;}
+.import-zone{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;}
+.import-zone:hover{border-color:var(--accent);background:rgba(37,99,235,.04);}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px;}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:14px 17px;}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;}
+.stat-value{font-size:22px;font-weight:700;font-family:'Playfair Display',serif;}
+.upload-zone{border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;font-size:12px;color:var(--muted);transition:all .2s;}
+.upload-zone:hover{border-color:var(--accent);}
+.chat-msg{padding:10px 13px;border-radius:10px;font-size:12px;line-height:1.6;max-width:90%;}
+.chat-msg.bot{background:var(--surface2);border:1px solid var(--border);color:var(--text);align-self:flex-start;}
+.chat-msg.user{background:var(--accent);color:#fff;align-self:flex-end;}
+.chat-msg.bot strong{color:#fff;}
+.chat-result{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;margin-top:6px;font-size:11px;cursor:pointer;transition:background .15s;}
+.chat-result:hover{background:rgba(37,99,235,.1);}
+.timeline-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid rgba(30,48,84,.4);}
+.timeline-item:last-child{border-bottom:none;}
+.timeline-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:2px;}
+.timeline-body{flex:1;}
+.timeline-date{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.timeline-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;}
+.timeline-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.doc-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;transition:all .2s;}
+.doc-card:hover{border-color:rgba(37,99,235,.3);}
+.doc-icon{font-size:24px;flex-shrink:0;}
+.doc-info{flex:1;min-width:0;}
+.doc-name{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.doc-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+.doc-scad{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;}
+@media(max-width:768px){
+  #chat-panel{width:calc(100vw - 32px);right:16px;}
+  #chat-btn{right:16px;bottom:16px;}
+  .app-header{flex-wrap:wrap;padding:10px 14px;gap:8px;}
+  .hcenter{max-width:100%;order:3;flex:0 0 100%;}
+  nav{display:flex;overflow-x:auto;gap:2px;scrollbar-width:none;padding-bottom:2px;flex-wrap:nowrap;}
+  nav::-webkit-scrollbar{display:none;}
+  .nb{font-size:11px;padding:5px 8px;white-space:nowrap;}
+  main{padding:10px;}
+  .home-cards{grid-template-columns:1fr 1fr;gap:12px;padding:14px;}
+  .home-stats{grid-template-columns:1fr 1fr;}
+  .home-stat{padding:14px;}
+  .home-hero{height:260px;}
+  .home-hero h1{font-size:28px;}
+  .form-grid{grid-template-columns:1fr!important;}
+  .det-grid{grid-template-columns:1fr;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .filter-grid{grid-template-columns:1fr 1fr;}
+  .int-card-body{grid-template-columns:1fr 1fr;}
+  .modal{padding:18px;width:96%;max-height:96vh;}
+  .tab-btns{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
+  .tab-btns::-webkit-scrollbar{display:none;}
+  .tab-btn{white-space:nowrap;}
+  .home-recent{padding:0 14px 20px;}
+  .notif-banner{margin:12px 14px 0;}
+  .hright{gap:4px;}
+  .ubtn,.hbtn{padding:5px 8px;font-size:11px;}
+  table{font-size:11px;}
+  th,td{padding:7px 8px;}
+  .mass-bar{flex-direction:column;align-items:flex-start;}
+  .flex-between{flex-direction:column;align-items:flex-start;}
+  .btn{font-size:12px;padding:7px 14px;}
+  #riep-tabs{overflow-x:auto;flex-wrap:nowrap;}
+}
+  .home-cards,.home-stats{grid-template-columns:1fr 1fr;}
+  .app-header{flex-wrap:wrap;}
+  .hcenter{max-width:100%;order:3;flex:0 0 100%;}
+  nav{flex-wrap:wrap;}
+  .det-grid{grid-template-columns:1fr;}
+  main{padding:14px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div style="width:100%;max-width:420px;padding:16px;">
+    <div class="login-box">
+      <div class="login-logo">🏢</div>
+      <h2 id="login-title">Gestionale Immobili</h2>
+      <p>Accesso riservato</p>
+      <div class="lf"><label>Email</label><input type="email" id="login-email" placeholder="nome@azienda.it" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="lf"><label>Password</label><input type="password" id="login-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div id="login-err" class="login-err">❌ Email o password errati</div>
+      <button class="btn-login" onclick="doLogin()">Accedi →</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="home-screen">
+  <div class="home-hero" onclick="goToApp()">
+    <div class="home-hero-content">
+      <div class="hero-badge">🏢 <span id="hero-badge">Gestionale Immobili</span></div>
+      <h1 id="hero-title">Storico Interventi</h1>
+      <p>La memoria storica dei tuoi immobili — clicca per accedere</p>
+    </div>
+    <div class="home-building">🏢</div>
+  </div>
+  <div class="home-stats">
+    <div class="home-stat" onclick="goToApp('interventi')">
+      <div class="home-stat-label">Interventi totali</div>
+      <div class="home-stat-value" id="hs-int">—</div>
+      <div class="home-stat-sub">storico completo</div>
+    </div>
+    <div class="home-stat" onclick="goToApp('riepilogo')">
+      <div class="home-stat-label">Spese totali</div>
+      <div class="home-stat-value text-gold" id="hs-sp">—</div>
+      <div class="home-stat-sub">tutti gli anni</div>
+    </div>
+    <div class="home-stat" onclick="goToApp('anagrafiche')">
+      <div class="home-stat-label">SUB attivi</div>
+      <div class="home-stat-value" id="hs-sub">—</div>
+      <div class="home-stat-sub">immobili gestiti</div>
+    </div>
+    <div class="home-stat" onclick="goToApp('anagrafiche')">
+      <div class="home-stat-label">Fornitori</div>
+      <div class="home-stat-value" id="hs-forn">—</div>
+      <div class="home-stat-sub">in archivio</div>
+    </div>
+  </div>
+  <div id="notif-wrap" class="hidden">
+    <div class="notif-banner"><h3>⚠️ Interventi che richiedono attenzione</h3><div id="notif-list"></div></div>
+  </div>
+  <div class="home-cards">
+    <div class="home-card" onclick="goToApp('interventi')"><div class="home-card-icon" style="background:rgba(37,99,235,.15);">📋</div><h3>Storico Interventi</h3><p>Visualizza, filtra e gestisci tutti gli interventi per SUB e sede</p><span class="home-card-arr">→</span></div>
+    <div class="home-card" onclick="goToApp('anagrafiche')"><div class="home-card-icon" style="background:rgba(124,58,237,.15);">📁</div><h3>Anagrafiche</h3><p>SUB, sedi, fornitori, inquilini e categorie intervento</p><span class="home-card-arr">→</span></div>
+    <div class="home-card" onclick="goToApp('riepilogo')"><div class="home-card-icon" style="background:rgba(245,158,11,.15);">📊</div><h3>Riepilogo Economico</h3><p>Analisi spese per SUB, fornitore, anno e sede</p><span class="home-card-arr">→</span></div>
+    <div class="home-card" onclick="goToApp('catasto')"><div class="home-card-icon" style="background:rgba(37,99,235,.15);">🏛️</div><h3>Catasto & ISTAT</h3><p>Agenzia delle Entrate, variazioni catastali, calcolatore ISTAT</p><span class="home-card-arr">→</span></div>
+    <div class="home-card" onclick="goToApp('impostazioni')"><div class="home-card-icon" style="background:rgba(16,185,129,.15);">⚙️</div><h3>Impostazioni</h3><p>Personalizzazioni, utenti, password e configurazione</p><span class="home-card-arr">→</span></div>
+  </div>
+  <div class="home-recent">
+    <h2>Ultimi interventi inseriti</h2>
+    <div id="home-recent-list"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <header class="app-header">
+    <a class="app-logo" onclick="goHome()" href="#">
+      <div class="app-logo-icon">🏢</div>
+      <div><h1 id="header-title">Gestionale Immobili</h1><span>Storico Interventi</span></div>
+    </a>
+    <div class="hcenter">
+      <span class="srch-ico">🔍</span>
+      <input class="srch" id="global-search" placeholder="Cerca SUB, interventi, fornitori…" oninput="globalSearch(this.value)" onblur="setTimeout(()=>closeSearch(),200)">
+      <div class="srch-res hidden" id="srch-res"></div>
+    </div>
+    <div class="hright">
+      <nav>
+        <button class="nb active" onclick="showSec('interventi',this)">📋 Interventi</button>
+        <button class="nb" onclick="showSec('documenti',this)">📁 Documenti</button>
+        <button class="nb" onclick="showSec('manutenzioni',this)">🔨 Manutenzioni</button>
+        <button class="nb" onclick="showSec('anagrafiche',this)">👥 Anagrafiche</button>
+        <button class="nb" onclick="showSec('riepilogo',this)">📊 Riepilogo</button>
+        <button class="nb" onclick="showSec('catasto',this)">🏛️ Catasto</button>
+        <button class="nb" onclick="showSec('import',this)">⬆️ Import</button>
+        <button class="nb" onclick="showSec('impostazioni',this)">⚙️</button>
+      </nav>
+      <span class="ubtn" id="user-badge">👤</span>
+      <button class="hbtn" onclick="goHome()">🏠</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- INTERVENTI -->
+    <div id="sec-interventi" class="section active">
+      <div class="flex-between mb-16">
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">Storico Interventi</h2>
+          <p class="text-muted" style="font-size:12px;margin-top:2px;" id="int-lbl">Caricamento…</p>
+        </div>
+        <div class="flex">
+          <button class="btn btn-sm btn-gray" id="sel-btn" onclick="toggleSel()">☑ Selezione</button>
+          <button class="btn btn-primary" onclick="openModalInt()">+ Nuovo Intervento</button>
+        </div>
+      </div>
+      <div class="mass-bar hidden" id="mass-bar">
+        <span id="mass-cnt" style="font-size:13px;font-weight:600;color:var(--accent);">0 selezionati</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteMass()">🗑 Elimina selezionati</button>
+        <button class="btn btn-sm btn-gray" onclick="selAll()">Seleziona tutti</button>
+        <button class="btn btn-sm btn-gray" onclick="deselAll()">Deseleziona</button>
+      </div>
+      <div class="filter-bar mb-16">
+        <div class="filter-grid">
+          <div class="field"><label>Sede</label><select id="ff-sede" onchange="loadInt()"><option value="">Tutte</option></select></div>
+          <div class="field"><label>SUB</label><select id="ff-sub" onchange="loadInt()"><option value="">Tutti</option></select></div>
+          <div class="field"><label>Fornitore</label><select id="ff-forn" onchange="loadInt()"><option value="">Tutti</option></select></div>
+          <div class="field"><label>Categoria</label><select id="ff-cat" onchange="loadInt()"><option value="">Tutte</option></select></div>
+          <div class="field"><label>Anno fattura</label><input type="number" id="ff-anno" placeholder="2024" onchange="loadInt()"></div>
+          <div class="field"><label>Data da</label><input type="date" id="ff-da" onchange="loadInt()"></div>
+          <div class="field"><label>Data a</label><input type="date" id="ff-a" onchange="loadInt()"></div>
+          <div class="field"><label>€ min</label><input type="number" id="ff-min" onchange="loadInt()"></div>
+          <div class="field"><label>€ max</label><input type="number" id="ff-max" onchange="loadInt()"></div>
+        </div>
+        <div class="flex" style="margin-top:9px;">
+          <button class="btn btn-sm btn-gray" onclick="resetF()">✕ Reset</button>
+        </div>
+      </div>
+      <div id="int-list"><div class="empty">Caricamento…</div></div>
+    </div>
+
+    <!-- ANAGRAFICHE -->
+    <div id="sec-anagrafiche" class="section">
+      <div class="tab-btns">
+        <button class="tab-btn active" onclick="setAnaTab('subs',this)">🏠 SUB</button>
+        <button class="tab-btn" onclick="setAnaTab('fornitori',this)">🔧 Fornitori</button>
+        <button class="tab-btn" onclick="setAnaTab('inquilini',this)">👤 Inquilini</button>
+        <button class="tab-btn" onclick="setAnaTab('sedi',this)">📍 Sedi</button>
+        <button class="tab-btn" onclick="setAnaTab('categorie',this)">🏷 Categorie</button>
+      </div>
+      <div id="ana-subs">
+        <div class="flex-between mb-16"><h3 style="font-size:15px;color:#fff;">Anagrafica SUB</h3>
+          <div class="flex">
+            <button class="btn btn-sm" style="background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3);" onclick="openImportSub()">⬆️ Import massivo</button>
+            <button class="btn btn-primary btn-sm" onclick="openAna('sub')">+ Aggiungi SUB</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
+          <thead><tr><th>Salute</th><th>SUB</th><th>Ex SUB</th><th>Sede</th><th>Piano</th><th>Inquilino</th><th>N° Int.</th><th>Spese</th><th>Note</th><th></th></tr></thead>
+          <tbody id="tb-subs"><tr><td colspan="10" class="empty">Nessun SUB</td></tr></tbody>
+        </table></div></div>
+      </div>
+      <div id="ana-fornitori" style="display:none">
+        <div class="flex-between mb-16"><h3 style="font-size:15px;color:#fff;">Anagrafica Fornitori</h3>
+          <div class="flex">
+            <button class="btn btn-sm" style="background:rgba(124,58,237,.2);color:#c4b5fd;border:1px solid rgba(124,58,237,.3);" onclick="openZuc('fornitori')">⬆️ Zucchetti</button>
+            <button class="btn btn-primary btn-sm" onclick="openAna('fornitore')">+ Aggiungi</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
+          <thead><tr><th>Cod.</th><th>Ragione Sociale</th><th>P.IVA</th><th>Tel.</th><th>Email</th><th>Città</th><th>Spec.</th><th>N° Int.</th><th>Fatturato</th><th></th></tr></thead>
+          <tbody id="tb-forn"><tr><td colspan="10" class="empty">Nessun fornitore</td></tr></tbody>
+        </table></div></div>
+      </div>
+      <div id="ana-inquilini" style="display:none">
+        <div class="flex-between mb-16"><h3 style="font-size:15px;color:#fff;">Anagrafica Inquilini</h3>
+          <div class="flex">
+            <button class="btn btn-sm" style="background:rgba(124,58,237,.2);color:#c4b5fd;border:1px solid rgba(124,58,237,.3);" onclick="openZuc('inquilini')">⬆️ Zucchetti</button>
+            <button class="btn btn-primary btn-sm" onclick="openAna('inquilino')">+ Aggiungi</button>
+          </div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
+          <thead><tr><th>Cod.</th><th>Ragione Sociale</th><th>P.IVA/CF</th><th>Tel.</th><th>Email</th><th>Città</th><th>SUB</th><th></th></tr></thead>
+          <tbody id="tb-inq"><tr><td colspan="8" class="empty">Nessun inquilino</td></tr></tbody>
+        </table></div></div>
+      </div>
+      <div id="ana-sedi" style="display:none">
+        <div class="flex-between mb-16"><h3 style="font-size:15px;color:#fff;">Sedi</h3><button class="btn btn-primary btn-sm" onclick="openAna('sede')">+ Aggiungi</button></div>
+        <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
+          <thead><tr><th>Nome</th><th>Indirizzo</th><th>Città</th><th>Note</th><th></th></tr></thead>
+          <tbody id="tb-sedi"><tr><td colspan="5" class="empty">Nessuna sede</td></tr></tbody>
+        </table></div></div>
+      </div>
+      <div id="ana-categorie" style="display:none">
+        <div class="flex-between mb-16"><h3 style="font-size:15px;color:#fff;">Categorie</h3><button class="btn btn-primary btn-sm" onclick="openAna('categoria')">+ Aggiungi</button></div>
+        <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
+          <thead><tr><th>Icona</th><th>Nome</th><th>Colore</th><th></th></tr></thead>
+          <tbody id="tb-cat"><tr><td colspan="4" class="empty">Nessuna categoria</td></tr></tbody>
+        </table></div></div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTI -->
+    <div id="sec-documenti" class="section">
+      <div class="flex-between mb-16">
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">Archivio Documenti</h2>
+          <p class="text-muted" style="font-size:12px;margin-top:2px;" id="docs-lbl">Fatture, contratti, preventivi, bollette, catastali e altro</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModalDoc()">+ Nuovo Documento</button>
+      </div>
+      <!-- Scadenze banner -->
+      <div id="scadenze-banner" class="hidden" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:8px;">📅 Documenti in scadenza</div>
+        <div id="scadenze-list"></div>
+      </div>
+      <!-- Filtri documenti -->
+      <div class="filter-bar mb-16">
+        <div class="filter-grid">
+          <div class="field"><label>Tipo</label>
+            <select id="df-tipo" onchange="loadDocs()">
+              <option value="">Tutti</option>
+              <option value="fattura">🧾 Fattura</option>
+              <option value="contratto">📄 Contratto</option>
+              <option value="preventivo">💼 Preventivo</option>
+              <option value="verbale">📋 Verbale</option>
+              <option value="bolletta">⚡ Bolletta</option>
+              <option value="catastale">🏛️ Catastale</option>
+              <option value="condominiale">🏢 Condominiale</option>
+              <option value="documento">📂 Altro</option>
+            </select>
+          </div>
+          <div class="field"><label>SUB</label><select id="df-sub" onchange="loadDocs()"><option value="">Tutti</option></select></div>
+          <div class="field"><label>Sede</label><select id="df-sede" onchange="loadDocs()"><option value="">Tutte</option></select></div>
+          <div class="field"><label>Cerca</label><input id="df-search" placeholder="nome, descrizione…" oninput="loadDocs()"></div>
+        </div>
+      </div>
+      <div id="docs-list"><div class="empty">Caricamento…</div></div>
+    </div>
+
+    <!-- RIEPILOGO -->
+    <div id="sec-riepilogo" class="section">
+      <div class="flex-between mb-16">
+        <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">Riepilogo Economico</h2>
+        <button class="btn btn-sm" style="background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.3);" onclick="extractAllPrices()">🔍 Estrai prezzi da descrizioni</button>
+      </div>
+      <div class="stats-grid" id="riep-stats"></div>
+      <div class="tab-btns" id="riep-tabs">
+        <button class="tab-btn active" onclick="setRiepTab('sub',this)">🏠 Per SUB</button>
+        <button class="tab-btn" onclick="setRiepTab('fornitore',this)">🔧 Per Fornitore</button>
+        <button class="tab-btn" onclick="setRiepTab('anno',this)">📅 Per Anno</button>
+        <button class="tab-btn" onclick="setRiepTab('mese',this)">📆 Per Mese</button>
+        <button class="tab-btn" onclick="setRiepTab('sede',this)">📍 Per Sede</button>
+      </div>
+      <div id="riep-list"></div>
+    </div>
+
+    <!-- IMPORT -->
+    <div id="sec-import" class="section">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;margin-bottom:20px;">Import / Export</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="card">
+          <div class="card-title">📊 Import Storico Excel</div>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:14px;">Carica il vecchio Excel. Fornitori e inquilini non trovati vengono creati automaticamente — non perdi niente.</p>
+          <div style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:7px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#fcd34d;">⚠️ Prima importa Fornitori + Inquilini da Zucchetti, poi aggiungi i SUB, poi carica qui.</div>
+          <div class="import-zone" onclick="document.getElementById('storicoFile').click()">
+            <div style="font-size:26px;margin-bottom:6px;">📂</div>
+            <div style="font-weight:600;font-size:13px;">Seleziona file .xlsx storico</div>
+          </div>
+          <input type="file" id="storicoFile" accept=".xlsx,.xls" style="display:none" onchange="loadStorico(this)">
+          <div id="storico-wiz" style="display:none;margin-top:16px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⬇️ Export & Backup</div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <button class="btn btn-gold" onclick="exportExcel()">⬇️ Scarica Excel storico</button>
+            <button class="btn btn-primary" onclick="exportJSON()">💾 Backup JSON completo</button>
+            <div class="divider"></div>
+            <div class="import-zone" onclick="document.getElementById('jsonFile').click()" style="padding:14px;">
+              <div style="font-size:12px;">📂 Ripristina backup JSON</div>
+            </div>
+            <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="importJSON(this)">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPOSTAZIONI -->
+    <div id="sec-impostazioni" class="section">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;margin-bottom:20px;">⚙️ Impostazioni</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-title">🎨 Personalizzazione</div>
+          <div class="form-grid" style="grid-template-columns:1fr;">
+            <div class="field"><label>Nome applicazione</label><input id="s-nome"></div>
+            <div class="field"><label>Testo footer</label><input id="s-footer"></div>
+          </div>
+          <button class="btn btn-success" style="margin-top:12px;" onclick="saveSettings()">✓ Salva</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🔐 Cambia Password</div>
+          <div class="form-grid" style="grid-template-columns:1fr;">
+            <div class="field"><label>Password attuale</label><input type="password" id="pwd-old"></div>
+            <div class="field"><label>Nuova password</label><input type="password" id="pwd-new"></div>
+            <div class="field"><label>Conferma</label><input type="password" id="pwd-c"></div>
+          </div>
+          <button class="btn btn-success" style="margin-top:12px;" onclick="changePwd()">✓ Aggiorna</button>
+        </div>
+        <div class="card">
+          <div class="card-title">👥 Utenti</div>
+          <div id="users-list" style="margin-bottom:10px;"></div>
+          <button class="btn btn-primary btn-sm" onclick="openModalUser()">+ Nuovo Utente</button>
+        </div>
+        <div class="card">
+          <div class="card-title">☁️ Allegati (Cloudinary)</div>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Per abilitare upload di foto e documenti, aggiungi su Railway:</p>
+          <div style="background:#0b0f1a;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-family:monospace;font-size:11px;color:#93c5fd;line-height:2;">
+            CLOUDINARY_CLOUD_NAME<br>CLOUDINARY_API_KEY<br>CLOUDINARY_API_SECRET
+          </div>
+          <p style="color:var(--muted);font-size:11px;margin-top:6px;">Registrati gratis su cloudinary.com (25GB gratuiti)</p>
+        </div>
+      </div>
+    </div>
+    <!-- MANUTENZIONI -->
+    <div id="sec-manutenzioni" class="section">
+      <div class="flex-between mb-16">
+        <div>
+          <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;">Manutenzioni Programmate</h2>
+          <p class="text-muted" style="font-size:12px;margin-top:2px;" id="man-lbl">Caldaie, ascensori, impianti, antincendio e altro</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModalMan()">+ Nuova Manutenzione</button>
+      </div>
+      <!-- Scadenze manutenzioni -->
+      <div id="man-scad-wrap" class="hidden" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
+        <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px;">🔴 Manutenzioni in scadenza</div>
+        <div id="man-scad-list"></div>
+      </div>
+      <!-- Filtri -->
+      <div class="filter-bar mb-16">
+        <div class="filter-grid">
+          <div class="field"><label>Stato</label>
+            <select id="mf-stato" onchange="loadMan()">
+              <option value="">Tutti</option>
+              <option value="programmata">Programmata</option>
+              <option value="in_corso">In corso</option>
+              <option value="completata">Completata</option>
+              <option value="annullata">Annullata</option>
+            </select>
+          </div>
+          <div class="field"><label>Priorità</label>
+            <select id="mf-prior" onchange="loadMan()">
+              <option value="">Tutte</option>
+              <option value="urgente">🔴 Urgente</option>
+              <option value="alta">🟠 Alta</option>
+              <option value="normale">🟡 Normale</option>
+              <option value="bassa">🟢 Bassa</option>
+            </select>
+          </div>
+          <div class="field"><label>SUB</label><select id="mf-sub" onchange="loadMan()"><option value="">Tutti</option></select></div>
+          <div class="field"><label>Sede</label><select id="mf-sede" onchange="loadMan()"><option value="">Tutte</option></select></div>
+        </div>
+      </div>
+      <div id="man-list"><div class="empty">Caricamento…</div></div>
+    </div>
+
+    <!-- CATASTO / AGENZIA ENTRATE -->
+    <div id="sec-catasto" class="section">
+      <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;margin-bottom:20px;">🏛️ Catasto e Registrazione</h2>
+
+      <!-- Pulsante principale AE -->
+      <div style="background:linear-gradient(135deg,rgba(37,99,235,.2),rgba(124,58,237,.1));border:1px solid rgba(37,99,235,.3);border-radius:14px;padding:24px;margin-bottom:20px;text-align:center;">
+        <div style="font-size:32px;margin-bottom:10px;">🏛️</div>
+        <h3 style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;margin-bottom:8px;">Agenzia delle Entrate</h3>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Accedi ai servizi ufficiali per catasto, registrazione contratti (RLI), visure e DOCFA</p>
+        <a href="https://www.agenziaentrate.gov.it" target="_blank" class="btn btn-primary" style="font-size:15px;padding:13px 32px;display:inline-flex;">
+          🔗 Vai all'Agenzia delle Entrate →
+        </a>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted);">agenziaentrate.gov.it — Servizi online, Catasto, RLI, F24</div>
+      </div>
+
+      <!-- Link rapidi -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:24px;">
+        <a href="https://sister.agenziaentrate.gov.it" target="_blank" class="card" style="text-decoration:none;transition:all .2s;display:block;" onmouseover="this.style.borderColor='rgba(37,99,235,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:22px;margin-bottom:8px;">📋</div>
+          <div style="font-weight:600;color:#fff;font-size:14px;margin-bottom:4px;">SISTER — Visure Catastali</div>
+          <div style="font-size:12px;color:var(--muted);">Consulta planimetrie, visure, estratti di mappa</div>
+        </a>
+        <a href="https://telematici.agenziaentrate.gov.it/Main/index.jsp" target="_blank" class="card" style="text-decoration:none;transition:all .2s;display:block;" onmouseover="this.style.borderColor='rgba(37,99,235,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:22px;margin-bottom:8px;">📄</div>
+          <div style="font-weight:600;color:#fff;font-size:14px;margin-bottom:4px;">RLI — Registrazione Contratti</div>
+          <div style="font-size:12px;color:var(--muted);">Registra contratti di locazione online</div>
+        </a>
+        <a href="https://www.agenziaentrate.gov.it/portale/web/guest/schede/fabbricatiterreni/docfa" target="_blank" class="card" style="text-decoration:none;transition:all .2s;display:block;" onmouseover="this.style.borderColor='rgba(37,99,235,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:22px;margin-bottom:8px;">🏗️</div>
+          <div style="font-weight:600;color:#fff;font-size:14px;margin-bottom:4px;">DOCFA — Variazioni Catastali</div>
+          <div style="font-size:12px;color:var(--muted);">Scissione, fusione, variazione SUB tramite tecnici</div>
+        </a>
+        <a href="https://www.agenziaentrate.gov.it/portale/web/guest/f24-on-line" target="_blank" class="card" style="text-decoration:none;transition:all .2s;display:block;" onmouseover="this.style.borderColor='rgba(37,99,235,.4)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:22px;margin-bottom:8px;">💳</div>
+          <div style="font-weight:600;color:#fff;font-size:14px;margin-bottom:4px;">F24 — Pagamenti</div>
+          <div style="font-size:12px;color:var(--muted);">Imposta di registro, IMU, TASI e altri tributi</div>
+        </a>
+      </div>
+
+      <!-- Calcolatore ISTAT -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">📈 Calcolatore Adeguamento ISTAT</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Calcola l'aumento del canone in base all'indice ISTAT FOI. Per il valore ufficiale aggiornato verifica su <a href="https://www.istat.it/it/prezzi/prezzi-al-consumo/aggiornamento-valori-monetari" target="_blank" style="color:var(--accent);">istat.it →</a></p>
+        <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:14px;">
+          <div class="field"><label>Canone attuale (€/anno) *</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="istat-imp" placeholder="es. 12000" step="0.01"></div></div>
+          <div class="field"><label>% ISTAT FOI</label><input type="number" id="istat-pct" placeholder="es. 1.5" step="0.1" value="1.5"></div>
+          <div class="field"><label>Tipo immobile</label>
+            <select id="istat-tipo">
+              <option value="abitativo">Abitativo (75% ISTAT)</option>
+              <option value="commerciale">Commerciale (100% ISTAT)</option>
+              <option value="uffici">Uffici (100% ISTAT)</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="calcolaIstat()">📊 Calcola aumento</button>
+        <div id="istat-result" style="display:none;margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;"></div>
+      </div>
+
+      <!-- Distinzione interno vs ufficiale -->
+      <div class="card">
+        <div class="card-title">📌 Gestionale interno vs Registrazione ufficiale</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:13px;">
+          <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:14px;">
+            <div style="color:var(--green);font-weight:600;margin-bottom:8px;">✅ Gestionale (interno)</div>
+            <ul style="color:var(--muted);padding-left:16px;line-height:1.8;">
+              <li>Storico interventi e manutenzioni</li>
+              <li>Documenti e allegati</li>
+              <li>Spese e rendiconti</li>
+              <li>Note operative</li>
+              <li>Comunicazioni fornitori</li>
+            </ul>
+          </div>
+          <div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:14px;">
+            <div style="color:#93c5fd;font-weight:600;margin-bottom:8px;">🏛️ Ufficiale (Agenzia Entrate)</div>
+            <ul style="color:var(--muted);padding-left:16px;line-height:1.8;">
+              <li>Registrazione contratti (RLI)</li>
+              <li>Variazioni catastali (DOCFA)</li>
+              <li>Visure e planimetrie</li>
+              <li>Pagamento imposte (F24)</li>
+              <li>Accatastamento nuovi fabbricati</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL FORM INTERVENTO -->
+<div id="modal-int" class="overlay">
+  <div class="modal">
+    <div class="modal-title"><span id="m-int-ico">📝</span><span id="m-int-ttl">Nuovo Intervento</span></div>
+    <!-- OCR BANNER -->
+    <div style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.1));border:1px solid rgba(124,58,237,.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:18px;">🤖</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:#c4b5fd;">Compila automaticamente da foto fattura</div>
+        <div style="font-size:11px;color:var(--muted);">Carica foto o PDF — l'AI legge i dati e compila il form</div>
+      </div>
+      <div>
+        <button class="btn btn-sm" style="background:rgba(124,58,237,.3);color:#c4b5fd;border:1px solid rgba(124,58,237,.4);" onclick="document.getElementById('ocr-file').click()">📷 Carica fattura</button>
+        <input type="file" id="ocr-file" accept="image/*,.pdf" style="display:none" onchange="runOCR(this)">
+      </div>
+      <div id="ocr-status" style="display:none;font-size:12px;color:#c4b5fd;width:100%;">⏳ Lettura in corso…</div>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label>Sede *</label><select id="fi-sede" onchange="filterSubBySede()"><option value="">—</option></select></div>
+      <div class="field"><label>SUB *</label><select id="fi-sub"><option value="">—</option></select></div>
+      <div class="field"><label>Inquilino</label><select id="fi-inq"><option value="">—</option></select></div>
+      <div class="field"><label>Fornitore *</label><select id="fi-forn"><option value="">—</option></select></div>
+      <div class="field"><label>Categoria</label><select id="fi-cat"><option value="">—</option></select></div>
+      <div class="field"><label>N° Protocollo *</label><input id="fi-prot" placeholder="es. 2024/012"></div>
+      <div class="field"><label>N° Fattura</label><input id="fi-nf" placeholder="es. FT-2024-045"></div>
+      <div class="field"><label>Anno fattura</label><input type="number" id="fi-anno" placeholder="2024"></div>
+      <div class="field"><label>Data Intervento *</label><input type="date" id="fi-di"></div>
+      <div class="field"><label>Data Fattura</label><input type="date" id="fi-df"></div>
+      <div class="field"><label>Prezzo (€)</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="fi-pr" placeholder="0.00" step="0.01" min="0"></div></div>
+      <div class="field form-full"><label>Descrizione *</label><textarea id="fi-desc" rows="3" placeholder="Descrivi l'intervento…"></textarea></div>
+      <div class="field form-full"><label>Note</label><textarea id="fi-note" rows="2" placeholder="Note aggiuntive…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-int')">Annulla</button>
+      <button class="btn btn-success" onclick="saveInt()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETTAGLIO -->
+<div id="modal-det" class="overlay">
+  <div class="modal modal-wide" id="det-body"></div>
+</div>
+
+<!-- MODAL PREZZO -->
+<div id="modal-pr" class="overlay">
+  <div class="modal alert-modal">
+    <div class="alert-icon">💶</div>
+    <div class="modal-title" style="justify-content:center;">Inserisci il prezzo fatturato</div>
+    <div class="field" style="margin-bottom:14px;"><label>Importo (€)</label>
+      <div class="price-wrap"><span class="price-sym">€</span>
+        <input type="number" id="pr-quick" placeholder="0.00" step="0.01"
+          style="font-size:20px;padding:12px 12px 12px 24px;"
+          onkeydown="if(event.key==='Enter')confirmPr()">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-pr')">Salta</button>
+      <button class="btn btn-success" onclick="confirmPr()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DUPLICATO -->
+<div id="modal-dup" class="overlay">
+  <div class="modal alert-modal">
+    <div class="alert-icon">⚠️</div>
+    <div class="modal-title" style="justify-content:center;">Intervento simile già presente!</div>
+    <div class="alert-body">
+      <p>Trovati <strong id="dup-n">N</strong> intervento/i simili:</p>
+      <div class="alert-list" id="dup-list"></div>
+      <p style="margin-top:10px;">Inserire comunque?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-dup')">✗ Annulla</button>
+      <button class="btn btn-primary" onclick="forceS()">✓ Inserisci</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ANAGRAFICA -->
+<div id="modal-ana" class="overlay">
+  <div class="modal">
+    <div class="modal-title" id="m-ana-ttl">Nuovo elemento</div>
+    <div id="m-ana-body" class="form-grid"></div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-ana')">Annulla</button>
+      <button class="btn btn-success" onclick="saveAna()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ZUCCHETTI -->
+<div id="modal-zuc" class="overlay">
+  <div class="modal" style="max-width:800px;">
+    <div class="modal-title">🟢 <span id="zuc-ttl">Import Zucchetti</span></div>
+    <div id="zuc-s1">
+      <div class="import-zone" onclick="document.getElementById('zucFile').click()">
+        <div style="font-size:26px;margin-bottom:7px;">📂</div>
+        <div style="font-weight:600;font-size:13px;">Seleziona file .xlsx da Zucchetti</div>
+      </div>
+      <input type="file" id="zucFile" accept=".xlsx,.xls" style="display:none" onchange="loadZuc(this)">
+    </div>
+    <div id="zuc-s2" style="display:none;">
+      <div id="zuc-info"></div>
+      <div id="zuc-prev" style="margin-top:10px;max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;"></div>
+      <div id="zuc-stats" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-zuc')">Annulla</button>
+      <button class="btn btn-success" id="zuc-ok" style="display:none" onclick="commitZuc()">✓ Importa</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL UTENTE -->
+<div id="modal-user" class="overlay">
+  <div class="modal alert-modal">
+    <div class="modal-title">👤 Nuovo Utente</div>
+    <div class="form-grid" style="grid-template-columns:1fr;">
+      <div class="field"><label>Nome *</label><input id="u-nome"></div>
+      <div class="field"><label>Email *</label><input type="email" id="u-email"></div>
+      <div class="field"><label>Password *</label><input type="password" id="u-pwd"></div>
+      <div class="field"><label>Ruolo</label><select id="u-ruolo"><option value="operatore">Operatore</option><option value="admin">Admin</option></select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-user')">Annulla</button>
+      <button class="btn btn-success" onclick="saveUser()">✓ Crea</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORT SUB -->
+<div id="modal-sub-import" class="overlay">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-title">🏠 Import massivo SUB da Excel</div>
+    <div id="sub-import-s1">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+        Carica un file Excel con la lista dei SUB. Le colonne verranno mappate automaticamente.<br>
+        <strong style="color:var(--text);">Sedi riconosciute automaticamente</strong> per nome (es. "Orbassano", "Rivoli").<br>
+        <strong style="color:var(--text);">Inquilini</strong> vengono collegati per ragione sociale se già presenti in anagrafica.
+      </p>
+      <div class="import-zone" onclick="document.getElementById('subFile').click()">
+        <div style="font-size:26px;margin-bottom:7px;">📂</div>
+        <div style="font-weight:600;font-size:13px;">Seleziona file .xlsx con i SUB</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Colonne tipiche: Codice SUB, Ex SUB, Sede, Piano, Inquilino, Note</div>
+      </div>
+      <input type="file" id="subFile" accept=".xlsx,.xls" style="display:none" onchange="loadSubImport(this)">
+    </div>
+    <div id="sub-import-s2" style="display:none;">
+      <div id="sub-import-mapping"></div>
+      <div id="sub-import-preview" style="margin-top:12px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;"></div>
+      <div id="sub-import-stats" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-sub-import')">Annulla</button>
+      <button class="btn btn-success" id="sub-import-ok" style="display:none" onclick="commitSubImport()">✓ Importa SUB</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DOCUMENTO -->
+<div id="modal-doc" class="overlay">
+  <div class="modal">
+    <div class="modal-title">📁 <span id="m-doc-ttl">Nuovo Documento</span></div>
+    <div class="form-grid">
+      <div class="field"><label>Tipo *</label>
+        <select id="doc-tipo">
+          <option value="fattura">🧾 Fattura</option>
+          <option value="contratto">📄 Contratto</option>
+          <option value="preventivo">💼 Preventivo</option>
+          <option value="verbale">📋 Verbale</option>
+          <option value="bolletta">⚡ Bolletta</option>
+          <option value="catastale">🏛️ Catastale</option>
+          <option value="condominiale">🏢 Condominiale</option>
+          <option value="documento">📂 Altro</option>
+        </select>
+      </div>
+      <div class="field"><label>Nome documento *</label><input id="doc-nome" placeholder="es. Contratto manutenzione CDZ 2024"></div>
+      <div class="field"><label>SUB collegato</label><select id="doc-sub"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Sede</label><select id="doc-sede"><option value="">— Nessuna —</option></select></div>
+      <div class="field"><label>Fornitore</label><select id="doc-forn"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Data documento</label><input type="date" id="doc-data"></div>
+      <div class="field"><label>Scadenza</label><input type="date" id="doc-scad"></div>
+      <div class="field"><label>Importo (€)</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="doc-imp" placeholder="0.00" step="0.01"></div></div>
+      <div class="field form-full"><label>Descrizione</label><textarea id="doc-desc" rows="2" placeholder="Note sul documento…"></textarea></div>
+      <div class="field form-full">
+        <label>File allegato</label>
+        <div class="upload-zone" onclick="document.getElementById('doc-file').click()" id="doc-file-zone">📎 Clicca per allegare file (PDF, immagine, Word…)</div>
+        <input type="file" id="doc-file" style="display:none" onchange="docFileSelected(this)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-doc')">Annulla</button>
+      <button class="btn btn-success" onclick="saveDoc()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL TIMELINE SUB -->
+<div id="modal-timeline" class="overlay">
+  <div class="modal modal-wide">
+    <div class="modal-title">📜 <span id="timeline-sub-name">Timeline SUB</span></div>
+    <div id="timeline-content" style="max-height:520px;overflow-y:auto;"><div class="empty">Caricamento…</div></div>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;">+ Aggiungi nota manuale</div>
+      <div style="display:flex;gap:8px;">
+        <input id="nota-testo" placeholder="es. Sopralluogo effettuato, situazione stabile…" style="flex:1;background:#0b0f1a;border:1px solid var(--border);border-radius:7px;padding:8px 11px;color:var(--text);font-family:inherit;font-size:13px;">
+        <button class="btn btn-primary btn-sm" onclick="addNota()">+ Nota</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-timeline')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT PANEL -->
+<div id="chat-btn" onclick="toggleChat()" style="position:fixed;bottom:28px;right:28px;z-index:500;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 6px 24px rgba(37,99,235,.5);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:22px;transition:all .2s;" title="Assistente intelligente">💬</div>
+
+<div id="chat-panel" style="display:none;position:fixed;bottom:90px;right:28px;z-index:500;width:360px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:none;flex-direction:column;overflow:hidden;">
+  <div style="background:linear-gradient(135deg,var(--accent),var(--accent2));padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-weight:600;font-size:14px;color:#fff;">💬 Assistente Gestionale</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.7);">Cerca interventi, spese, documenti…</div>
+    </div>
+    <button onclick="toggleChat()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
+  </div>
+  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;">
+    <div class="chat-msg bot">👋 Ciao! Sono il tuo assistente. Chiedimi qualsiasi cosa sul gestionale.<br><br>
+    Esempi:<br>• "Mostrami interventi idraulici"<br>• "Spese per fornitore"<br>• "Interventi urgenti"<br>• "Situazione SUB OB-01"<br>• "Scadenze documenti"</div>
+  </div>
+  <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+    <input id="chat-input" placeholder="Scrivi un messaggio…" style="flex:1;background:#0b0f1a;border:1px solid var(--border);border-radius:20px;padding:8px 14px;color:var(--text);font-size:13px;outline:none;font-family:inherit;" onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()" style="background:var(--accent);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;">→</button>
+  </div>
+</div>
+
+<!-- MODAL MANUTENZIONE -->
+<div id="modal-man" class="overlay">
+  <div class="modal">
+    <div class="modal-title">🔨 <span id="m-man-ttl">Nuova Manutenzione</span></div>
+    <div class="form-grid">
+      <div class="field"><label>Tipo *</label>
+        <select id="man-tipo">
+          <option value="Caldaia">🔥 Caldaia</option>
+          <option value="Ascensore">🛗 Ascensore</option>
+          <option value="Impianto elettrico">⚡ Impianto elettrico</option>
+          <option value="Antincendio">🔒 Antincendio</option>
+          <option value="Climatizzazione">❄️ Climatizzazione</option>
+          <option value="Cancello/Portone">🚪 Cancello/Portone</option>
+          <option value="Tetto/Copertura">🏠 Tetto/Copertura</option>
+          <option value="Impianto idraulico">🔧 Impianto idraulico</option>
+          <option value="Verde/Giardino">🌿 Verde/Giardino</option>
+          <option value="Altro">📋 Altro</option>
+        </select>
+      </div>
+      <div class="field"><label>Priorità</label>
+        <select id="man-prior">
+          <option value="normale">🟡 Normale</option>
+          <option value="alta">🟠 Alta</option>
+          <option value="urgente">🔴 Urgente</option>
+          <option value="bassa">🟢 Bassa</option>
+        </select>
+      </div>
+      <div class="field"><label>Stato</label>
+        <select id="man-stato">
+          <option value="programmata">Programmata</option>
+          <option value="in_corso">In corso</option>
+          <option value="completata">Completata</option>
+          <option value="annullata">Annullata</option>
+        </select>
+      </div>
+      <div class="field"><label>SUB</label><select id="man-sub"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Sede</label><select id="man-sede"><option value="">— Nessuna —</option></select></div>
+      <div class="field"><label>Fornitore</label><select id="man-forn"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Data programmata</label><input type="date" id="man-data-prog"></div>
+      <div class="field"><label>Data eseguita</label><input type="date" id="man-data-eseg"></div>
+      <div class="field"><label>Ricorrenza</label>
+        <select id="man-ric">
+          <option value="">— Una tantum —</option>
+          <option value="mensile">Mensile</option>
+          <option value="bimestrale">Bimestrale</option>
+          <option value="trimestrale">Trimestrale</option>
+          <option value="semestrale">Semestrale</option>
+          <option value="annuale">Annuale</option>
+          <option value="biennale">Biennale</option>
+        </select>
+      </div>
+      <div class="field"><label>Costo (€)</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="man-costo" placeholder="0.00" step="0.01"></div></div>
+      <div class="field form-full"><label>Descrizione</label><textarea id="man-desc" rows="2" placeholder="Dettagli della manutenzione…"></textarea></div>
+      <div class="field form-full"><label>Note</label><input id="man-note" placeholder="Note aggiuntive…"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-man')">Annulla</button>
+      <button class="btn btn-success" onclick="saveMan()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let token=sessionStorage.getItem('token')||'';
+let currentUser=null;
+let DB={sedi:[],subs:[],fornitori:[],inquilini:[],categorie:[]};
+let selIds=new Set(),selMode=false,editId=null,pending=null;
+let zucType=null,zucRows=[],zucMap={};
+let storicoRows=[];
+
+// ── API ──
+async function api(url,opts={}){
+  const h={'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})};
+  const r=await fetch(url,{...opts,headers:h});
+  if(r.status===401){doLogout();return null;}
+  return r.json();
+}
+async function apiUp(url,fd){
+  const r=await fetch(url,{method:'POST',headers:token?{Authorization:`Bearer ${token}`}:{},body:fd});
+  return r.json();
+}
+
+// ── AUTH ──
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pwd=document.getElementById('login-pwd').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  try{
+    const r=await fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pwd})});
+    const d=await r.json();
+    if(!r.ok){err.style.display='block';return;}
+    token=d.token;currentUser=d.user;
+    sessionStorage.setItem('token',token);
+    sessionStorage.setItem('user',JSON.stringify(currentUser));
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('chat-btn').style.display='flex';
+    showHome();
+  }catch(e){err.style.display='block';}
+}
+function doLogout(){sessionStorage.clear();token='';currentUser=null;location.reload();}
+
+// ── HOME ──
+async function showHome(){
+  document.getElementById('home-screen').style.display='block';
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('user-badge').textContent=`👤 ${currentUser?.nome||currentUser?.email||''}`;
+  const dash=await api('/api/dashboard');
+  if(!dash)return;
+  document.getElementById('hs-int').textContent=dash.totali.num_interventi;
+  document.getElementById('hs-sp').textContent='€ '+parseFloat(dash.totali.totale_spese).toLocaleString('it-IT',{maximumFractionDigits:0});
+  document.getElementById('hs-sub').textContent=dash.totali.num_subs;
+  document.getElementById('hs-forn').textContent=dash.totali.num_fornitori;
+  if(dash.notifiche?.length){
+    document.getElementById('notif-wrap').classList.remove('hidden');
+    document.getElementById('notif-list').innerHTML=dash.notifiche.map(n=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid rgba(245,158,11,.1);">⚠️ <strong>${esc(n.sub||'?')}</strong> (${esc(n.sede||'')}) — ${esc((n.descrizione||'').slice(0,70))}</div>`).join('');
+  }
+  document.getElementById('home-recent-list').innerHTML=dash.ultimi.map(i=>`
+    <div class="int-card" onclick="goToApp('interventi');setTimeout(()=>openDet(${i.id}),300);" style="padding:13px 16px;">
+      <div class="flex"><strong style="color:#fff;font-size:13px;">SUB ${esc(i.sub||'?')}</strong><span class="badge badge-sede">${esc(i.sede||'')}</span><span style="color:var(--muted);font-size:12px;">${esc(i.fornitore||'—')}</span><span class="td-price" style="margin-left:auto;font-size:12px;">${i.prezzo?'€ '+parseFloat(i.prezzo).toLocaleString('it-IT'):'—'}</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:5px;">${esc((i.descrizione||'').slice(0,100))}</div>
+    </div>`).join('')||'<div class="empty">Nessun intervento ancora</div>';
+  await loadSettings();
+}
+
+function goToApp(sec='interventi'){
+  document.getElementById('home-screen').style.display='none';
+  document.getElementById('app-screen').style.display='block';
+  const secs=['interventi','documenti','manutenzioni','anagrafiche','riepilogo','catasto','import','impostazioni'];
+  const idx=Math.max(0,secs.indexOf(sec));
+  document.querySelectorAll('#app-screen .nb').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  document.querySelectorAll('#app-screen .section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+secs[idx])?.classList.add('active');
+  if(sec==='riepilogo')renderRiep();
+  if(sec==='impostazioni')loadUsers();
+  initApp();
+}
+function goHome(){document.getElementById('app-screen').style.display='none';showHome();}
+
+async function initApp(){
+  await loadDD();
+  loadInt();
+}
+async function loadDD(){
+  const [sedi,subs,forn,inq,cat]=await Promise.all([api('/api/sedi'),api('/api/subs'),api('/api/fornitori'),api('/api/inquilini'),api('/api/categorie')]);
+  if(!sedi)return;
+  DB={sedi,subs,fornitori:forn,inquilini:inq,categorie:cat};
+  const opt=(arr,lbl)=>`<option value="">${lbl}</option>`+arr.map(x=>`<option value="${x.id}">${x.nome||x.ragione_sociale||x.codice}</option>`).join('');
+  document.getElementById('ff-sede').innerHTML=opt(sedi,'Tutte le sedi');
+  document.getElementById('ff-sub').innerHTML='<option value="">Tutti i SUB</option>'+subs.map(s=>`<option value="${s.id}">${s.codice}${s.ex_sub?' (ex '+s.ex_sub+')':''}</option>`).join('');
+  document.getElementById('ff-forn').innerHTML='<option value="">Tutti i fornitori</option>'+forn.map(f=>`<option value="${f.id}">${f.ragione_sociale}</option>`).join('');
+  document.getElementById('ff-cat').innerHTML='<option value="">Tutte</option>'+cat.map(c=>`<option value="${c.id}">${c.icona} ${c.nome}</option>`).join('');
+  renderTbSubs();renderTbForn();renderTbInq();renderTbSedi();renderTbCat();
+}
+
+// ── INTERVENTI ──
+async function loadInt(){
+  const p=new URLSearchParams();
+  const v=id=>document.getElementById(id)?.value||'';
+  if(v('ff-sede'))p.set('sede_id',v('ff-sede'));
+  if(v('ff-sub'))p.set('sub_id',v('ff-sub'));
+  if(v('ff-forn'))p.set('fornitore_id',v('ff-forn'));
+  if(v('ff-cat'))p.set('categoria_id',v('ff-cat'));
+  if(v('ff-anno'))p.set('anno',v('ff-anno'));
+  if(v('ff-da'))p.set('data_da',v('ff-da'));
+  if(v('ff-a'))p.set('data_a',v('ff-a'));
+  if(v('ff-min'))p.set('importo_min',v('ff-min'));
+  if(v('ff-max'))p.set('importo_max',v('ff-max'));
+  const items=await api('/api/interventi?'+p);
+  if(!items)return;
+  const tot=items.reduce((s,x)=>s+(parseFloat(x.prezzo)||0),0);
+  document.getElementById('int-lbl').textContent=`${items.length} interventi — Totale: € ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}`;
+  const el=document.getElementById('int-list');
+  if(!items.length){el.innerHTML='<div class="empty">Nessun intervento trovato.</div>';return;}
+  el.innerHTML=items.map(inv=>renderCard(inv)).join('');
+}
+
+function renderCard(inv){
+  const tags=(inv.tags||[]).map(t=>`<span class="badge badge-tag">${esc(t)}</span>`).join(' ');
+  const sal=inv.stato_salute==='rosso'?'🔴':inv.stato_salute==='giallo'?'🟡':'';
+  return`<div class="int-card ${selIds.has(inv.id)?'selected':''}" data-id="${inv.id}" onclick="handleCard(event,${inv.id})">
+    <input type="checkbox" class="int-chk" style="display:${selMode?'block':'none'}" ${selIds.has(inv.id)?'checked':''} onclick="event.stopPropagation();toggleSel2(${inv.id})">
+    <div class="int-card-hdr">
+      ${sal}<strong style="font-size:14px;color:#fff;">SUB ${esc(inv.sub_codice||'N/D')}</strong>
+      ${inv.sub_ex?`<span class="ex-sub">${esc(inv.sub_ex)}</span>`:''}
+      <span class="badge badge-sede">${esc(inv.sede_nome||'')}</span>
+      ${inv.categoria_icona?`<span style="font-size:13px;">${inv.categoria_icona}</span>`:''}
+      <span style="font-size:12px;color:var(--muted);">${esc(inv.fornitore_nome||'—')}</span>
+      ${inv.ha_notifica?`<span class="badge badge-warn">⚠️</span>`:''}
+      ${parseInt(inv.num_allegati)>0?`<span style="font-size:11px;color:var(--muted);">📎${inv.num_allegati}</span>`:''}
+      <span class="td-price" style="margin-left:auto;">${inv.prezzo?'€ '+parseFloat(inv.prezzo).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}</span>
+    </div>
+    <div class="int-card-body">
+      <div class="icf"><span>Protocollo</span>${esc(inv.protocollo||'—')}</div>
+      <div class="icf"><span>N° Fattura</span><span style="font-family:monospace;color:#93c5fd;">${esc(inv.num_fattura||'—')}</span></div>
+      <div class="icf"><span>Data intervento</span>${inv.data_intervento?fmt(inv.data_intervento):'—'}</div>
+      <div class="icf"><span>Anno fattura</span>${inv.anno_fattura||'—'}</div>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:#cbd5e1;">${esc((inv.descrizione||'').slice(0,120))}${(inv.descrizione||'').length>120?'…':''}</div>
+    ${tags?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:3px;">${tags}</div>`:''}
+    <div style="margin-top:6px;font-size:10px;color:var(--muted);">Inserito: ${esc(inv.created_by_nome||'—')}${inv.updated_by_nome&&inv.updated_by_nome!==inv.created_by_nome?` · Modificato: ${esc(inv.updated_by_nome)}`:''}</div>
+  </div>`;
+}
+
+function handleCard(e,id){if(selMode){toggleSel2(id);return;}if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;openDet(id);}
+function resetF(){['ff-sede','ff-sub','ff-forn','ff-cat'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});['ff-anno','ff-da','ff-a','ff-min','ff-max'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});loadInt();}
+
+// ── SELECT / MASS DELETE ──
+function toggleSel(){selMode=!selMode;selIds.clear();document.getElementById('mass-bar').classList.toggle('hidden',!selMode);document.getElementById('sel-btn').style.background=selMode?'rgba(37,99,235,.2)':'';loadInt();}
+function toggleSel2(id){id=parseInt(id);if(selIds.has(id))selIds.delete(id);else selIds.add(id);document.getElementById('mass-cnt').textContent=`${selIds.size} selezionati`;document.querySelectorAll('.int-card[data-id=+id+]').forEach(el=>{el.classList.toggle('selected',selIds.has(id));const chk=el.querySelector('input[type=checkbox]');if(chk)chk.checked=selIds.has(id);});}
+function selAll(){document.querySelectorAll('.int-card[data-id]').forEach(el=>{const id=parseInt(el.getAttribute('data-id'));if(id)selIds.add(id);el.classList.add('selected');const chk=el.querySelector('input[type=checkbox]');if(chk)chk.checked=true;});document.getElementById('mass-cnt').textContent=`${selIds.size} selezionati`;}
+function deselAll(){selIds.clear();document.getElementById('mass-cnt').textContent='0 selezionati';loadInt();}
+async function deleteMass(){if(!selIds.size)return;if(!confirm(`Eliminare ${selIds.size} interventi? Non può essere annullato.`))return;const r=await api('/api/interventi/delete-bulk',{method:'POST',body:JSON.stringify({ids:Array.from(selIds)})});selIds.clear();toggleSel();loadInt();toast(`✓ ${r?.deleted||0} eliminati`,'error');}
+
+// ── DETAIL ──
+async function openDet(id){
+  const inv=await api('/api/interventi/'+id);
+  if(!inv)return;
+  const tags=(inv.tags||[]).map(t=>`<span class="badge badge-tag">${esc(t)}</span>`).join(' ');
+  const simHtml=(inv.interventi_simili||[]).length?`<div class="simili-box"><h4>⚠️ Problema già successo in questo SUB:</h4>${(inv.interventi_simili||[]).map(s=>`<div style="font-size:11px;padding:5px 0;border-bottom:1px solid rgba(245,158,11,.1);">📅 ${s.data_intervento?fmt(s.data_intervento):'?'} — ${esc((s.descrizione||'').slice(0,80))}${s.prezzo?` <strong class="text-gold">€ ${parseFloat(s.prezzo).toLocaleString('it-IT')}</strong>`:''}</div>`).join('')}</div>`:''
+  const allHtml=(inv.allegati||[]).length?`<div style="margin-top:12px;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;">Allegati</div>${(inv.allegati||[]).map(a=>`<div class="all-item"><div class="all-icon">${a.tipo==='foto'?'📷':a.tipo==='fattura'?'🧾':'📄'}</div><span class="all-nome">${esc(a.nome)}</span><span class="all-dim">${a.dimensione?Math.round(a.dimensione/1024)+' KB':''}</span><a href="${a.url}" target="_blank" style="font-size:11px;color:var(--accent);">Apri</a><button class="btn btn-danger" onclick="delAll(${a.id},${inv.id})">✕</button></div>`).join('')}</div>`:''
+  document.getElementById('det-body').innerHTML=`
+    <div class="modal-title">
+      <span style="font-size:20px;">${inv.categoria_icona||'📋'}</span>
+      <span>SUB ${esc(inv.sub_codice||'N/D')}</span>
+      ${inv.sub_ex?`<span class="ex-sub">${esc(inv.sub_ex)}</span>`:''}
+      <span class="badge badge-sede">${esc(inv.sede_nome||'')}</span>
+      ${inv.ha_notifica?`<span class="badge badge-warn">⚠️</span>`:''}
+    </div>
+    <div class="det-grid">
+      <div>
+        <div class="det-f"><label>Fornitore</label><div class="det-bold">${esc(inv.fornitore_nome||'—')}</div>${inv.fornitore_tel?`<div style="font-size:11px;color:var(--muted);">📞 ${esc(inv.fornitore_tel)}</div>`:''}</div>
+        <div class="det-f"><label>Inquilino</label><div class="det-val">${esc(inv.inquilino_nome||'—')}</div></div>
+        <div class="det-f"><label>Categoria</label><div class="det-val">${inv.categoria_icona||''} ${esc(inv.categoria_nome||'—')}</div></div>
+        <div class="det-f"><label>N° Protocollo</label><div class="td-mono">${esc(inv.protocollo||'—')}</div></div>
+        <div class="det-f"><label>N° Fattura</label><div class="td-mono">${esc(inv.num_fattura||'—')}</div></div>
+        <div class="det-f"><label>Anno fattura</label><div class="det-val">${inv.anno_fattura||'—'}</div></div>
+      </div>
+      <div>
+        <div class="det-f"><label>Importo</label><div class="det-price">${inv.prezzo?'€ '+parseFloat(inv.prezzo).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}</div></div>
+        <div class="det-f"><label>Data intervento</label><div class="det-val">${inv.data_intervento?fmt(inv.data_intervento):'—'}</div></div>
+        <div class="det-f"><label>Data fattura</label><div class="det-val">${inv.data_fattura?fmt(inv.data_fattura):'—'}</div></div>
+        <div class="det-f"><label>Inserito da</label><div style="font-size:12px;color:var(--muted);">${esc(inv.created_by_nome||'—')}</div></div>
+        ${inv.updated_by_nome?`<div class="det-f"><label>Ultima modifica</label><div style="font-size:12px;color:var(--muted);">${esc(inv.updated_by_nome)}</div></div>`:''}
+      </div>
+    </div>
+    <div class="det-f" style="margin-top:6px;"><label>Descrizione</label><div style="font-size:13px;color:var(--text);line-height:1.6;">${esc(inv.descrizione||'—')}</div></div>
+    ${inv.note?`<div class="det-f"><label>Note</label><div style="font-size:12px;color:var(--muted);">${esc(inv.note)}</div></div>`:''}
+    ${tags?`<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:3px;">${tags}</div>`:''}
+    ${simHtml}
+    ${allHtml}
+    <div style="margin-top:14px;">
+      <div class="upload-zone" onclick="document.getElementById('upf-${inv.id}').click()">📎 Aggiungi allegato (foto, PDF, fattura…)</div>
+      <input type="file" id="upf-${inv.id}" multiple style="display:none" onchange="upAll(this,${inv.id})">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-det')">Chiudi</button>
+      <button class="btn btn-edit" onclick="closeM('modal-det');editInt(${inv.id})">✏️ Modifica</button>
+      <button class="btn btn-danger" onclick="if(confirm('Eliminare?')){delInt(${inv.id});closeM('modal-det');}">🗑 Elimina</button>
+    </div>`;
+  document.getElementById('modal-det').classList.add('open');
+}
+
+// ── FORM INT ──
+function openModalInt(){
+  editId=null;
+  document.getElementById('m-int-ttl').textContent='Nuovo Intervento';
+  document.getElementById('m-int-ico').textContent='📝';
+  popF();
+  ['fi-sede','fi-sub','fi-inq','fi-forn','fi-cat'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fi-prot','fi-nf','fi-anno','fi-di','fi-df','fi-pr','fi-desc','fi-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('modal-int').classList.add('open');
+}
+function editInt(id){
+  api('/api/interventi/'+id).then(inv=>{
+    if(!inv)return;
+    editId=id;
+    document.getElementById('m-int-ttl').textContent='Modifica Intervento';
+    document.getElementById('m-int-ico').textContent='✏️';
+    popF();
+    document.getElementById('fi-sede').value=inv.sede_id||'';
+    filterSubBySede();
+    document.getElementById('fi-sub').value=inv.sub_id||'';
+    document.getElementById('fi-inq').value=inv.inquilino_id||'';
+    document.getElementById('fi-forn').value=inv.fornitore_id||'';
+    document.getElementById('fi-cat').value=inv.categoria_id||'';
+    document.getElementById('fi-prot').value=inv.protocollo||'';
+    document.getElementById('fi-nf').value=inv.num_fattura||'';
+    document.getElementById('fi-anno').value=inv.anno_fattura||'';
+    document.getElementById('fi-di').value=inv.data_intervento?String(inv.data_intervento).split('T')[0]:'';
+    document.getElementById('fi-df').value=inv.data_fattura?String(inv.data_fattura).split('T')[0]:'';
+    document.getElementById('fi-pr').value=inv.prezzo||'';
+    document.getElementById('fi-desc').value=inv.descrizione||'';
+    document.getElementById('fi-note').value=inv.note||'';
+    document.getElementById('modal-int').classList.add('open');
+  });
+}
+function popF(){
+  const v=id=>document.getElementById(id)?.value||'';
+  const sedeId=v('fi-sede');
+  const subs=sedeId?DB.subs.filter(s=>s.sede_id==sedeId):DB.subs;
+  document.getElementById('fi-sede').innerHTML='<option value="">— Sede —</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+  document.getElementById('fi-sub').innerHTML='<option value="">— SUB —</option>'+subs.map(s=>`<option value="${s.id}">${s.codice}${s.ex_sub?' (ex '+s.ex_sub+')':''}</option>`).join('');
+  document.getElementById('fi-inq').innerHTML='<option value="">— Nessuno —</option>'+DB.inquilini.map(i=>`<option value="${i.id}">${i.ragione_sociale}</option>`).join('');
+  document.getElementById('fi-forn').innerHTML='<option value="">— Fornitore —</option>'+DB.fornitori.map(f=>`<option value="${f.id}">${f.ragione_sociale}</option>`).join('');
+  document.getElementById('fi-cat').innerHTML='<option value="">— Categoria —</option>'+DB.categorie.map(c=>`<option value="${c.id}">${c.icona} ${c.nome}</option>`).join('');
+}
+function filterSubBySede(){const sedeId=document.getElementById('fi-sede').value;const subs=sedeId?DB.subs.filter(s=>s.sede_id==sedeId):DB.subs;document.getElementById('fi-sub').innerHTML='<option value="">— SUB —</option>'+subs.map(s=>`<option value="${s.id}">${s.codice}${s.ex_sub?' (ex '+s.ex_sub+')':''}</option>`).join('');}
+async function saveInt(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('fi-sede')||!v('fi-sub')||!v('fi-forn')||!v('fi-prot')||!v('fi-desc')){toast('Campi obbligatori mancanti (*)','error');return;}
+  const data=getIntData();
+  if(!data.prezzo){pending=data;closeM('modal-int');document.getElementById('pr-quick').value='';document.getElementById('modal-pr').classList.add('open');setTimeout(()=>document.getElementById('pr-quick').focus(),150);return;}
+  await checkDup(data);
+}
+function getIntData(){const v=id=>document.getElementById(id)?.value||'';const anno=v('fi-anno')||(v('fi-df')?v('fi-df').split('-')[0]:null);return{sede_id:parseInt(v('fi-sede'))||null,sub_id:parseInt(v('fi-sub'))||null,inquilino_id:parseInt(v('fi-inq'))||null,fornitore_id:parseInt(v('fi-forn'))||null,categoria_id:parseInt(v('fi-cat'))||null,protocollo:v('fi-prot'),num_fattura:v('fi-nf'),anno_fattura:anno?parseInt(anno):null,data_intervento:v('fi-di')||null,data_fattura:v('fi-df')||null,prezzo:v('fi-pr')||null,descrizione:v('fi-desc'),note:v('fi-note')};}
+async function confirmPr(){pending.prezzo=document.getElementById('pr-quick').value;closeM('modal-pr');await checkDup(pending);}
+async function checkDup(data){if(!editId){const r=await api('/api/interventi/check-duplicate',{method:'POST',body:JSON.stringify(data)});if(r?.duplicates?.length){pending=data;document.getElementById('dup-n').textContent=r.duplicates.length;document.getElementById('dup-list').innerHTML=r.duplicates.map(d=>`<div class="alert-item">📅 ${d.data_intervento?fmt(d.data_intervento):'—'} — ${esc((d.descrizione||'').slice(0,60))}${d.prezzo?` <strong class="text-gold">€ ${parseFloat(d.prezzo).toLocaleString('it-IT')}</strong>`:''}</div>`).join('');document.getElementById('modal-dup').classList.add('open');return;}}await doSave(data);}
+async function forceS(){closeM('modal-dup');await doSave(pending);}
+async function doSave(data){if(editId){await api('/api/interventi/'+editId,{method:'PUT',body:JSON.stringify(data)});toast('Aggiornato ✓');}else{await api('/api/interventi',{method:'POST',body:JSON.stringify(data)});toast('Salvato ✓');}closeM('modal-int');loadInt();}
+async function delInt(id){if(!confirm('Eliminare?'))return;await api('/api/interventi/'+id,{method:'DELETE'});loadInt();toast('Eliminato','error');}
+
+// ── ALLEGATI ──
+async function upAll(input,intId){for(const f of input.files){const tipo=f.type.startsWith('image/')?'foto':f.name.toLowerCase().endsWith('.pdf')?'fattura':'documento';const fd=new FormData();fd.append('file',f);fd.append('intervento_id',intId);fd.append('tipo',tipo);toast('Caricamento…','warning');await apiUp('/api/allegati',fd);toast('Caricato ✓');}openDet(intId);}
+async function delAll(alId,intId){if(!confirm('Eliminare allegato?'))return;await api('/api/allegati/'+alId,{method:'DELETE'});openDet(intId);}
+
+// ── ANAGRAFICHE ──
+function setAnaTab(tab,btn){['subs','fornitori','inquilini','sedi','categorie'].forEach(t=>document.getElementById('ana-'+t).style.display=t===tab?'':'none');document.querySelectorAll('#sec-anagrafiche .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+function renderTbSubs(){const tb=document.getElementById('tb-subs');if(!DB.subs.length){tb.innerHTML='<tr><td colspan="10" class="empty">Nessun SUB</td></tr>';return;}tb.innerHTML=DB.subs.map(s=>{const inq=DB.inquilini.find(i=>i.id==s.inquilino_id);const sede=DB.sedi.find(sd=>sd.id==s.sede_id);const sal=s.stato_salute==='rosso'?'🔴':s.stato_salute==='giallo'?'🟡':'🟢';return`<tr><td style="font-size:14px;">${sal}</td><td class="td-bold">${esc(s.codice)}</td><td>${s.ex_sub?`<span class="ex-sub">${esc(s.ex_sub)}</span>`:'<span class="td-muted">—</span>'}</td><td><span class="badge badge-sede">${sede?.nome||'—'}</span></td><td>${esc(s.piano||'—')}</td><td>${esc(inq?.ragione_sociale||'—')}</td><td style="text-align:center;">${s.num_interventi||0}</td><td class="td-price">${s.totale_spese?'€ '+parseFloat(s.totale_spese).toLocaleString('it-IT',{maximumFractionDigits:0}):'—'}</td><td class="td-muted">${esc(s.note||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" o<button class="btn btn-sm" style="background:rgba(245,158,11,.15);color:#fcd34d;border:1px solid rgba(245,158,11,.3);padding:4px 8px;font-size:11px;" onclick="openTimeline(${s.id},'\$\{s.codice\}')" title="Timeline">📜</button>nclick='openAna("sub",${JSON.stringify(s)})'>✏️</button><button class="btn btn-danger" onclick="delAna('subs',${s.id})">✕</button></div></td></tr>`;}).join('');}
+function renderTbForn(){const tb=document.getElementById('tb-forn');if(!DB.fornitori.length){tb.innerHTML='<tr><td colspan="10" class="empty">Nessun fornitore</td></tr>';return;}tb.innerHTML=DB.fornitori.map(f=>`<tr><td class="td-mono" style="font-size:9px;">${esc(f.codice_zuc||'—')}</td><td class="td-bold">${esc(f.ragione_sociale)}</td><td class="td-mono">${esc(f.piva||'—')}</td><td>${esc(f.tel||'—')}</td><td>${esc(f.email||'—')}</td><td>${esc(f.citta||'—')}</td><td>${esc(f.spec||'—')}</td><td style="text-align:center;">${f.num_interventi||0}</td><td class="td-price">${f.totale_fatturato?'€ '+parseFloat(f.totale_fatturato).toLocaleString('it-IT',{maximumFractionDigits:0}):'—'}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("fornitore",${JSON.stringify(f)})'>✏️</button><button class="btn btn-danger" onclick="delAna('fornitori',${f.id})">✕</button></div></td></tr>`).join('');}
+function renderTbInq(){const tb=document.getElementById('tb-inq');if(!DB.inquilini.length){tb.innerHTML='<tr><td colspan="8" class="empty">Nessun inquilino</td></tr>';return;}tb.innerHTML=DB.inquilini.map(i=>{const sub=DB.subs.find(s=>s.inquilino_id==i.id);return`<tr><td class="td-mono" style="font-size:9px;">${esc(i.codice_zuc||'—')}</td><td class="td-bold">${esc(i.ragione_sociale)}</td><td class="td-mono">${esc(i.piva||i.cf||'—')}</td><td>${esc(i.tel||'—')}</td><td>${esc(i.email||'—')}</td><td>${esc(i.citta||'—')}</td><td>${sub?`<span class="badge badge-sede">${esc(sub.codice)}</span>`:'—'}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("inquilino",${JSON.stringify(i)})'>✏️</button><button class="btn btn-danger" onclick="delAna('inquilini',${i.id})">✕</button></div></td></tr>`;}).join('');}
+function renderTbSedi(){const tb=document.getElementById('tb-sedi');if(!DB.sedi.length){tb.innerHTML='<tr><td colspan="5" class="empty">Nessuna sede</td></tr>';return;}tb.innerHTML=DB.sedi.map(s=>`<tr><td class="td-bold">${esc(s.nome)}</td><td>${esc(s.indirizzo||'—')}</td><td>${esc(s.citta||'—')}</td><td class="td-muted">${esc(s.note||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("sede",${JSON.stringify(s)})'>✏️</button><button class="btn btn-danger" onclick="delAna('sedi',${s.id})">✕</button></div></td></tr>`).join('');}
+function renderTbCat(){const tb=document.getElementById('tb-cat');if(!DB.categorie.length){tb.innerHTML='<tr><td colspan="4" class="empty">—</td></tr>';return;}tb.innerHTML=DB.categorie.map(c=>`<tr><td style="font-size:18px;">${c.icona||''}</td><td class="td-bold">${esc(c.nome)}</td><td><span style="background:${c.colore};border-radius:4px;padding:2px 9px;font-size:10px;color:#fff;">${c.colore}</span></td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick='openAna("categoria",${JSON.stringify(c)})'>✏️</button><button class="btn btn-danger" onclick="delAna('categorie',${c.id})">✕</button></div></td></tr>`).join('');}
+
+let anaType=null,anaEditId=null;
+function openAna(type,obj=null){
+  anaType=type;anaEditId=obj?.id||null;
+  const titles={sub:'SUB',fornitore:'Fornitore',inquilino:'Inquilino',sede:'Sede',categoria:'Categoria'};
+  document.getElementById('m-ana-ttl').textContent=(obj?'Modifica ':'Nuovo ')+titles[type];
+  const html={
+    sub:`<div class="field"><label>Codice SUB *</label><input id="a-cod" placeholder="es. OB-01"></div>
+      <div class="field"><label>Ex SUB</label><input id="a-ex" placeholder="vecchio codice"></div>
+      <div class="field"><label>Sede *</label><select id="a-sede"><option value="">—</option>${DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')}</select></div>
+      <div class="field"><label>Piano</label><input id="a-piano"></div>
+      <div class="field"><label>Inquilino</label><select id="a-inq"><option value="">— Nessuno —</option>${DB.inquilini.map(i=>`<option value="${i.id}">${i.ragione_sociale}</option>`).join('')}</select></div>
+      <div class="field"><label>Stato occupazione</label><select id="a-stato-occ"><option value="">—</option><option value="occupato">Occupato</option><option value="libero">Libero</option><option value="uso_proprio">Uso proprio</option></select></div>
+      <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;">Dati catastali</div>
+      <div class="field"><label>Foglio</label><input id="a-foglio" placeholder="es. 12"></div>
+      <div class="field"><label>Particella</label><input id="a-particella" placeholder="es. 456"></div>
+      <div class="field"><label>Subalterno</label><input id="a-subal" placeholder="es. 7"></div>
+      <div class="field"><label>Categoria catastale</label><select id="a-catcat"><option value="">—</option><option value="A/2">A/2 - Civile</option><option value="A/3">A/3 - Economica</option><option value="A/4">A/4 - Popolare</option><option value="A/10">A/10 - Uffici</option><option value="B">B - Collettività</option><option value="C/1">C/1 - Negozi</option><option value="C/2">C/2 - Magazzini</option><option value="C/3">C/3 - Laboratori</option><option value="C/6">C/6 - Box/Garage</option><option value="D">D - Industriale</option></select></div>
+      <div class="field"><label>mq commerciali</label><input type="number" id="a-mqc" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>mq calpestabili</label><input type="number" id="a-mqk" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Rendita catastale (€)</label><input type="number" id="a-rendita" placeholder="0.00" step="0.01"></div>
+      <div class="field"><label>Classe energetica</label><select id="a-ener"><option value="">—</option><option>A4</option><option>A3</option><option>A2</option><option>A1</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></div>
+      <div class="field"><label>Anno costruzione</label><input type="number" id="a-anno-c" placeholder="es. 1985"></div>
+      <div class="field form-full"><label>Indirizzo completo</label><input id="a-indirizzo" placeholder="Via Roma 12, Orbassano (TO)"></div>
+      <div class="field form-full"><label>Note catastali</label><textarea id="a-note-cat" rows="2" placeholder="Variazioni, pratiche aperte, osservazioni catastali…"></textarea></div>
+      <div class="field form-full"><label>Note generali</label><input id="a-note"></div>`,
+    fornitore:`<div class="field"><label>Cod. Zucchetti</label><input id="a-czuc"></div><div class="field form-full"><label>Ragione Sociale *</label><input id="a-rag"></div><div class="field"><label>P.IVA</label><input id="a-piva"></div><div class="field"><label>Telefono</label><input id="a-tel"></div><div class="field"><label>Email</label><input id="a-email"></div><div class="field"><label>Città</label><input id="a-citta"></div><div class="field form-full"><label>Specializzazione</label><input id="a-spec"></div>`,
+    inquilino:`<div class="field"><label>Cod. Zucchetti</label><input id="a-czuc"></div><div class="field form-full"><label>Ragione Sociale *</label><input id="a-rag"></div><div class="field"><label>P.IVA</label><input id="a-piva"></div><div class="field"><label>Telefono</label><input id="a-tel"></div><div class="field"><label>Email</label><input id="a-email"></div><div class="field"><label>Città</label><input id="a-citta"></div>`,
+    sede:`<div class="field"><label>Nome *</label><input id="a-nome"></div><div class="field"><label>Indirizzo</label><input id="a-ind"></div><div class="field"><label>Città</label><input id="a-cit"></div><div class="field form-full"><label>Note</label><input id="a-note"></div>`,
+    categoria:`<div class="field"><label>Nome *</label><input id="a-nome"></div><div class="field"><label>Icona (emoji)</label><input id="a-ico" placeholder="🔧"></div><div class="field"><label>Colore</label><input type="color" id="a-col" value="#2563eb" style="height:38px;"></div>`,
+  };
+  document.getElementById('m-ana-body').innerHTML=html[type];
+  if(obj){
+    const s=id=>document.getElementById(id);
+    if(type==='sub'){s('a-cod').value=obj.codice||'';s('a-ex').value=obj.ex_sub||'';s('a-sede').value=obj.sede_id||'';s('a-piano').value=obj.piano||'';s('a-inq').value=obj.inquilino_id||'';s('a-note').value=obj.note||'';
+      s('a-stato-occ').value=obj.stato_occupazione||'';s('a-foglio').value=obj.foglio||'';s('a-particella').value=obj.particella||'';s('a-subal').value=obj.subalterno||'';s('a-catcat').value=obj.categoria_cat||'';s('a-mqc').value=obj.mq_commerciali||'';s('a-mqk').value=obj.mq_calpestabili||'';s('a-rendita').value=obj.rendita||'';s('a-ener').value=obj.classe_energetica||'';s('a-anno-c').value=obj.anno_costruzione||'';s('a-indirizzo').value=obj.indirizzo_completo||'';s('a-note-cat').value=obj.note_catastali||'';}
+    else if(type==='fornitore'){s('a-czuc').value=obj.codice_zuc||'';s('a-rag').value=obj.ragione_sociale||'';s('a-piva').value=obj.piva||'';s('a-tel').value=obj.tel||'';s('a-email').value=obj.email||'';s('a-citta').value=obj.citta||'';s('a-spec').value=obj.spec||'';}
+    else if(type==='inquilino'){s('a-czuc').value=obj.codice_zuc||'';s('a-rag').value=obj.ragione_sociale||'';s('a-piva').value=obj.piva||'';s('a-tel').value=obj.tel||'';s('a-email').value=obj.email||'';s('a-citta').value=obj.citta||'';}
+    else if(type==='sede'){s('a-nome').value=obj.nome||'';s('a-ind').value=obj.indirizzo||'';s('a-cit').value=obj.citta||'';s('a-note').value=obj.note||'';}
+    else if(type==='categoria'){s('a-nome').value=obj.nome||'';s('a-ico').value=obj.icona||'';s('a-col').value=obj.colore||'#2563eb';}
+  }
+  document.getElementById('modal-ana').classList.add('open');
+}
+async function saveAna(){
+  let data,url,method='POST';
+  const v=id=>document.getElementById(id)?.value||'';
+  if(anaType==='sub'){if(!v('a-cod')||!v('a-sede')){toast('Codice e Sede obbligatori','error');return;}data={codice:v('a-cod'),ex_sub:v('a-ex'),sede_id:parseInt(v('a-sede'))||null,piano:v('a-piano'),inquilino_id:parseInt(v('a-inq'))||null,note:v('a-note'),stato_occupazione:v('a-stato-occ'),foglio:v('a-foglio'),particella:v('a-particella'),subalterno:v('a-subal'),categoria_cat:v('a-catcat'),mq_commerciali:v('a-mqc')||null,mq_calpestabili:v('a-mqk')||null,rendita:v('a-rendita')||null,classe_energetica:v('a-ener'),anno_costruzione:v('a-anno-c')||null,indirizzo_completo:v('a-indirizzo'),note_catastali:v('a-note-cat')};url='/api/subs';}
+  else if(anaType==='fornitore'){if(!v('a-rag')){toast('Ragione sociale obbligatoria','error');return;}data={codice_zuc:v('a-czuc'),ragione_sociale:v('a-rag'),piva:v('a-piva'),tel:v('a-tel'),email:v('a-email'),citta:v('a-citta'),spec:v('a-spec')};url='/api/fornitori';}
+  else if(anaType==='inquilino'){if(!v('a-rag')){toast('Ragione sociale obbligatoria','error');return;}data={codice_zuc:v('a-czuc'),ragione_sociale:v('a-rag'),piva:v('a-piva'),tel:v('a-tel'),email:v('a-email'),citta:v('a-citta')};url='/api/inquilini';}
+  else if(anaType==='sede'){if(!v('a-nome')){toast('Nome obbligatorio','error');return;}data={nome:v('a-nome'),indirizzo:v('a-ind'),citta:v('a-cit'),note:v('a-note')};url='/api/sedi';}
+  else if(anaType==='categoria'){if(!v('a-nome')){toast('Nome obbligatorio','error');return;}data={nome:v('a-nome'),icona:v('a-ico'),colore:v('a-col')};url='/api/categorie';}
+  if(anaEditId){url+='/'+anaEditId;method='PUT';}
+  await api(url,{method,body:JSON.stringify(data)});
+  closeM('modal-ana');await loadDD();toast('Salvato ✓');
+}
+async function delAna(type,id){if(!confirm('Eliminare?'))return;await api('/api/'+type+'/'+id,{method:'DELETE'});await loadDD();toast('Eliminato','error');}
+
+// ── ZUCCHETTI ──
+const ZM={codice_zuc:['codice','cod.'],ragione_sociale:['ragione sociale','denominazione','descrizione','nome'],piva:['partita iva','p.iva'],cf:['codice fiscale','c.f.'],indirizzo:['indirizzo','via'],cap:['cap'],citta:['comune','città','citta'],provincia:['provincia'],tel:['telefono','tel','cell'],email:['email','e-mail']};
+function autoMapZ(cols){const m={};const low=cols.map(c=>c.toLowerCase().trim());Object.entries(ZM).forEach(([f,vs])=>{for(const v of vs){const i=low.findIndex(c=>c.includes(v)||v.includes(c));if(i>=0){m[f]=cols[i];break;}}});return m;}
+function openZuc(type){zucType=type;zucRows=[];zucMap={};document.getElementById('zuc-ttl').textContent='Import '+(type==='fornitori'?'Fornitori':'Inquilini')+' da Zucchetti';document.getElementById('zuc-s1').style.display='';document.getElementById('zuc-s2').style.display='none';document.getElementById('zuc-ok').style.display='none';document.getElementById('zucFile').value='';document.getElementById('modal-zuc').classList.add('open');}
+function loadZuc(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];zucRows=XLSX.utils.sheet_to_json(ws,{defval:''});if(!zucRows.length){toast('Nessun dato','error');return;}const cols=Object.keys(zucRows[0]);zucMap=autoMapZ(cols);const found=Object.entries(zucMap).filter(([k,v])=>v);document.getElementById('zuc-info').innerHTML=`<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:12px;"><div style="color:var(--green);font-weight:600;margin-bottom:7px;">✓ ${found.length} colonne riconosciute</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${found.map(([k,v])=>`<span style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:2px 7px;font-size:10px;color:#34d399;">${k}→<strong>${v}</strong></span>`).join('')}</div></div>`;const arr=zucType==='fornitori'?DB.fornitori:DB.inquilini;const ex=new Set(arr.map(x=>(x.ragione_sociale||'').toLowerCase().trim()));const nc=zucRows.filter(r=>{const rag=(String(r[zucMap.ragione_sociale]||'')).trim().toLowerCase();return rag&&!ex.has(rag);}).length;document.getElementById('zuc-stats').innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${zucRows.length}</strong>Righe</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${nc}</strong>Nuovi</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--gold);font-size:15px;display:block;">${zucRows.length-nc}</strong>Già presenti</div>`;document.getElementById('zuc-s1').style.display='none';document.getElementById('zuc-s2').style.display='';document.getElementById('zuc-ok').style.display='';};r.readAsArrayBuffer(file);}
+async function commitZuc(){if(!zucMap.ragione_sociale){toast('Ragione Sociale non trovata','error');return;}const items=zucRows.map(row=>({codice_zuc:String(row[zucMap.codice_zuc]||'').trim(),ragione_sociale:String(row[zucMap.ragione_sociale]||'').trim(),piva:String(row[zucMap.piva]||'').trim(),cf:String(row[zucMap.cf]||'').trim(),indirizzo:String(row[zucMap.indirizzo]||'').trim(),cap:String(row[zucMap.cap]||'').trim(),citta:String(row[zucMap.citta]||'').trim(),provincia:String(row[zucMap.provincia]||'').trim(),tel:String(row[zucMap.tel]||'').trim(),email:String(row[zucMap.email]||'').trim()})).filter(x=>x.ragione_sociale);const url='/api/'+(zucType==='fornitori'?'fornitori':'inquilini')+'/import-bulk';const r=await api(url,{method:'POST',body:JSON.stringify({items})});closeM('modal-zuc');await loadDD();toast(`✓ Importati ${r.added}${r.skipped?', '+r.skipped+' saltati':''}`,'success');}
+
+// ── STORICO ──
+function loadStorico(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];storicoRows=XLSX.utils.sheet_to_json(ws,{defval:''});if(!storicoRows.length){toast('Nessun dato','error');return;}showStoricoStep(Object.keys(storicoRows[0]));};r.readAsArrayBuffer(file);}
+function showStoricoStep(cols){const cs=(id,lbl)=>`<div class="field"><label>${lbl}</label><select id="${id}"><option value="">— Non presente —</option>${cols.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>`;const aS=(id,vs)=>{const l=cols.map(c=>c.toLowerCase().trim());for(const v of vs){const i=l.findIndex(c=>c.includes(v)||v.includes(c));if(i>=0){setTimeout(()=>{const el=document.getElementById(id);if(el)el.value=cols[i];},80);break;}}};document.getElementById('storico-wiz').innerHTML=`<h3 style="font-size:13px;color:#fff;margin-bottom:11px;">${storicoRows.length} righe trovate — Mappa le colonne:</h3><div class="form-grid">${cs('ss-sub','SUB *')}${cs('ss-loc','Sede')}${cs('ss-forn','Fornitore *')}${cs('ss-inq','Inquilino')}${cs('ss-pr','N° Protocollo')}${cs('ss-nf','N° Fattura')}${cs('ss-di','Data Intervento')}${cs('ss-df','Data Fattura')}${cs('ss-p','Prezzo')}${cs('ss-desc','Descrizione *')}${cs('ss-note','Note')}</div><div style="margin-top:12px;"><button class="btn btn-orange" onclick="analizzaS()">🔍 Analizza →</button></div>`;document.getElementById('storico-wiz').style.display='block';aS('ss-sub',['sub','unità imm','unita imm','codice sub']);aS('ss-loc',['sede','location']);aS('ss-forn',['fornitore','ditta','ditta esecutrice']);aS('ss-inq',['inquilino','conduttore']);aS('ss-pr',['protocollo','prot','n. prot']);aS('ss-nf',['fattura','num ft','rif. fattura','n fattura']);aS('ss-di',['data lavori','data interv','data lav']);aS('ss-df',['data fattura','data doc']);aS('ss-p',['prezzo','importo','importo €','importo€','totale']);aS('ss-desc',['descrizione','oggetto','oggetto lavori']);aS('ss-note',['note','annotaz']);}
+function gV(id){return(document.getElementById(id)?.value||'');}
+function analizzaS(){
+  const m={sub:gV('ss-sub'),loc:gV('ss-loc'),forn:gV('ss-forn'),inq:gV('ss-inq'),pr:gV('ss-pr'),nf:gV('ss-nf'),di:gV('ss-di'),df:gV('ss-df'),p:gV('ss-p'),desc:gV('ss-desc'),note:gV('ss-note')};
+  if(!m.sub||!m.forn||!m.desc){toast('Mappa SUB, Fornitore e Descrizione','error');return;}
+  const nr=s=>(s||'').toLowerCase().trim();
+  const an=storicoRows.map(row=>{
+    const subC=String(row[m.sub]||'').trim(),fornN=String(row[m.forn]||'').trim(),descV=String(row[m.desc]||'').trim();
+    const locV=m.loc?String(row[m.loc]||'').trim():'',inqN=m.inq?String(row[m.inq]||'').trim():'';
+    const subM=DB.subs.find(s=>nr(s.codice)===nr(subC)||nr(s.ex_sub||'')===nr(subC));
+    const fornM=DB.fornitori.find(f=>nr(f.ragione_sociale)===nr(fornN))||DB.fornitori.find(f=>nr(f.ragione_sociale).includes(nr(fornN))||nr(fornN).includes(nr(f.ragione_sociale)));
+    const inqM=inqN?(DB.inquilini.find(i=>nr(i.ragione_sociale)===nr(inqN))||DB.inquilini.find(i=>nr(i.ragione_sociale).includes(nr(inqN)))):null;
+    let status='ok',note='';
+    if(!subM&&subC){status='warn';note='SUB non trovato';}
+    if(!fornN){status='err';note='Fornitore mancante';}
+    else if(!fornM){status='new';note='Nuovo fornitore → creato';}
+    if(inqN&&!inqM&&status==='ok'){status='new';note='Nuovo inquilino → creato';}
+    return{row,m,subC,fornN,descV,locV,inqN,subM,fornM,inqM,status,note,protocollo:m.pr?String(row[m.pr]||'').trim():'',num_fattura:m.nf?String(row[m.nf]||'').trim():'',data_intervento:m.di?String(row[m.di]||'').trim():'',data_fattura:m.df?String(row[m.df]||'').trim():'',prezzo:m.p?String(row[m.p]||'').trim():'',note_txt:m.note?String(row[m.note]||'').trim():'',};
+  });
+  window._an=an;
+  const cnt={ok:0,new:0,warn:0,err:0};an.forEach(r=>cnt[r.status]++);
+  const sc={ok:'var(--green)',new:'var(--accent)',warn:'var(--gold)',err:'var(--red)'};
+  const sl={ok:'✓ Pronto',new:'+ Nuovo',warn:'⚠ SUB mancante',err:'✗ Errore'};
+  document.getElementById('storico-wiz').innerHTML=`<h3 style="font-size:13px;color:#fff;margin-bottom:9px;">Analisi completata</h3>
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:11px;">${Object.entries(cnt).map(([k,v])=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:${sc[k]};font-size:15px;display:block;">${v}</strong>${sl[k]}</div>`).join('')}</div>
+    <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;font-size:11px;">
+      <table><thead><tr><th>Stato</th><th>SUB</th><th>Fornitore</th><th>Descrizione</th><th>Info</th></tr></thead>
+      <tbody>${an.slice(0,30).map(r=>`<tr><td><span style="color:${sc[r.status]}">${sl[r.status]}</span></td><td>${esc(r.subC)}</td><td>${esc(r.fornN.slice(0,20))}</td><td>${esc(r.descV.slice(0,35))}</td><td style="color:var(--muted)">${esc(r.note)}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:9px;">
+      <button class="btn btn-gray" onclick="document.getElementById('storico-wiz').style.display='none'">← Ricomincia</button>
+      <button class="btn btn-success" onclick="commitS()" ${cnt.ok+cnt.new===0?'disabled':''}>✓ Importa ${cnt.ok+cnt.new} interventi</button>
+    </div>`;
+}
+async function commitS(){
+  const an=window._an;
+  const toImp=(an||[]).filter(r=>r.status==='ok'||r.status==='new');
+  if(!toImp.length){toast('Nessuna riga','error');return;}
+  const rows=toImp.map(r=>({sub_codice:r.subC,location:r.locV||'',fornitore_nome:r.fornN,inquilino_nome:r.inqN||'',protocollo:r.protocollo,num_fattura:r.num_fattura,data_intervento:r.data_intervento,data_fattura:r.data_fattura,prezzo:r.prezzo,descrizione:r.descV,note:r.note_txt}));
+  toast('Importazione…','warning');
+  const r=await api('/api/interventi/import-storico',{method:'POST',body:JSON.stringify({rows})});
+  await loadDD();loadInt();
+  document.getElementById('storico-wiz').style.display='none';
+  document.getElementById('storicoFile').value='';
+  toast(`✓ ${r.added} importati${r.errors?.length?' ('+r.errors.length+' errori)':''}!`);
+}
+
+// ── RIEPILOGO COMPLETO ──
+let currentRiepTab = 'sub';
+
+function setRiepTab(tab, btn) {
+  currentRiepTab = tab;
+  document.querySelectorAll('#riep-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderRiepTab(tab);
+}
+
+async function renderRiep() {
+  await loadDD();
+  // Stats globali sempre visibili
+  const dash = await api('/api/dashboard');
+  if (!dash) return;
+  const tot = parseFloat(dash.totali.totale_spese || 0);
+  document.getElementById('riep-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Totale spese</div><div class="stat-value text-gold">€ ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
+    <div class="stat-card"><div class="stat-label">Interventi</div><div class="stat-value">${dash.totali.num_interventi}</div></div>
+    <div class="stat-card"><div class="stat-label">SUB gestiti</div><div class="stat-value">${dash.totali.num_subs}</div></div>
+    <div class="stat-card"><div class="stat-label">Fornitori</div><div class="stat-value">${dash.totali.num_fornitori}</div></div>`;
+  renderRiepTab(currentRiepTab);
+}
+
+async function renderRiepTab(tab) {
+  const el = document.getElementById('riep-list');
+  el.innerHTML = '<div class="empty" style="padding:20px;">Caricamento…</div>';
+
+  if (tab === 'sub') {
+    const data = await api('/api/riepilogo');
+    if (!data) return;
+    if (!data.length) { el.innerHTML='<div class="empty">Nessun SUB trovato. Aggiungili da Anagrafiche → SUB</div>'; return; }
+    const bySede = {};
+    data.forEach(d => { const s=d.sede||'Senza sede'; if(!bySede[s])bySede[s]=[]; bySede[s].push(d); });
+    el.innerHTML = Object.entries(bySede).map(([sede, subs]) => {
+      const sedeTot = subs.reduce((s,x)=>s+(parseFloat(x.totale)||0),0);
+      return `<div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(90deg,rgba(37,99,235,.2),rgba(37,99,235,.05));border:1px solid rgba(37,99,235,.3);border-radius:10px 10px 0 0;">
+          <span style="font-family:'Playfair Display',serif;font-size:16px;color:#fff;">📍 ${esc(sede)}</span>
+          <span style="color:var(--gold);font-weight:700;">€ ${sedeTot.toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
+        </div>
+        <div style="border:1px solid rgba(37,99,235,.2);border-top:none;border-radius:0 0 10px 10px;padding:10px;">
+          ${subs.map(d => `
+            <div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('ff-sub').value='${d.sub_id}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">
+              <div class="flex-between" style="margin-bottom:8px;">
+                <div class="flex">
+                  <span style="font-size:14px;">${d.stato_salute==='rosso'?'🔴':d.stato_salute==='giallo'?'🟡':'🟢'}</span>
+                  <span style="font-family:'Playfair Display',serif;font-size:15px;color:#fff;font-weight:700;">SUB ${esc(d.sub||'N/D')}</span>
+                  ${d.ex_sub?`<span class="ex-sub">ex ${esc(d.ex_sub)}</span>`:''}
+                  ${d.inquilino?`<span style="color:var(--muted);font-size:11px;">👤 ${esc(d.inquilino)}</span>`:''}
+                  ${!d.num_interventi?`<span style="font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;">Nessun intervento</span>`:''}
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:17px;font-weight:700;color:${d.totale>0?'var(--gold)':'var(--muted)'};">${d.totale>0?'€ '+parseFloat(d.totale).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}</div>
+                  <div style="font-size:10px;color:var(--muted);">${d.num_interventi} intervent${d.num_interventi!==1?'i':'o'}</div>
+                </div>
+              </div>
+              ${d.anni?.length?`<div style="font-size:10px;color:var(--muted);margin-bottom:7px;">Anni: ${d.anni.join(' · ')}</div>`:''}
+              ${Object.entries(d.fornitori).length?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${Object.entries(d.fornitori).sort((a,b)=>b[1]-a[1]).map(([fn,tot])=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 9px;"><div style="font-size:9px;color:var(--muted);">${esc(fn)}</div><div style="font-weight:700;font-size:11px;">€ ${parseFloat(tot).toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>`).join('')}</div>`:''}</div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+
+  } else if (tab === 'fornitore') {
+    const data = await api('/api/riepilogo/fornitori');
+    if (!data?.length) { el.innerHTML='<div class="empty">Nessun dato. Importa prima i fornitori e gli interventi.</div>'; return; }
+    el.innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>Fornitore</th><th>Specializzazione</th><th>N° Interventi</th><th>SUB coinvolti</th><th>Primo intervento</th><th>Ultimo intervento</th><th>Totale fatturato</th></tr></thead>
+          <tbody>${data.map((f,i)=>`<tr>
+            <td style="font-size:12px;color:var(--muted);">${i+1}</td>
+            <td class="td-bold">${esc(f.ragione_sociale)}</td>
+            <td class="td-muted">${esc(f.spec||'—')}</td>
+            <td style="text-align:center;">${f.num_interventi}</td>
+            <td style="text-align:center;">${f.num_subs}</td>
+            <td>${f.prima_data?fmt(f.prima_data):'—'}</td>
+            <td>${f.ultima_data?fmt(f.ultima_data):'—'}</td>
+            <td class="td-price" style="font-size:14px;">${f.totale?'€ '+parseFloat(f.totale).toLocaleString('it-IT',{minimumFractionDigits:2}):'—'}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>`;
+
+  } else if (tab === 'anno') {
+    const data = await api('/api/riepilogo/anni');
+    if (!data?.anni?.length) { el.innerHTML='<div class="empty">Nessun dato. Importa prima gli interventi.</div>'; return; }
+    const maxTot = Math.max(...data.anni.map(a=>a.totale));
+    el.innerHTML = data.anni.map(a => {
+      const pct = maxTot > 0 ? (a.totale/maxTot*100) : 0;
+      const mesiAnno = data.mesi.filter(m=>m.anno===a.anno);
+      const nomiMesi = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+      return `<div class="card" style="margin-bottom:12px;">
+        <div class="flex-between" style="margin-bottom:12px;">
+          <div class="flex">
+            <span style="font-family:'Playfair Display',serif;font-size:20px;color:#fff;font-weight:700;">${a.anno}</span>
+            <span style="color:var(--muted);font-size:12px;">${a.num_interventi} interventi · ${a.num_subs} SUB · ${a.num_fornitori} fornitori</span>
+          </div>
+          <span style="font-size:22px;font-weight:700;color:var(--gold);">€ ${parseFloat(a.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;margin-bottom:10px;">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:4px;transition:width .5s;"></div>
+        </div>
+        ${mesiAnno.length?`<div style="display:flex;gap:4px;flex-wrap:wrap;">${mesiAnno.map(m=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:4px 8px;min-width:70px;"><div style="font-size:9px;color:var(--muted);">${nomiMesi[(m.mese||1)-1]||m.mese}</div><div style="font-size:11px;font-weight:700;">€ ${parseFloat(m.totale).toLocaleString('it-IT',{maximumFractionDigits:0})}</div><div style="font-size:9px;color:var(--muted);">${m.num} int.</div></div>`).join('')}</div>`:''}</div>`;
+    }).join('');
+
+  } else if (tab === 'mese') {
+    const data = await api('/api/riepilogo/mesi');
+    if (!data?.length) { el.innerHTML='<div class="empty">Nessun dato mensile. Assicurati che gli interventi abbiano la data fattura compilata.</div>'; return; }
+    const maxTot = Math.max(...data.map(m=>m.totale));
+    el.innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Mese</th><th>N° Interventi</th><th>Totale</th><th>Andamento</th></tr></thead>
+          <tbody>${data.map(m=>{
+            const pct = maxTot>0?(m.totale/maxTot*100):0;
+            return`<tr>
+              <td class="td-bold">${esc(m.etichetta?.trim()||m.mese_anno)}</td>
+              <td style="text-align:center;">${m.num_interventi}</td>
+              <td class="td-price">€ ${parseFloat(m.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</td>
+              <td style="min-width:150px;">
+                <div style="height:6px;background:var(--border);border-radius:3px;">
+                  <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>`;
+
+  } else if (tab === 'sede') {
+    const data = await api('/api/riepilogo/sedi');
+    if (!data?.length) { el.innerHTML='<div class="empty">Nessuna sede trovata.</div>'; return; }
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">` +
+      data.map(s=>`<div class="card">
+        <div style="font-family:'Playfair Display',serif;font-size:18px;color:#fff;margin-bottom:12px;">📍 ${esc(s.sede||'—')}</div>
+        <div style="font-size:26px;font-weight:700;color:var(--gold);margin-bottom:8px;">€ ${parseFloat(s.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_interventi}</div><div style="font-size:9px;color:var(--muted);">Interventi</div></div>
+          <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_subs}</div><div style="font-size:9px;color:var(--muted);">SUB</div></div>
+          <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_fornitori}</div><div style="font-size:9px;color:var(--muted);">Fornitori</div></div>
+        </div>
+      </div>`).join('') + `</div>`;
+  }
+}
+
+async function extractAllPrices() {
+  if(!confirm('Scansiono tutte le descrizioni degli interventi senza prezzo e cerco importi in euro. Continuare?')) return;
+  toast('Estrazione in corso…','warning');
+  const r = await api('/api/interventi/extract-prices',{method:'POST'});
+  toast(`✓ Estratti ${r?.updated||0} prezzi dalle descrizioni`,'success');
+  loadInt();
+  if(currentRiepTab) renderRiepTab(currentRiepTab);
+}
+
+// ── EXPORT ──
+function exportExcel(){window.open('/api/export',{headers:{Authorization:`Bearer ${token}`}});fetch('/api/export',{headers:{Authorization:`Bearer ${token}`}}).then(r=>r.blob()).then(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='storico_v3.xlsx';a.click();});}
+function exportJSON(){const d={sedi:DB.sedi,subs:DB.subs,fornitori:DB.fornitori,inquilini:DB.inquilini,categorie:DB.categorie,exported:new Date().toISOString()};const b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='backup_v3_'+new Date().toISOString().slice(0,10)+'.json';a.click();toast('Backup scaricato ✓');}
+function importJSON(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){try{const d=JSON.parse(e.target.result);if(confirm(`Backup del ${d.exported?.slice(0,10)||'?'} — ripristinare?`)){toast('Ripristinato ✓');}}catch(e){toast('Errore file','error');}};r.readAsText(file);}
+
+// ── SEARCH ──
+let sT;
+function globalSearch(q){clearTimeout(sT);if(!q||q.length<2){document.getElementById('srch-res').classList.add('hidden');return;}sT=setTimeout(async()=>{const r=await api('/api/search?q='+encodeURIComponent(q));if(!r)return;const el=document.getElementById('srch-res');if(!r.interventi.length&&!r.subs.length&&!r.fornitori.length){el.innerHTML='<div style="padding:14px;text-align:center;color:var(--muted);font-size:12px;">Nessun risultato</div>';}else{el.innerHTML='';if(r.interventi.length)el.innerHTML+=`<div class="sr-sec">Interventi</div>`+r.interventi.map(i=>`<div class="sr-item" onclick="closeS();openDet(${i.id})"><span>📋</span><div><strong style="font-size:11px;">${esc(i.sub||'?')} — ${esc(i.fornitore||'?')}</strong><div style="font-size:10px;color:var(--muted);">${esc((i.descrizione||'').slice(0,55))}</div></div>${i.prezzo?`<span class="td-price" style="font-size:11px;margin-left:auto;">€ ${parseFloat(i.prezzo).toLocaleString('it-IT')}</span>`:''}</div>`).join('');if(r.subs.length)el.innerHTML+=`<div class="sr-sec">SUB</div>`+r.subs.map(s=>`<div class="sr-item" onclick="closeS();document.getElementById('ff-sub').value=${s.id};loadInt();">🏠 <strong>${esc(s.codice)}</strong>${s.ex_sub?` (ex ${s.ex_sub})`:''} <span style="color:var(--muted);font-size:10px;">${esc(s.sede||'')} ${esc(s.inquilino||'')}</span></div>`).join('');if(r.fornitori.length)el.innerHTML+=`<div class="sr-sec">Fornitori</div>`+r.fornitori.map(f=>`<div class="sr-item" onclick="closeS();document.getElementById('ff-forn').value=${f.id};loadInt();">🔧 <strong>${esc(f.ragione_sociale)}</strong></div>`).join('');}el.classList.remove('hidden');},280);}
+function closeS(){document.getElementById('srch-res').classList.add('hidden');document.getElementById('global-search').value='';}
+function closeSearch(){closeS();}
+
+// ── SETTINGS ──
+async function loadSettings(){const s=await api('/api/settings');if(!s)return;if(s.app_name){['app-title','header-title','login-title'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=s.app_name;});['hero-badge','hero-title'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=s.app_name;});const sn=document.getElementById('s-nome');if(sn)sn.value=s.app_name;}if(s.footer_text){const sf=document.getElementById('s-footer');if(sf)sf.value=s.footer_text;}}
+async function saveSettings(){const v=id=>document.getElementById(id)?.value||'';const settings={app_name:v('s-nome')||'Gestionale Immobili',footer_text:v('s-footer')};await api('/api/settings',{method:'POST',body:JSON.stringify({settings})});await loadSettings();toast('Salvato ✓');}
+async function changePwd(){const v=id=>document.getElementById(id)?.value||'';const o=v('pwd-old'),n1=v('pwd-new'),n2=v('pwd-c');if(n1!==n2){toast('Le password non coincidono','error');return;}if(n1.length<4){toast('Minimo 4 caratteri','error');return;}const r=await api('/api/auth/change-password',{method:'POST',body:JSON.stringify({oldPassword:o,newPassword:n1})});if(r?.ok){['pwd-old','pwd-new','pwd-c'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});toast('Password aggiornata ✓');}else toast('Password attuale errata','error');}
+async function loadUsers(){const u=await api('/api/users');if(!u)return;document.getElementById('users-list').innerHTML=u.map(x=>`<div style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="flex:1;"><strong>${esc(x.nome)}</strong><div style="font-size:10px;color:var(--muted);">${esc(x.email)} — ${x.ruolo}</div></div><span style="font-size:10px;color:${x.attivo?'var(--green)':'var(--red)'};">${x.attivo?'Attivo':'Off'}</span></div>`).join('')||'<div style="color:var(--muted);font-size:12px;">Nessun utente</div>';}
+function openModalUser(){document.getElementById('modal-user').classList.add('open');}
+async function saveUser(){const v=id=>document.getElementById(id)?.value||'';const n=v('u-nome'),e=v('u-email'),p=v('u-pwd'),r=v('u-ruolo');if(!n||!e||!p){toast('Compila tutti i campi','error');return;}await api('/api/users',{method:'POST',body:JSON.stringify({nome:n,email:e,password:p,ruolo:r})});closeM('modal-user');loadUsers();toast('Utente creato ✓');}
+
+// ── NAV ──
+function showSec(name,btn){
+  document.querySelectorAll('#app-screen .section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('#app-screen .nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-'+name)?.classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(name==='riepilogo') renderRiep();
+  if(name==='impostazioni') loadUsers();
+  if(name==='anagrafiche') loadDD();
+  if(name==='documenti'){
+    document.getElementById('df-sub').innerHTML='<option value="">Tutti</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
+    document.getElementById('df-sede').innerHTML='<option value="">Tutte</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+    loadDocs();
+  }
+  if(name==='manutenzioni'){
+    document.getElementById('mf-sub').innerHTML='<option value="">Tutti</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
+    document.getElementById('mf-sede').innerHTML='<option value="">Tutte</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+    loadMan();
+  }
+}
+
+// ── OCR FATTURA ──
+async function runOCR(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('ocr-status');
+  status.style.display = 'block';
+  status.textContent = '⏳ L\'AI sta leggendo la fattura…';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  try {
+    const r = await apiUp('/api/ocr', fd);
+    if (!r.ok) {
+      status.textContent = '❌ ' + (r.error || 'Errore lettura');
+      return;
+    }
+    const d = r.data;
+    status.textContent = '✅ Dati estratti! Verifica e completa i campi mancanti.';
+    status.style.color = 'var(--green)';
+
+    // Popola i campi del form
+    if (d.num_fattura) document.getElementById('fi-nf').value = d.num_fattura;
+    if (d.data_fattura) {
+      const df = parseOCRDate(d.data_fattura);
+      if (df) document.getElementById('fi-df').value = df;
+    }
+    if (d.data_intervento) {
+      const di = parseOCRDate(d.data_intervento);
+      if (di) document.getElementById('fi-di').value = di;
+    }
+    if (d.protocollo) document.getElementById('fi-prot').value = d.protocollo;
+    if (d.importo) {
+      const imp = String(d.importo).replace(/[€\s.]/g,'').replace(',','.');
+      const num = parseFloat(imp);
+      if (!isNaN(num)) document.getElementById('fi-pr').value = num.toFixed(2);
+    }
+    if (d.descrizione) document.getElementById('fi-desc').value = d.descrizione;
+    if (d.note) document.getElementById('fi-note').value = d.note;
+
+    // Anno fattura
+    const dfVal = document.getElementById('fi-df').value;
+    if (dfVal) document.getElementById('fi-anno').value = dfVal.split('-')[0];
+
+    // Prova a matchare fornitore
+    if (d.fornitore) {
+      const norm = s => (s||'').toLowerCase().trim();
+      const fornM = DB.fornitori.find(f =>
+        norm(f.ragione_sociale).includes(norm(d.fornitore)) ||
+        norm(d.fornitore).includes(norm(f.ragione_sociale))
+      );
+      if (fornM) {
+        document.getElementById('fi-forn').value = fornM.id;
+        status.textContent += ` Fornitore trovato: ${fornM.ragione_sociale}.`;
+      } else {
+        status.textContent += ` ⚠️ Fornitore "${d.fornitore}" non trovato in anagrafica — aggiungilo prima.`;
+      }
+    }
+    // Prova a matchare SUB
+    if (d.sub) {
+      const norm = s => (s||'').toLowerCase().trim();
+      const subM = DB.subs.find(s => norm(s.codice) === norm(d.sub) || norm(s.ex_sub||'') === norm(d.sub));
+      if (subM) {
+        const sede = DB.sedi.find(sd => sd.id === subM.sede_id);
+        if (sede) { document.getElementById('fi-sede').value = sede.id; filterSubBySede(); }
+        document.getElementById('fi-sub').value = subM.id;
+      }
+    }
+    toast('✅ Form compilato da AI!');
+  } catch(e) {
+    status.textContent = '❌ Errore: ' + e.message;
+    status.style.color = 'var(--red)';
+  }
+  input.value = '';
+}
+
+function parseOCRDate(s) {
+  if (!s) return '';
+  s = String(s).trim();
+  // gg/mm/aaaa
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s.split('/').reverse().join('-');
+  // gg-mm-aaaa
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) { const p=s.split('-'); return `${p[2]}-${p[1]}-${p[0]}`; }
+  // aaaa-mm-gg
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // gg/mm/aa
+  if (/^\d{2}\/\d{2}\/\d{2}$/.test(s)) { const [dd,mm,yy]=s.split('/'); return `20${yy}-${mm}-${dd}`; }
+  return '';
+}
+
+// ── IMPORT MASSIVO SUB ──
+const SUB_MAP = {
+  codice: ['codice sub','codice','sub','cod sub','cod. sub','unità imm','unita imm','n. sub'],
+  ex_sub: ['ex sub','vecchio codice','ex codice','precedente','old sub'],
+  sede: ['sede','location','luogo','sito','stabilimento'],
+  piano: ['piano','interno','piano/interno','piano interno','livello'],
+  inquilino: ['inquilino','conduttore','cliente','tenant','locatario'],
+  note: ['note','annotazioni','osservazioni','commenti'],
+};
+
+let subImportRows = [], subImportMap = {};
+
+function openImportSub() {
+  subImportRows = []; subImportMap = {};
+  document.getElementById('sub-import-s1').style.display = '';
+  document.getElementById('sub-import-s2').style.display = 'none';
+  document.getElementById('sub-import-ok').style.display = 'none';
+  document.getElementById('subFile').value = '';
+  document.getElementById('modal-sub-import').classList.add('open');
+}
+
+function loadSubImport(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const wb = XLSX.read(e.target.result, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    subImportRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    if (!subImportRows.length) { toast('Nessun dato trovato', 'error'); return; }
+    const cols = Object.keys(subImportRows[0]);
+    // Auto-mapping
+    const low = cols.map(c => c.toLowerCase().trim());
+    subImportMap = {};
+    Object.entries(SUB_MAP).forEach(([field, variants]) => {
+      for (const v of variants) {
+        const i = low.findIndex(c => c.includes(v) || v.includes(c));
+        if (i >= 0) { subImportMap[field] = cols[i]; break; }
+      }
+    });
+
+    const found = Object.entries(subImportMap).filter(([k,v]) => v);
+    const hasCodice = !!subImportMap.codice;
+
+    // Mostra colonne riconosciute + selettori manuali per quelle non trovate
+    const colSel = (id, lbl, autoVal) => `<div class="field">
+      <label>${lbl}</label>
+      <select id="${id}">
+        <option value="">— Non presente —</option>
+        ${cols.map(c => `<option value="${c}" ${autoVal===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+    </div>`;
+
+    document.getElementById('sub-import-mapping').innerHTML = `
+      <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:12px;margin-bottom:14px;">
+        <div style="color:var(--green);font-weight:600;margin-bottom:7px;">✓ ${found.length} colonne riconosciute su ${cols.length} totali</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${found.map(([k,v])=>`<span style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:2px 8px;font-size:10px;color:#34d399;">${k} → <strong>${v}</strong></span>`).join('')}</div>
+        ${!hasCodice ? `<div style="color:var(--red);font-size:12px;margin-top:8px;">⚠️ Colonna "Codice SUB" non trovata — mappala manualmente qui sotto</div>` : ''}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Verifica o correggi la mappatura:</div>
+      <div class="form-grid">
+        ${colSel('sm-codice', 'Codice SUB *', subImportMap.codice||'')}
+        ${colSel('sm-ex', 'Ex SUB', subImportMap.ex_sub||'')}
+        ${colSel('sm-sede', 'Sede', subImportMap.sede||'')}
+        ${colSel('sm-piano', 'Piano/Interno', subImportMap.piano||'')}
+        ${colSel('sm-inq', 'Inquilino', subImportMap.inquilino||'')}
+        ${colSel('sm-note', 'Note', subImportMap.note||'')}
+      </div>`;
+
+    // Anteprima
+    const preview = subImportRows.slice(0, 5);
+    const previewCols = cols.slice(0, 6);
+    document.getElementById('sub-import-preview').innerHTML = `
+      <table><thead><tr>${previewCols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead>
+      <tbody>${preview.map(r=>`<tr>${previewCols.map(c=>`<td>${esc(String(r[c]||'').slice(0,25))}</td>`).join('')}</tr>`).join('')}
+      </tbody></table>`;
+
+    // Stats: conta duplicati
+    const existingCodes = new Set(DB.subs.map(s => s.codice.toLowerCase().trim()));
+    const codiceCol = subImportMap.codice;
+    const newCount = codiceCol ? subImportRows.filter(r => {
+      const c = String(r[codiceCol]||'').trim().toLowerCase();
+      return c && !existingCodes.has(c);
+    }).length : subImportRows.length;
+    const dupCount = subImportRows.length - newCount;
+
+    document.getElementById('sub-import-stats').innerHTML = `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${subImportRows.length}</strong>Righe totali</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${newCount}</strong>Nuovi da aggiungere</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;"><strong style="color:var(--gold);font-size:15px;display:block;">${dupCount}</strong>Già presenti (saltati)</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 12px;font-size:11px;font-size:11px;color:var(--muted);">
+        Sedi disponibili:<br>${DB.sedi.map(s=>`<strong style="color:var(--text);">${s.nome}</strong>`).join(', ')||'Nessuna'}
+      </div>`;
+
+    document.getElementById('sub-import-s1').style.display = 'none';
+    document.getElementById('sub-import-s2').style.display = '';
+    document.getElementById('sub-import-ok').style.display = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function commitSubImport() {
+  const gv = id => document.getElementById(id)?.value || '';
+  const codiceCol = gv('sm-codice');
+  if (!codiceCol) { toast('Mappa la colonna Codice SUB', 'error'); return; }
+
+  const items = subImportRows.map(row => ({
+    codice: String(row[codiceCol] || '').trim(),
+    ex_sub: gv('sm-ex') ? String(row[gv('sm-ex')] || '').trim() : '',
+    sede: gv('sm-sede') ? String(row[gv('sm-sede')] || '').trim() : '',
+    piano: gv('sm-piano') ? String(row[gv('sm-piano')] || '').trim() : '',
+    inquilino: gv('sm-inq') ? String(row[gv('sm-inq')] || '').trim() : '',
+    note: gv('sm-note') ? String(row[gv('sm-note')] || '').trim() : '',
+  })).filter(x => x.codice);
+
+  toast('Importazione SUB in corso…', 'warning');
+  const res = await api('/api/subs/import-bulk', { method: 'POST', body: JSON.stringify({ items }) });
+  if (res?.error) { toast('Errore: ' + res.error, 'error'); return; }
+  closeM('modal-sub-import');
+  await loadDD();
+  toast(`✓ ${res.added} SUB importati${res.skipped ? ', ' + res.skipped + ' saltati' : ''}`, 'success');
+}
+// ── MANUTENZIONI ──
+const PRIOR_COLORS={urgente:'var(--red)',alta:'var(--orange)',normale:'var(--gold)',bassa:'var(--green)'};
+const PRIOR_ICONS={urgente:'🔴',alta:'🟠',normale:'🟡',bassa:'🟢'};
+const STATO_COLORS={programmata:'var(--accent)',in_corso:'var(--orange)',completata:'var(--green)',annullata:'var(--muted)'};
+let manEditId=null;
+async function loadMan(){
+  const p=new URLSearchParams();
+  const v=id=>document.getElementById(id)?.value||'';
+  if(v('mf-stato'))p.set('stato',v('mf-stato'));
+  if(v('mf-prior'))p.set('priorita',v('mf-prior'));
+  if(v('mf-sub'))p.set('sub_id',v('mf-sub'));
+  if(v('mf-sede'))p.set('sede_id',v('mf-sede'));
+  const data=await api('/api/manutenzioni?'+p);
+  if(!data)return;
+  document.getElementById('man-lbl').textContent=`${data.length} manutenzioni`;
+  const el=document.getElementById('man-list');
+  if(!data.length){el.innerHTML='<div class="empty">Nessuna manutenzione. Aggiungi caldaie, ascensori, impianti…</div>';return;}
+  el.innerHTML=data.map(m=>{
+    const gg=parseInt(m.giorni_scadenza);
+    const scadColor=(!isNaN(gg))?(gg<0?'var(--red)':gg<30?'var(--orange)':gg<90?'var(--gold)':'var(--green)'):'var(--muted)';
+    return`<div class="int-card" style="border-left:3px solid ${PRIOR_COLORS[m.priorita]||'var(--border)'};">
+      <div class="int-card-hdr">
+        <span>${PRIOR_ICONS[m.priorita]||'⚪'}</span>
+        <strong style="font-size:14px;color:#fff;">${esc(m.tipo)}</strong>
+        ${m.sub_codice?`<span class="badge badge-sede">SUB ${esc(m.sub_codice)}</span>`:''}
+        ${m.sede_nome?`<span style="font-size:12px;color:var(--muted);">${esc(m.sede_nome)}</span>`:''}
+        <span style="background:${STATO_COLORS[m.stato]||'var(--muted)'};color:#fff;border-radius:5px;padding:2px 9px;font-size:10px;font-weight:600;">${m.stato?.replace('_',' ')||'—'}</span>
+        ${m.costo?`<span class="td-price" style="margin-left:auto;">€ ${parseFloat(m.costo).toLocaleString('it-IT')}</span>`:''}
+      </div>
+      <div class="int-card-body">
+        <div class="icf"><span>Programmata</span>${m.data_programmata?fmt(m.data_programmata):'—'}</div>
+        <div class="icf"><span>Eseguita</span>${m.data_eseguita?fmt(m.data_eseguita):'—'}</div>
+        <div class="icf"><span>Ricorrenza</span>${esc(m.ricorrenza||'Una tantum')}</div>
+        <div class="icf"><span>Prossima</span><span style="color:${scadColor};font-weight:600;">${m.prossima_scadenza?fmt(m.prossima_scadenza)+(!isNaN(gg)?` (${gg}gg)`:''):'—'}</span></div>
+      </div>
+      ${m.descrizione?`<div style="margin-top:7px;font-size:12px;color:var(--muted);">${esc(m.descrizione.slice(0,100))}</div>`:''}
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-edit btn-sm" onclick="editMan(${m.id})">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="delMan(${m.id})">✕</button>
+        ${m.stato==='programmata'?`<button class="btn btn-success btn-sm" onclick="completaMan(${m.id})">✓ Completata</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  const scad=await api('/api/manutenzioni/scadenze');
+  const urgent=(scad||[]).filter(s=>parseInt(s.giorni_scadenza)<=30);
+  if(urgent.length){
+    document.getElementById('man-scad-wrap').classList.remove('hidden');
+    document.getElementById('man-scad-list').innerHTML=urgent.map(m=>`<div style="font-size:12px;padding:3px 0;display:flex;justify-content:space-between;border-bottom:1px solid rgba(239,68,68,.1);"><span>${PRIOR_ICONS[m.priorita]||''} <strong>${esc(m.tipo)}</strong>${m.sub_codice?' — SUB '+esc(m.sub_codice):''}</span><span style="color:${parseInt(m.giorni_scadenza)<0?'var(--red)':'var(--orange)'};">${fmt(m.prossima_scadenza)} (${m.giorni_scadenza}gg)</span></div>`).join('');
+  }else document.getElementById('man-scad-wrap').classList.add('hidden');
+}
+function openModalMan(){
+  manEditId=null;
+  document.getElementById('m-man-ttl').textContent='Nuova Manutenzione';
+  document.getElementById('man-sub').innerHTML='<option value="">—</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
+  document.getElementById('man-sede').innerHTML='<option value="">—</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+  document.getElementById('man-forn').innerHTML='<option value="">—</option>'+DB.fornitori.map(f=>`<option value="${f.id}">${f.ragione_sociale}</option>`).join('');
+  ['man-data-prog','man-data-eseg','man-desc','man-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('man-costo').value='';
+  document.getElementById('modal-man').classList.add('open');
+}
+async function editMan(id){
+  const data=await api('/api/manutenzioni');
+  const m=(data||[]).find(x=>x.id==id);if(!m)return;
+  manEditId=id;document.getElementById('m-man-ttl').textContent='Modifica Manutenzione';
+  openModalMan();
+  const s=id2=>document.getElementById(id2);
+  s('man-tipo').value=m.tipo||'';s('man-prior').value=m.priorita||'normale';s('man-stato').value=m.stato||'programmata';
+  s('man-sub').value=m.sub_id||'';s('man-sede').value=m.sede_id||'';s('man-forn').value=m.fornitore_id||'';
+  s('man-data-prog').value=m.data_programmata?String(m.data_programmata).split('T')[0]:'';
+  s('man-data-eseg').value=m.data_eseguita?String(m.data_eseguita).split('T')[0]:'';
+  s('man-ric').value=m.ricorrenza||'';s('man-costo').value=m.costo||'';
+  s('man-desc').value=m.descrizione||'';s('man-note').value=m.note||'';
+}
+async function saveMan(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('man-tipo')){toast('Seleziona il tipo','error');return;}
+  const data={tipo:v('man-tipo'),priorita:v('man-prior'),stato:v('man-stato'),
+    sub_id:parseInt(v('man-sub'))||null,sede_id:parseInt(v('man-sede'))||null,
+    fornitore_id:parseInt(v('man-forn'))||null,
+    data_programmata:v('man-data-prog')||null,data_eseguita:v('man-data-eseg')||null,
+    ricorrenza:v('man-ric')||null,costo:v('man-costo')||null,
+    descrizione:v('man-desc'),note:v('man-note')};
+  if(manEditId)await api('/api/manutenzioni/'+manEditId,{method:'PUT',body:JSON.stringify(data)});
+  else await api('/api/manutenzioni',{method:'POST',body:JSON.stringify(data)});
+  closeM('modal-man');loadMan();toast('Manutenzione salvata ✓');
+}
+async function delMan(id){if(!confirm('Eliminare?'))return;await api('/api/manutenzioni/'+id,{method:'DELETE'});loadMan();toast('Eliminata','error');}
+async function completaMan(id){await api('/api/manutenzioni/'+id,{method:'PUT',body:JSON.stringify({stato:'completata',data_eseguita:new Date().toISOString().split('T')[0]})});loadMan();toast('✓ Completata');}
+
+// ── ISTAT ──
+function calcolaIstat(){
+  const imp=parseFloat(document.getElementById('istat-imp').value);
+  const pct=parseFloat(document.getElementById('istat-pct').value)||1.5;
+  const tipo=document.getElementById('istat-tipo').value;
+  if(!imp||isNaN(imp)){toast('Inserisci il canone annuo','error');return;}
+  const pctEff=tipo==='abitativo'?pct*0.75:pct;
+  const aumento=imp*pctEff/100;
+  const nuovo=imp+aumento;
+  const el=document.getElementById('istat-result');
+  el.style.display='block';
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">
+    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">% applicata</div><div style="font-size:18px;font-weight:700;color:var(--accent);">${pctEff.toFixed(2)}%</div><div style="font-size:10px;color:var(--muted);">${tipo==='abitativo'?'(75% del '+pct+'%)':'(100%)'}</div></div>
+    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Aumento annuo</div><div style="font-size:18px;font-weight:700;color:var(--gold);">€ ${aumento.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
+    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Nuovo canone/anno</div><div style="font-size:18px;font-weight:700;color:var(--green);">€ ${nuovo.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
+    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Nuovo canone/mese</div><div style="font-size:18px;font-weight:700;color:var(--green);">€ ${(nuovo/12).toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
+  </div>
+  <div style="margin-top:10px;padding:9px 12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:7px;font-size:11px;color:var(--muted);">⚠️ Verifica il valore ISTAT FOI aggiornato su <a href="https://www.istat.it" target="_blank" style="color:var(--accent);">istat.it</a></div>`;
+}
+
+function closeM(id){document.getElementById(id).classList.remove('open');}
+let tT;
+function toast(msg,type='success'){const el=document.getElementById('toast');el.textContent=msg;el.className=type;el.style.display='block';clearTimeout(tT);tT=setTimeout(()=>el.style.display='none',4000);}
+function fmt(d){if(!d)return'—';const s=String(d).split('T')[0];const p=s.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── DOCUMENTI ──
+const DOC_ICONS={fattura:'🧾',contratto:'📄',preventivo:'💼',verbale:'📋',bolletta:'⚡',catastale:'🏛️',condominiale:'🏢',documento:'📂'};
+async function loadDocs(){
+  const p=new URLSearchParams();
+  const v=id=>document.getElementById(id)?.value||'';
+  if(v('df-tipo'))p.set('tipo',v('df-tipo'));
+  if(v('df-sub'))p.set('sub_id',v('df-sub'));
+  if(v('df-sede'))p.set('sede_id',v('df-sede'));
+  if(v('df-search'))p.set('search',v('df-search'));
+  const docs=await api('/api/documenti?'+p);
+  if(!docs)return;
+  document.getElementById('docs-lbl').textContent=`${docs.length} documenti trovati`;
+  const el=document.getElementById('docs-list');
+  if(!docs.length){el.innerHTML='<div class="empty">Nessun documento. Carica fatture, contratti, preventivi e altro.</div>';return;}
+  el.innerHTML=docs.map(d=>{
+    const icon=DOC_ICONS[d.tipo]||'📂';
+    const scadGiorni=d.scadenza?Math.floor((new Date(d.scadenza)-new Date())/(1000*60*60*24)):null;
+    const scadHtml=scadGiorni!==null?`<span class="doc-scad" style="background:${scadGiorni<30?'rgba(239,68,68,.2)':scadGiorni<90?'rgba(245,158,11,.2)':'rgba(16,185,129,.2)'};color:${scadGiorni<30?'#f87171':scadGiorni<90?'#fcd34d':'#6ee7b7'};">${scadGiorni===0?'Scade oggi':scadGiorni<0?`Scaduto ${-scadGiorni}gg fa`:`${scadGiorni}gg`}</span>`:'';
+    return`<div class="doc-card"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(d.nome)}</div><div class="doc-meta">${d.sub_codice?'SUB '+esc(d.sub_codice)+' · ':''}${d.sede_nome?esc(d.sede_nome)+' · ':''}${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · <strong style="color:var(--gold);">€ '+parseFloat(d.importo).toLocaleString('it-IT')+'</strong>':''}</div>${d.descrizione?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(d.descrizione.slice(0,80))}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">${scadHtml}${d.url?`<a href="${d.url}" target="_blank" class="btn btn-edit btn-sm">👁 Apri</a>`:''}<button class="btn btn-danger btn-sm" onclick="delDoc(${d.id})">✕</button></div></div>`;
+  }).join('');
+  loadScadenze();
+}
+async function loadScadenze(){
+  const sc=await api('/api/documenti/scadenze');
+  if(!sc?.length){document.getElementById('scadenze-banner').classList.add('hidden');return;}
+  const prossime=sc.filter(d=>parseInt(d.giorni_scadenza)<=60);
+  if(!prossime.length){document.getElementById('scadenze-banner').classList.add('hidden');return;}
+  document.getElementById('scadenze-banner').classList.remove('hidden');
+  document.getElementById('scadenze-list').innerHTML=prossime.map(d=>`<div style="font-size:12px;padding:3px 0;display:flex;justify-content:space-between;"><span>${DOC_ICONS[d.tipo]||'📄'} <strong>${esc(d.nome.slice(0,40))}</strong>${d.sub_codice?' — SUB '+esc(d.sub_codice):''}</span><span style="color:${parseInt(d.giorni_scadenza)<7?'var(--red)':'var(--gold)'};">${fmt(d.scadenza)} (${d.giorni_scadenza}gg)</span></div>`).join('');
+}
+let docFileInput=null;
+function openModalDoc(){
+  docFileInput=null;
+  document.getElementById('m-doc-ttl').textContent='Nuovo Documento';
+  document.getElementById('doc-tipo').value='fattura';
+  ['doc-nome','doc-data','doc-scad','doc-imp','doc-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('doc-sub').innerHTML='<option value="">— Nessuno —</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
+  document.getElementById('doc-sede').innerHTML='<option value="">— Nessuna —</option>'+DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+  document.getElementById('doc-forn').innerHTML='<option value="">— Nessuno —</option>'+DB.fornitori.map(f=>`<option value="${f.id}">${f.ragione_sociale}</option>`).join('');
+  document.getElementById('doc-file-zone').textContent='📎 Clicca per allegare file (PDF, immagine, Word…)';
+  document.getElementById('doc-file').value='';
+  document.getElementById('modal-doc').classList.add('open');
+}
+function docFileSelected(input){docFileInput=input.files[0];if(docFileInput)document.getElementById('doc-file-zone').textContent=`✓ ${docFileInput.name} (${Math.round(docFileInput.size/1024)} KB)`;}
+async function saveDoc(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('doc-nome')){toast('Inserisci il nome del documento','error');return;}
+  const fd=new FormData();
+  fd.append('tipo',v('doc-tipo'));fd.append('nome',v('doc-nome'));
+  if(v('doc-sub'))fd.append('sub_id',v('doc-sub'));
+  if(v('doc-sede'))fd.append('sede_id',v('doc-sede'));
+  if(v('doc-forn'))fd.append('fornitore_id',v('doc-forn'));
+  if(v('doc-data'))fd.append('data_documento',v('doc-data'));
+  if(v('doc-scad'))fd.append('scadenza',v('doc-scad'));
+  if(v('doc-imp'))fd.append('importo',v('doc-imp'));
+  if(v('doc-desc'))fd.append('descrizione',v('doc-desc'));
+  if(docFileInput)fd.append('file',docFileInput);
+  toast('Salvataggio…','warning');
+  const r=await apiUp('/api/documenti',fd);
+  if(r?.error){toast('Errore: '+r.error,'error');return;}
+  closeM('modal-doc');loadDocs();toast('Documento salvato ✓');
+}
+async function delDoc(id){if(!confirm('Eliminare documento?'))return;await api('/api/documenti/'+id,{method:'DELETE'});loadDocs();toast('Eliminato','error');}
+
+// ── TIMELINE ──
+let timelineSubId=null;
+async function openTimeline(subId,subCodice){
+  timelineSubId=subId;
+  document.getElementById('timeline-sub-name').textContent='Timeline — SUB '+subCodice;
+  document.getElementById('nota-testo').value='';
+  document.getElementById('modal-timeline').classList.add('open');
+  document.getElementById('timeline-content').innerHTML='<div class="empty">Caricamento…</div>';
+  const data=await api('/api/subs/'+subId+'/storia');
+  if(!data?.length){document.getElementById('timeline-content').innerHTML='<div class="empty">Nessun evento ancora. Gli interventi, documenti e modifiche appariranno qui.</div>';return;}
+  document.getElementById('timeline-content').innerHTML=data.map(ev=>{
+    let icon,color,titolo,desc;
+    if(ev._tipo==='intervento'){icon=ev.icona||'🔧';color='rgba(37,99,235,.2)';titolo=esc(ev.descrizione?.slice(0,80)||'Intervento');desc=`${ev.fornitore?'Fornitore: '+esc(ev.fornitore)+' · ':''}${ev.prezzo?'€ '+parseFloat(ev.prezzo).toLocaleString('it-IT'):''}${ev.protocollo?' · Prot. '+esc(ev.protocollo):''}`;}
+    else if(ev._tipo==='documento'){icon=DOC_ICONS[ev.tipo]||'📄';color='rgba(124,58,237,.2)';titolo=esc(ev.nome||'Documento');desc=`Tipo: ${ev.tipo}${ev.importo?' · € '+parseFloat(ev.importo).toLocaleString('it-IT'):''}${ev.scadenza?' · Scad. '+fmt(ev.scadenza):''}`;}
+    else{const ti={modifica:'✏️',nota:'📝',documento:'📁',creazione:'🆕'};icon=ti[ev.tipo]||'📌';color='rgba(245,158,11,.15)';titolo=esc(ev.titolo||'Evento');desc=esc(ev.descrizione||'');}
+    return`<div class="timeline-item"><div class="timeline-dot" style="background:${color};">${icon}</div><div class="timeline-body"><div class="timeline-date">${ev._data?fmt(ev._data):'—'}${ev.autore?' · '+esc(ev.autore):''}</div><div class="timeline-title">${titolo}</div>${desc?`<div class="timeline-desc">${desc}</div>`:''}</div></div>`;
+  }).join('');
+}
+async function addNota(){
+  const testo=document.getElementById('nota-testo').value.trim();
+  if(!testo||!timelineSubId)return;
+  await api('/api/subs/'+timelineSubId+'/storia',{method:'POST',body:JSON.stringify({tipo:'nota',titolo:'Nota',descrizione:testo})});
+  document.getElementById('nota-testo').value='';
+  openTimeline(timelineSubId,document.getElementById('timeline-sub-name').textContent.split('SUB ')[1]||'');
+  toast('Nota aggiunta ✓');
+}
+
+// ── CHAT ──
+let chatOpen=false;
+function toggleChat(){
+  chatOpen=!chatOpen;
+  const panel=document.getElementById('chat-panel');
+  panel.style.display=chatOpen?'flex':'none';
+  if(chatOpen)setTimeout(()=>document.getElementById('chat-input')?.focus(),100);
+}
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const msg=input.value.trim();if(!msg)return;
+  input.value='';
+  addChatMsg(msg,'user');
+  addChatMsg('⏳ Sto cercando…','bot','chat-loading');
+  const r=await api('/api/chat',{method:'POST',body:JSON.stringify({messaggio:msg})});
+  document.getElementById('chat-loading')?.remove();
+  if(!r){addChatMsg('Errore di connessione.','bot');return;}
+  let html=r.risposta.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+  if(r.dati?.length){
+    html+=r.dati.slice(0,5).map(d=>{
+      if(r.tipo==='interventi')return`<div class="chat-result" onclick="openDet(${d.id})">📋 <strong>${esc(d.sub||'?')}</strong> — ${esc((d.descrizione||'').slice(0,50))} ${d.prezzo?'<strong style="color:var(--gold2);">€'+parseFloat(d.prezzo).toLocaleString('it-IT')+'</strong>':''}`;
+      if(r.tipo==='fornitori')return`<div class="chat-result">🔧 <strong>${esc(d.ragione_sociale)}</strong> — ${d.num_int} int · <strong style="color:var(--gold2);">€ ${parseFloat(d.totale||0).toLocaleString('it-IT')}</strong></div>`;
+      if(r.tipo==='subs')return`<div class="chat-result" onclick="document.getElementById('ff-sub').value='${d.id||''}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">🏠 <strong>SUB ${esc(d.sub||d.codice||'?')}</strong> (${esc(d.sede||'')}) — <strong style="color:var(--gold2);">€ ${parseFloat(d.totale||0).toLocaleString('it-IT')}</strong></div>`;
+      return`<div class="chat-result">📄 ${esc(d.nome||d.descrizione||'').slice(0,60)}</div>`;
+    }).join('');
+    if(r.dati.length>5)html+=`<div style="font-size:10px;color:var(--muted);margin-top:4px;">... e altri ${r.dati.length-5}</div>`;
+  }
+  addChatMsg(html,'bot',null,true);
+}
+function addChatMsg(html,role,id=null,isHtml=false){
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='chat-msg '+role;
+  if(id)div.id=id;
+  if(isHtml)div.innerHTML=html;else div.textContent=html;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+document.querySelectorAll('.overlay').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('open');}));
+
+// ── INIT ──
+window.addEventListener('load',()=>{
+  const t=sessionStorage.getItem('token'),u=sessionStorage.getItem('user');
+  if(t&&u){token=t;currentUser=JSON.parse(u);document.getElementById('login-screen').style.display='none';document.getElementById('user-badge').textContent=`👤 ${currentUser.nome||currentUser.email||''}`;document.getElementById('chat-btn').style.display='flex';showHome();}
+});
+</script>
+</body>
+</html>
