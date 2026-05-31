@@ -137,6 +137,40 @@ async function initDB() {
         FOREIGN KEY (sub_destinazione_id) REFERENCES subs(id) ON DELETE SET NULL`);
     } catch(e) {}
 
+
+    // ── Migrazione P16 RIVISTO: colonne lead estese ─────────
+    const _p16cols = [
+      ['cognome',                    'VARCHAR(100)'],
+      ['lead_stato_pipeline',        "VARCHAR(40) DEFAULT 'nuovo'"],
+      ['lead_fonte',                 'VARCHAR(50)'],
+      ['lead_owner_user_id',         'INTEGER'],
+      ['lead_motivo_perdita',        'TEXT'],
+      ['tel_alt',                    'VARCHAR(50)'],
+      ['note_lead',                  'TEXT'],
+      ['ricerca_tipologia',          'VARCHAR(30)'],
+      ['ricerca_categoria',          'VARCHAR(30)'],
+      ['ricerca_zona',               'VARCHAR(200)'],
+      ['ricerca_mq_min',             'INTEGER'],
+      ['ricerca_mq_max',             'INTEGER'],
+      ['ricerca_stanze',             'INTEGER'],
+      ['ricerca_budget_max',         'DECIMAL(10,2)'],
+      ['ricerca_disponibilita_da',   'DATE'],
+      ['ricerca_sub_interesse_id',   'INTEGER'],
+    ];
+    for (const [col, def] of _p16cols) {
+      try { await client.query(`ALTER TABLE inquilini ADD COLUMN IF NOT EXISTS ${col} ${def}`); } catch(e) {}
+    }
+    // FK lead_owner e ricerca_sub
+    try { await client.query(`ALTER TABLE inquilini ADD CONSTRAINT IF NOT EXISTS fk_lead_owner
+      FOREIGN KEY (lead_owner_user_id) REFERENCES users(id) ON DELETE SET NULL`); } catch(e) {}
+    try { await client.query(`ALTER TABLE inquilini ADD CONSTRAINT IF NOT EXISTS fk_ricerca_sub
+      FOREIGN KEY (ricerca_sub_interesse_id) REFERENCES subs(id) ON DELETE SET NULL`); } catch(e) {}
+
+    // ── Aggiorna tabella promemoria (aggiunte P16r) ──────────
+    try { await client.query(`ALTER TABLE promemoria ADD COLUMN IF NOT EXISTS tipo_azione VARCHAR(30)`); } catch(e) {}
+    try { await client.query(`ALTER TABLE promemoria ADD COLUMN IF NOT EXISTS completato_at TIMESTAMP`); } catch(e) {}
+    try { await client.query(`CREATE INDEX IF NOT EXISTS idx_promemoria_entita ON promemoria(entita_tipo, entita_id)`); } catch(e) {}
+
     // ── Tabella promemoria (P17) ─────────────────────────────
     await client.query(`
       CREATE TABLE IF NOT EXISTS promemoria (
