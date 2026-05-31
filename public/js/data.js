@@ -16,37 +16,40 @@ async function loadDD(){
 }
 
 function renderTbSubs() {
-  const tb = document.getElementById('tb-subs');
-  if (!DB.subs.length) { tb.innerHTML = '<tr><td colspan="10" class="empty">Nessun SUB. Aggiungili da "+ Nuovo SUB".</td></tr>'; return; }
+  const tb = document.getElementById('tb-subs') || document.getElementById('tb-subs-ana');
+  if (!tb) return;
+  if (!DB.subs.length) {
+    tb.innerHTML = '<tr><td colspan="11" class="empty">Nessun SUB. Aggiungili da "+ Nuovo SUB".</td></tr>';
+    return;
+  }
+
+  const STATO_BADGE = {
+    attivo:        '<span style="background:var(--success-bg);color:var(--success);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;">Attivo</span>',
+    fuso:          '<span style="background:var(--bg2);color:var(--muted);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;">Fuso</span>',
+    scisso:        '<span style="background:var(--info-bg);color:var(--info);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;">Scisso</span>',
+    riaccatastato: '<span style="background:var(--warning-bg);color:var(--warning);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;">Riaccatastato</span>',
+    cessato:       '<span style="background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:2px 8px;font-size:10px;font-weight:600;">Cessato</span>',
+  };
+
   tb.innerHTML = DB.subs.map(s => {
-    const sede = DB.sedi.find(sd => sd.id == s.sede_id);
-    const sal = parseInt(s.manutenzioni_aperte)>0?'🟡':s.stato_occupazione==='libero'?'⚪':'🟢';
-    // ISTAT alert: yellow row if revision due within 30 days or overdue
-    const istatDue = s.istat_data_prossima_revisione &&
-      new Date(s.istat_data_prossima_revisione) <= new Date(Date.now() + 30*24*60*60*1000);
-    const rowStyle = istatDue ? 'background:rgba(184,134,11,.07);border-left:3px solid var(--accent);' : '';
-    const istatBadge = istatDue ? '<span title="Aggiornamento ISTAT necessario" style="font-size:10px;background:rgba(184,134,11,.2);color:var(--primary-dark);padding:1px 5px;border-radius:8px;margin-left:4px;">📈 ISTAT</span>' : '';
-    const spese = s.totale_spese ? '€ ' + parseFloat(s.totale_spese).toLocaleString('it-IT', {maximumFractionDigits:0}) : '—';
-    const mqTot = s.mq_commerciali ? parseFloat(s.mq_commerciali).toFixed(0) + ' mq' : (s.mq_calpestabili ? parseFloat(s.mq_calpestabili).toFixed(0) + ' mq' : '—');
-    const statoOcc = s.stato_occupazione ? `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${s.stato_occupazione==='occupato'?'rgba(16,185,129,.15)':'rgba(100,116,139,.15)'};color:${s.stato_occupazione==='occupato'?'var(--green)':'var(--muted)'};">${esc(s.stato_occupazione)}</span>` : '<span class="td-muted">—</span>';
-    const chk = subSelMode ? `<td><input type="checkbox" class="sel-check" ${subSelIds.has(s.id)?'checked':''} onclick="event.stopPropagation();subToggle(${s.id},this)"></td>` : '<td></td>';
-    return `<tr class="sub-row-click" onclick="openSubDetail(${s.id})" style="${rowStyle}">
-      ${chk}
-      <td style="font-size:15px;text-align:center;">${sal}</td>
-      <td><strong style="color:#0f172a;font-size:13px;">${esc(s.codice)}</strong>${istatBadge}${s.ex_sub?`<br><span class="ex-sub" style="font-size:9px;">${esc(s.ex_sub)}</span>`:''}</td>
-      <td><span class="badge badge-sede">${esc(sede?.nome||'—')}</span>${s.piano?`<br><span style="font-size:10px;color:var(--muted);">P. ${esc(s.piano)}</span>`:''}</td>
-      <td>${statoOcc}</td>
+    const stato   = s.stato_sub || 'attivo';
+    const attivo  = stato === 'attivo';
+    const sal     = parseInt(s.manutenzioni_aperte) > 0 ? '🟡' : s.stato_occupazione === 'libero' ? '⚪' : '🟢';
+    const rowStyle = attivo ? '' : 'opacity:.7;';
+    const destLink = s.sub_destinazione_codice
+      ? ` <span style="font-size:10px;color:var(--primary);cursor:pointer;" onclick="openAnaById('sub',${s.sub_destinazione_id||0})">→ ${esc(s.sub_destinazione_codice)}</span>`
+      : '';
+
+    return `<tr style="${rowStyle}">
+      <td>${attivo ? `<input type="checkbox" class="sel-check subs-chk" data-id="${s.id}" onchange="toggleSel(${s.id},this)">` : ''}</td>
+      <td style="font-size:16px;">${sal}</td>
+      <td class="td-bold" style="cursor:pointer;" onclick="openSubDetail(${s.id})">${esc(s.codice||'—')}</td>
+      <td>${esc(s.sede_nome||'—')}</td>
+      <td style="font-size:12px;color:var(--muted);">${esc(s.stato_occupazione||'—')}</td>
       <td style="font-size:12px;">${esc(s.inquilino_nome||'—')}</td>
-      <td style="font-size:12px;color:var(--muted);">${mqTot}</td>
-      <td style="text-align:center;font-size:12px;">${s.num_interventi||0}</td>
-      <td class="td-price" style="font-size:12px;">${spese}</td>
-      <td onclick="event.stopPropagation();">
-        <button class="ctx-btn" title="Azioni rapide" onclick="showSubCtx(event,${s.id},'${esc(s.codice||'')}')">⋮</button>
-      </td>
+      <td>${STATO_BADGE[stato] || STATO_BADGE.attivo}${destLink}</td>
     </tr>`;
   }).join('');
-  const tb2=document.getElementById('tb-subs-ana');
-  if(tb2) tb2.innerHTML=document.getElementById('tb-subs')?.innerHTML||'';
 }
 
 function renderTbForn(){

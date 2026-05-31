@@ -44,6 +44,12 @@ async function openSubDetail(id) {
         <div style="font-size:11px;color:var(--muted);">${s.num_interventi||0} interventi · ${s.num_documenti||0} documenti</div>
       </div>
     </div>`;
+
+  // ── Banner stato non-attivo ──
+  const bannerEl = document.getElementById('sub-det-banner');
+  if (bannerEl) bannerEl.innerHTML = _subStatoBanner(s);
+  _disableSubButtons(s);
+
   document.getElementById('sub-det-edit-btn').onclick=()=>{closeM('modal-sub-det');openAnaById('sub',id);};
   renderSubDetTab('identita');
 }
@@ -177,4 +183,203 @@ async function exportSubCSV(subId, codice) {
   a.href = 'data:text/csv;charset=utf-8,\uFEFF' + encodeURIComponent(csv);
   a.download = 'SUB_' + codice + '.csv'; a.click();
   toast('✅ Export SUB ' + codice);
+}
+// ── Banner stato non-attivo ──────────────────────────────
+function _subStatoBanner(sub) {
+  const stato = sub.stato_sub;
+  if (!stato || stato === 'attivo') return '';
+  const LABELS = {
+    fuso:          '⚠️ Questo SUB è stato <strong>FUSO</strong>',
+    scisso:        '⚠️ Questo SUB è stato <strong>SCISSO</strong>',
+    riaccatastato: '⚠️ Questo SUB è stato <strong>RIACCATASTATO</strong>',
+    cessato:       '⚠️ Questo SUB è <strong>CESSATO</strong>',
+  };
+  const dataCambio = sub.data_cambio_stato
+    ? ' dal ' + new Date(sub.data_cambio_stato).toLocaleDateString('it-IT')
+    : '';
+  const destLink = sub.sub_destinazione_codice
+    ? ` — <a href="#" onclick="openSubDetail(${sub.sub_destinazione_id||0});return false;" style="color:inherit;font-weight:700;">→ SUB ${esc(sub.sub_destinazione_codice)}</a>`
+    : '';
+  return `<div class="sub-stato-banner ${stato}">
+    <span style="font-size:20px;">${stato==='fuso'?'🔗':stato==='scisso'?'✂️':stato==='riaccatastato'?'🏛️':'🚫'}</span>
+    <div>${LABELS[stato]||'⚠️ NON ATTIVO'}${dataCambio}${destLink} — <strong>non più operativo</strong>.</div>
+  </div>`;
+}
+
+// ── Disabilita pulsanti operativi per SUB non attivi ──────
+function _disableSubButtons(sub) {
+  if (sub.stato_sub && sub.stato_sub !== 'attivo') {
+    const ops = document.querySelectorAll('.sub-op-btn');
+    ops.forEach(btn => {
+      btn.disabled = true;
+      btn.title = `SUB ${sub.stato_sub} — operazione non consentita`;
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'not-allowed';
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// P18 — FUSIONE SUB
+// ═══════════════════════════════════════════════════════════
+function openModalFusioneSub() {
+  _fillSubSelects(['fus-padre1','fus-padre2','fus-sede'], true);
+  document.getElementById('modal-fusione-sub').classList.add('open');
+}
+
+function onFusioneSubChange() {
+  const p1 = document.getElementById('fus-padre1').value;
+  const p2 = document.getElementById('fus-padre2').value;
+  if (p1 && p2 && p1 === p2) {
+    toast('I due SUB devono essere diversi', 'error');
+    document.getElementById('fus-padre2').value = '';
+  }
+}
+
+async function eseguiFusione() {
+  const p1 = document.getElementById('fus-padre1').value;
+  const p2 = document.getElementById('fus-padre2').value;
+  const codice = document.getElementById('fus-codice').value.trim();
+
+  if (!p1 || !p2) { toast('Seleziona entrambi i SUB padre', 'error'); return; }
+  if (!codice)    { toast('Inserisci il codice del nuovo SUB', 'error'); return; }
+  if (p1 === p2)  { toast('I due SUB devono essere diversi', 'error'); return; }
+
+  if (!confirm(`Fondere SUB ${DB.subs.find(s=>s.id==p1)?.codice} + ${DB.subs.find(s=>s.id==p2)?.codice} → ${codice}?\n\nQuesta operazione è IRREVERSIBILE.`)) return;
+
+  const r = await api('/api/subs/fusione', {
+    method: 'POST',
+    body: JSON.stringify({
+      sub_padre_1_id: parseInt(p1),
+      sub_padre_2_id: parseInt(p2),
+      dati_nuovo_sub: {
+        codice,
+        piano:         document.getElementById('fus-piano').value    || null,
+        sede_id:       document.getElementById('fus-sede').value     || null,
+        categoria_cat: document.getElementById('fus-cat').value      || null,
+        mq_commerciali: parseFloat(document.getElementById('fus-mq').value) || null,
+        rendita:       parseFloat(document.getElementById('fus-rendita').value) || null,
+      },
+      note_fusione: document.getElementById('fus-note').value || null,
+    }),
+  });
+
+  if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
+  closeM('modal-fusione-sub');
+  toast(`✅ Fusione eseguita → nuovo SUB ${codice}`);
+  await loadDD();
+}
+
+// ═══════════════════════════════════════════════════════════
+// P19 — SCISSIONE SUB
+// ═══════════════════════════════════════════════════════════
+function openModalScissioneSub() {
+  _fillSubSelects(['sci-origine'], true);
+  document.getElementById('modal-scissione-sub').classList.add('open');
+}
+
+async function eseguiScissione() {
+  const origId = document.getElementById('sci-origine').value;
+  const c1     = document.getElementById('sci-f1-codice').value.trim();
+  const c2     = document.getElementById('sci-f2-codice').value.trim();
+
+  if (!origId) { toast('Seleziona il SUB origine', 'error'); return; }
+  if (!c1 || !c2) { toast('Inserisci i codici di entrambi i SUB figli', 'error'); return; }
+  if (c1 === c2) { toast('I codici dei figli devono essere diversi', 'error'); return; }
+
+  const origCodice = DB.subs.find(s=>s.id==origId)?.codice || origId;
+  if (!confirm(`Scindere SUB ${origCodice} → ${c1} + ${c2}?\n\nQuesta operazione è IRREVERSIBILE.`)) return;
+
+  const r = await api(`/api/subs/${origId}/scissione`, {
+    method: 'POST',
+    body: JSON.stringify({
+      sub_figlio_1: {
+        codice:        c1,
+        piano:         document.getElementById('sci-f1-piano').value    || null,
+        mq_commerciali: parseFloat(document.getElementById('sci-f1-mq').value) || null,
+        rendita:       parseFloat(document.getElementById('sci-f1-rendita').value) || null,
+        categoria_cat: document.getElementById('sci-f1-cat').value      || null,
+      },
+      sub_figlio_2: {
+        codice:        c2,
+        piano:         document.getElementById('sci-f2-piano').value    || null,
+        mq_commerciali: parseFloat(document.getElementById('sci-f2-mq').value) || null,
+        rendita:       parseFloat(document.getElementById('sci-f2-rendita').value) || null,
+        categoria_cat: document.getElementById('sci-f2-cat').value      || null,
+      },
+      note_scissione: document.getElementById('sci-note').value || null,
+    }),
+  });
+
+  if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
+  closeM('modal-scissione-sub');
+  toast(`✅ Scissione eseguita: ${origCodice} → ${c1} + ${c2}`);
+  await loadDD();
+}
+
+// ═══════════════════════════════════════════════════════════
+// P20 — RIACCATASTAMENTO SUB
+// ═══════════════════════════════════════════════════════════
+function openModalRiaccatastamentoSub() {
+  _fillSubSelects(['ria-origine'], true);
+  document.getElementById('modal-riaccatastamento-sub').classList.add('open');
+}
+
+function onRiaccSubChange() {
+  const id = document.getElementById('ria-origine').value;
+  if (!id) return;
+  const sub = DB.subs.find(s => s.id == id);
+  if (!sub) return;
+  // Pre-compila i campi dal SUB originale
+  document.getElementById('ria-codice').value      = sub.codice + '-R';
+  document.getElementById('ria-foglio').value      = sub.foglio     || '';
+  document.getElementById('ria-particella').value  = sub.particella || '';
+  document.getElementById('ria-subalterno').value  = sub.subalterno || '';
+  document.getElementById('ria-cat').value         = sub.categoria_cat || '';
+  document.getElementById('ria-rendita').value     = sub.rendita    || '';
+}
+
+async function eseguiRiaccatastamento() {
+  const origId = document.getElementById('ria-origine').value;
+  const codice  = document.getElementById('ria-codice').value.trim();
+
+  if (!origId) { toast('Seleziona il SUB origine', 'error'); return; }
+  if (!codice) { toast('Inserisci il nuovo codice', 'error'); return; }
+
+  const origCodice = DB.subs.find(s=>s.id==origId)?.codice || origId;
+  if (!confirm(`Riaccatastate SUB ${origCodice} → ${codice}?\n\nL'originale sarà marcato come riaccatastato.`)) return;
+
+  const r = await api('/api/subs/riaccatastamento', {
+    method: 'POST',
+    body: JSON.stringify({
+      sub_origine_id: parseInt(origId),
+      dati_nuovo_sub: {
+        codice,
+        foglio:       document.getElementById('ria-foglio').value      || null,
+        particella:   document.getElementById('ria-particella').value  || null,
+        subalterno:   document.getElementById('ria-subalterno').value  || null,
+        categoria_cat: document.getElementById('ria-cat').value        || null,
+        rendita:      parseFloat(document.getElementById('ria-rendita').value) || null,
+        note:         document.getElementById('ria-note').value        || null,
+      },
+    }),
+  });
+
+  if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
+  closeM('modal-riaccatastamento-sub');
+  toast(`✅ Riaccatastamento: ${origCodice} → ${codice}`);
+  await loadDD();
+}
+
+// ── Helper: popola select con SUB (solo attivi o tutti) ────
+function _fillSubSelects(ids, activoOnly = true) {
+  const subs = activoOnly
+    ? (DB.subs || []).filter(s => !s.stato_sub || s.stato_sub === 'attivo')
+    : (DB.subs || []);
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '<option value="">— Seleziona —</option>' +
+      subs.map(s => `<option value="${s.id}">${esc(s.codice)} — ${esc(s.sede_nome||'')}</option>`).join('');
+  });
 }
