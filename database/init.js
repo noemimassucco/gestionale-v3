@@ -122,6 +122,21 @@ async function initDB() {
     }
 
 
+
+    // ── Migrazione P18-20: stato SUB ────────────────────────
+    for (const [col, def] of [
+      ['stato_sub',           "VARCHAR(20) DEFAULT 'attivo'"],
+      ['data_cambio_stato',   'DATE'],
+      ['sub_destinazione_id', 'INTEGER'],
+    ]) {
+      try { await client.query(`ALTER TABLE subs ADD COLUMN IF NOT EXISTS ${col} ${def}`); } catch(e) {}
+    }
+    // FK sub_destinazione_id → subs(id) (aggiunta separatamente perché richiede la tabella già pronta)
+    try {
+      await client.query(`ALTER TABLE subs ADD CONSTRAINT IF NOT EXISTS fk_sub_dest
+        FOREIGN KEY (sub_destinazione_id) REFERENCES subs(id) ON DELETE SET NULL`);
+    } catch(e) {}
+
     // ── Tabella promemoria (P17) ─────────────────────────────
     await client.query(`
       CREATE TABLE IF NOT EXISTS promemoria (
