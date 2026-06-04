@@ -66,7 +66,8 @@ async function saveMan(){
   const editId=document.getElementById('modal-man').__editId;
   if(editId){
     const v=id=>document.getElementById(id)?.value||'';
-    await api('/api/manutenzioni/'+editId,{method:'PUT',body:JSON.stringify({sub_id:parseInt(v('man-sub'))||null,sede_id:parseInt(v('man-sede'))||null,fornitore_id:parseInt(v('man-forn'))||null,tipo:v('man-tipo'),descrizione:v('man-desc')||null,priorita:v('man-prior'),stato:v('man-stato'),data_programmata:v('man-dprog')||null,costo:v('man-costo')||null,note:v('man-note')||null})});
+    const r=await api('/api/manutenzioni/'+editId,{method:'PUT',body:JSON.stringify({sub_id:parseInt(v('man-sub'))||null,sede_id:parseInt(v('man-sede'))||null,fornitore_id:parseInt(v('man-forn'))||null,tipo:v('man-tipo'),descrizione:v('man-desc')||null,priorita:v('man-prior'),stato:v('man-stato'),data_programmata:v('man-dprog')||null,costo:v('man-costo')||null,note:v('man-note')||null})});
+    if(!r||r.error){toast('Errore: '+(r?.error||'?'),'error');return;}
     document.getElementById('modal-man').__editId=null;
     closeM('modal-man');loadMan();toast('Manutenzione aggiornata ✓');return;
   }
@@ -78,8 +79,10 @@ async function saveMan(){
     data_programmata:v('man-data-prog')||null,data_eseguita:v('man-data-eseg')||null,
     ricorrenza:v('man-ric')||null,costo:v('man-costo')||null,
     descrizione:v('man-desc'),note:v('man-note')};
-  if(manEditId)await api('/api/manutenzioni/'+manEditId,{method:'PUT',body:JSON.stringify(data)});
-  else await api('/api/manutenzioni',{method:'POST',body:JSON.stringify(data)});
+  const r=manEditId
+    ? await api('/api/manutenzioni/'+manEditId,{method:'PUT',body:JSON.stringify(data)})
+    : await api('/api/manutenzioni',{method:'POST',body:JSON.stringify(data)});
+  if(!r||r.error){toast('Errore: '+(r?.error||'?'),'error');return;}
   closeM('modal-man');loadMan();toast('Manutenzione salvata ✓');
 }
 

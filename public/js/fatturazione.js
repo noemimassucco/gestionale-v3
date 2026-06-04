@@ -230,15 +230,13 @@ async function saveFatt() {
     numero_fattura: v('fatt-nfatt') || null, data_fatturazione: v('fatt-dfatt') || null,
     stato_pagamento: v('fatt-statopag'), note: v('fatt-note') || null,
   };
-  if (editId) {
-    await api('/api/fatturazione/' + editId, { method: 'PUT', body: JSON.stringify(payload) });
-    toast('Ordine aggiornato ✓');
-  } else {
-    await api('/api/fatturazione', { method: 'POST', body: JSON.stringify(payload) });
-    toast('Ordine creato ✓');
-  }
+  const r = editId
+    ? await api('/api/fatturazione/' + editId, { method: 'PUT', body: JSON.stringify(payload) })
+    : await api('/api/fatturazione', { method: 'POST', body: JSON.stringify(payload) });
+  if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
   closeM('modal-fatt');
   loadFatturazione();
+  toast(editId ? 'Ordine aggiornato ✓' : 'Ordine creato ✓');
 }
 
 async function openEditFatt(id) {

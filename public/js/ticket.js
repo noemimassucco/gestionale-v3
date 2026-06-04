@@ -48,17 +48,19 @@ async function saveTicket(){
   const editId=document.getElementById('modal-ticket').__editId;
   if(editId){
     const v=id=>document.getElementById(id)?.value||'';
-    await api('/api/ticket/'+editId,{method:'PUT',body:JSON.stringify({titolo:v('tick-titolo'),descrizione:v('tick-desc')||null,categoria:v('tick-cat')||null,priorita:v('tick-prior'),stato:'aperto',note:v('tick-note')||null})});
+    const r=await api('/api/ticket/'+editId,{method:'PUT',body:JSON.stringify({titolo:v('tick-titolo'),descrizione:v('tick-desc')||null,categoria:v('tick-cat')||null,priorita:v('tick-prior'),stato:'aperto',note:v('tick-note')||null})});
+    if(!r||r.error){toast('Errore: '+(r?.error||'?'),'error');return;}
     document.getElementById('modal-ticket').__editId=null;
     closeM('modal-ticket');loadTicket();toast('Ticket aggiornato ✓');return;
   }
   const v=id=>document.getElementById(id)?.value||'';
   if(!v('tick-titolo')){toast('Titolo obbligatorio','error');return;}
-  await api('/api/ticket',{method:'POST',body:JSON.stringify({
+  const r=await api('/api/ticket',{method:'POST',body:JSON.stringify({
     sub_id:parseInt(v('tick-sub'))||null,inquilino_id:parseInt(v('tick-inq'))||null,
     titolo:v('tick-titolo'),descrizione:v('tick-desc'),categoria:v('tick-cat'),
     priorita:v('tick-prior'),note:v('tick-note')
   })});
+  if(!r||r.error){toast('Errore: '+(r?.error||'?'),'error');return;}
   closeM('modal-ticket');loadTicket();toast('Ticket creato ✓');
 }
 

@@ -393,6 +393,7 @@ async function loadClienti(stato = 'attivo') {
       <td>${BADGE[i.stato_calcolato] || BADGE.ex}</td>
       <td>
         <button class="btn btn-xs btn-gray" onclick="openAna('inquilino',${i.id})">✏️</button>
+        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id}, i.ragione_sociale||'')">🏠</button>
         <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})">🗑</button>
       </td>
     </tr>`).join('');
@@ -558,3 +559,58 @@ async function _updateClienteTabCounts() {
   } catch(_) {}
 }
 
+
+
+// ── Assegna cliente a SUB ────────────────────────────────────
+let _assegnaInquilinoId = null;
+
+function openAssegnaSub(inquilinoId, nomeInquilino) {
+  _assegnaInquilinoId = inquilinoId;
+  document.getElementById('assegna-sub-nome').textContent = 'Cliente: ' + nomeInquilino;
+
+  // Popola SUB liberi
+  const liberi = (DB.subs || []).filter(s =>
+    (!s.stato_occupazione || s.stato_occupazione === 'libero') &&
+    (!s.stato_sub || s.stato_sub === 'attivo')
+  );
+  const sel = document.getElementById('assegna-sub-sel');
+  sel.innerHTML = '<option value="">— Seleziona SUB —</option>' +
+    liberi.map(s =>
+      '<option value="' + s.id + '">' +
+      esc(s.codice) + (s.sede_nome ? ' — ' + esc(s.sede_nome) : '') +
+      (s.mq_commerciali ? ' (' + s.mq_commerciali + ' mq)' : '') +
+      '</option>'
+    ).join('');
+
+  // Reset campi
+  document.getElementById('assegna-data-inizio').value = new Date().toISOString().split('T')[0];
+  document.getElementById('assegna-canone').value = '';
+  document.getElementById('assegna-tipo').value = '';
+  document.getElementById('assegna-note').value = '';
+
+  document.getElementById('modal-assegna-sub').classList.add('open');
+}
+
+async function salvaAssegnaSub() {
+  const subId = document.getElementById('assegna-sub-sel').value;
+  if (!subId) { toast('Seleziona un SUB', 'error'); return; }
+  if (!_assegnaInquilinoId) { toast('Errore: nessun cliente selezionato', 'error'); return; }
+
+  const r = await api('/api/subs/' + subId + '/cambia-inquilino', {
+    method: 'POST',
+    body: JSON.stringify({
+      nuovo_inquilino_id: _assegnaInquilinoId,
+      data_cambio:        document.getElementById('assegna-data-inizio').value || null,
+      canone_mensile:     document.getElementById('assegna-canone').value || null,
+      tipo_contratto:     document.getElementById('assegna-tipo').value || null,
+      note:               document.getElementById('assegna-note').value || null,
+    }),
+  });
+
+  if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
+
+  const subCodice = DB.subs.find(s => s.id == subId)?.codice || subId;
+  closeM('modal-assegna-sub');
+  toast('✅ Assegnato a SUB ' + subCodice);
+  await loadDD();
+}

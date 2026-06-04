@@ -2,13 +2,43 @@
 // misc.js — remaining utility functions
 // ═══════════════════════════════════════════════════════════
 
-async function confirmPr(){pending.prezzo=document.getElementById('pr-quick').value;closeM('modal-pr');await checkDup(pending);}
+async function confirmPr(){
+  const pr = document.getElementById('pr-quick').value;
+  if (!pr || parseFloat(pr) <= 0) { toast('Inserisci un importo valido', 'error'); return; }
+  pending.prezzo = pr;
+  closeM('modal-pr');
+  await checkDup(pending);
+}
 
-async function checkDup(data){if(!editId){const r=await api('/api/interventi/check-duplicate',{method:'POST',body:JSON.stringify(data)});if(r?.duplicates?.length){pending=data;document.getElementById('dup-n').textContent=r.duplicates.length;document.getElementById('dup-list').innerHTML=r.duplicates.map(d=>`<div class="alert-item">📅 ${d.data_intervento?fmt(d.data_intervento):'—'} — ${esc((d.descrizione||'').slice(0,60))}${d.prezzo?` <strong class="text-gold">€ ${parseFloat(d.prezzo).toLocaleString('it-IT')}</strong>`:''}</div>`).join('');document.getElementById('modal-dup').classList.add('open');return;}}await doSave(data);}
+async function checkDup(data){
+  if(!editId){
+    const r=await api('/api/interventi/check-duplicate',{method:'POST',body:JSON.stringify(data)});
+    if(r?.duplicates?.length){
+      pending=data;
+      document.getElementById('dup-n').textContent=r.duplicates.length;
+      document.getElementById('dup-list').innerHTML=r.duplicates.map(d=>`<div class="alert-item">📅 ${d.data_intervento?fmt(d.data_intervento):'—'} — ${esc((d.descrizione||'').slice(0,60))}${d.prezzo?` <strong class="text-gold">€ ${parseFloat(d.prezzo).toLocaleString('it-IT')}</strong>`:''}</div>`).join('');
+      document.getElementById('modal-dup').classList.add('open');
+      return;
+    }
+  }
+  await doSave(data);
+}
 
-async function forceS(){closeM('modal-dup');await doSave(pending);}
+async function forceS(){ closeM('modal-dup'); await doSave(pending); }
 
-async function doSave(data){if(editId){await api('/api/interventi/'+editId,{method:'PUT',body:JSON.stringify(data)});toast('Aggiornato ✓');}else{await api('/api/interventi',{method:'POST',body:JSON.stringify(data)});toast('Salvato ✓');}closeM('modal-int');loadInt();}
+async function doSave(data){
+  let r;
+  if(editId){
+    r = await api('/api/interventi/'+editId, {method:'PUT', body:JSON.stringify(data)});
+  } else {
+    r = await api('/api/interventi', {method:'POST', body:JSON.stringify(data)});
+  }
+  if (!r || r.error) { toast('Errore salvataggio: ' + (r?.error || 'risposta vuota'), 'error'); return; }
+  closeM('modal-int');
+  await loadInt();
+  toast(editId ? 'Intervento aggiornato ✓' : 'Intervento salvato ✓');
+  editId = null;
+}
 
 async function upAll(input,intId){for(const f of input.files){const tipo=f.type.startsWith('image/')?'foto':f.name.toLowerCase().endsWith('.pdf')?'fattura':'documento';const fd=new FormData();fd.append('file',f);fd.append('intervento_id',intId);fd.append('tipo',tipo);toast('Caricamento…','warning');await apiUp('/api/allegati',fd);toast('Caricato ✓');}openDet(intId);}
 
@@ -940,6 +970,7 @@ async function saveCambioInquilino() {
     tipo_contratto:v('ci-tipo')||null,
     note:v('ci-note'),
   })});
+  if (!r || r.error) { toast('Errore: ' + (r?.error || 'risposta vuota'), 'error'); return; }
   closeM('modal-cambio-inq');
   await loadDD();
   const data=await api('/api/subs/'+currentSubId+'/detail');

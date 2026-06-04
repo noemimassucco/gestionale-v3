@@ -133,7 +133,8 @@ async function saveAna(){
   else if(anaType==='sede'){if(!v('a-nome')){toast('Nome obbligatorio','error');return;}data={nome:v('a-nome'),indirizzo:v('a-ind'),citta:v('a-cit'),note:v('a-note')};url='/api/sedi';}
   else if(anaType==='categoria'){if(!v('a-nome')){toast('Nome obbligatorio','error');return;}data={nome:v('a-nome'),icona:v('a-ico'),colore:v('a-col')};url='/api/categorie';}
   if(anaEditId){url+='/'+anaEditId;method='PUT';}
-  await api(url,{method,body:JSON.stringify(data)});
+  const r = await api(url,{method,body:JSON.stringify(data)});
+  if (!r || r.error) { toast('Errore: ' + (r?.error || 'risposta vuota'), 'error'); return; }
   closeM('modal-ana');
   toast('✅ Salvato');
   // Non-blocking: aggiorna UI subito, reload in background
