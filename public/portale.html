@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portale Inquilino</title>
+  <style>
+    :root {
+      --bg:#f7f8f4; --bg2:#f0f2eb; --card:#ffffff; --card-alt:#fafbf7;
+      --text:#1f2937; --text-strong:#111827; --muted:#6b7280;
+      --primary:#6b8e6b; --primary-dark:#4f6f4f; --primary-bg:#e8f0e6;
+      --accent:#c19a6b; --accent-bg:#f5ede0;
+      --success:#4f7f4f; --success-bg:#e3efde;
+      --warning:#b8860b; --warning-bg:#faf0d4;
+      --danger:#a04848;  --danger-bg:#f5dede;
+      --border:#e5e7e0;  --border-2:#d4dccc;
+      --shadow-sm:0 1px 2px rgba(60,70,50,.04);
+      --shadow:0 2px 8px rgba(60,70,50,.06);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* ── Login ── */
+    #login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,var(--primary-bg),var(--bg2)); }
+    .login-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:36px 32px; width:100%; max-width:380px; box-shadow:var(--shadow); }
+    .login-card h1 { font-size:22px; color:var(--text-strong); margin-bottom:4px; }
+    .login-card p  { font-size:13px; color:var(--muted); margin-bottom:24px; }
+    .field { margin-bottom:14px; }
+    .field label { display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px; }
+    .field input, .field select, .field textarea {
+      width:100%; padding:10px 12px; border:1px solid var(--border-2);
+      border-radius:7px; font-size:13px; color:var(--text); background:var(--card);
+      outline:none; font-family:inherit; transition:border .15s;
+    }
+    .field input:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-bg); }
+    .btn { padding:10px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-primary:hover { background:var(--primary-dark); }
+    .btn-gray { background:var(--bg2); color:var(--text); border:1px solid var(--border); }
+    .btn-full { width:100%; justify-content:center; }
+    .btn-sm { padding:6px 12px; font-size:12px; }
+    .btn-xs { padding:3px 8px; font-size:11px; }
+
+    /* ── App layout ── */
+    #app { display:none; min-height:100vh; flex-direction:column; }
+    #app.show { display:flex; }
+
+    .topbar { background:var(--card); border-bottom:1px solid var(--border); padding:0 20px; height:54px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm); position:sticky; top:0; z-index:100; }
+    .topbar-logo { font-size:20px; margin-right:4px; }
+    .topbar-title { font-size:15px; font-weight:600; color:var(--text-strong); flex:1; }
+    .topbar-user { font-size:12px; color:var(--muted); }
+
+    .main { flex:1; padding:20px; max-width:900px; margin:0 auto; width:100%; }
+
+    /* ── Nav tabs ── */
+    .nav-tabs { display:flex; gap:4px; margin-bottom:20px; border-bottom:2px solid var(--border); padding-bottom:0; flex-wrap:wrap; }
+    .nav-tab { padding:8px 16px; border:none; background:none; cursor:pointer; font-size:13px; font-weight:500; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-2px; border-radius:6px 6px 0 0; transition:all .15s; }
+    .nav-tab.active { color:var(--primary-dark); font-weight:600; border-bottom:2px solid var(--primary); }
+    .nav-tab:hover:not(.active) { background:var(--bg2); color:var(--text); }
+
+    /* ── Cards ── */
+    .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; box-shadow:var(--shadow-sm); margin-bottom:12px; }
+    .card-title { font-size:13px; font-weight:600; color:var(--text-strong); margin-bottom:12px; }
+
+    .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-bottom:20px; }
+    .kpi-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px 16px; text-align:center; box-shadow:var(--shadow-sm); }
+    .kpi-val { font-size:22px; font-weight:700; color:var(--primary-dark); font-family:monospace; }
+    .kpi-lbl { font-size:11px; color:var(--muted); margin-top:3px; }
+
+    .list-row { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    .list-row:last-child { border-bottom:none; }
+    .list-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+    .list-body { flex:1; min-width:0; }
+    .list-title { font-size:13px; font-weight:500; color:var(--text-strong); }
+    .list-meta  { font-size:11px; color:var(--muted); margin-top:2px; }
+    .list-right { text-align:right; flex-shrink:0; }
+
+    .badge { display:inline-block; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; }
+    .badge-ok     { background:var(--success-bg); color:var(--success); }
+    .badge-warn   { background:var(--warning-bg); color:var(--warning); }
+    .badge-danger { background:var(--danger-bg);  color:var(--danger);  }
+    .badge-info   { background:var(--primary-bg); color:var(--primary-dark); }
+    .badge-muted  { background:var(--bg2);        color:var(--muted); }
+
+    .empty { text-align:center; padding:32px; color:var(--muted); font-size:13px; }
+
+    /* Toast */
+    #toast { position:fixed; bottom:24px; right:24px; padding:12px 18px; border-radius:9px; font-size:13px; font-weight:500; display:none; z-index:9999; background:#1e293b; color:#fff; max-width:300px; }
+    #toast.error { background:var(--danger-bg); color:var(--danger); border:1px solid var(--border-2); }
+
+    @media(max-width:600px) { .main { padding:12px; } .kpi-grid { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div style="font-size:32px;margin-bottom:8px;">🏢</div>
+    <h1>Portale Inquilino</h1>
+    <p>Accedi per visualizzare il tuo immobile, pagamenti e documenti.</p>
+    <div class="field"><label>Email</label><input type="email" id="p-email" placeholder="mario@esempio.it" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="field"><label>Password</label><input type="password" id="p-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="login-err" style="font-size:12px;color:var(--danger);margin-bottom:12px;display:none;"></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Accedi</button>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+  <div class="topbar">
+    <span class="topbar-logo">🏢</span>
+    <span class="topbar-title">Portale Inquilino</span>
+    <span class="topbar-user" id="topbar-nome"></span>
+    <button class="btn btn-gray btn-sm" onclick="doLogout()">Esci</button>
+  </div>
+
+  <div class="main">
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showTab('dashboard',this)">🏠 Dashboard</button>
+      <button class="nav-tab" onclick="showTab('pagamenti',this)">💶 Pagamenti</button>
+      <button class="nav-tab" onclick="showTab('bollette',this)">⚡ Bollette</button>
+      <button class="nav-tab" onclick="showTab('documenti',this)">📄 Documenti</button>
+      <button class="nav-tab" onclick="showTab('ticket',this)">🎫 Segnalazioni</button>
+    </div>
+
+    <div id="tab-dashboard"></div>
+    <div id="tab-pagamenti" style="display:none"></div>
+    <div id="tab-bollette"  style="display:none"></div>
+    <div id="tab-documenti" style="display:none"></div>
+    <div id="tab-ticket"    style="display:none"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════
+let pToken = localStorage.getItem('portale_token');
+let pUser  = null;
+let pData  = {};
+
+// ═══════════════════════════════════════════════════════════
+// Bootstrap
+// ═══════════════════════════════════════════════════════════
+async function init() {
+  if (!pToken) { showLoginScreen(); return; }
+  const me = await api('/api/portale/me');
+  if (!me) { showLoginScreen(); return; }
+  pUser = me;
+  showApp();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Auth
+// ═══════════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('p-email').value.trim();
+  const pwd   = document.getElementById('p-pwd').value;
+  const errEl = document.getElementById('login-err');
+  errEl.style.display = 'none';
+  if (!email || !pwd) { errEl.textContent='Email e password obbligatori'; errEl.style.display=''; return; }
+
+  const r = await fetch('/api/portale/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email, password:pwd})
+  });
+  const data = await r.json();
+  if (!r.ok) { errEl.textContent = data.error || 'Accesso non riuscito'; errEl.style.display=''; return; }
+
+  pToken = data.token;
+  localStorage.setItem('portale_token', pToken);
+  pUser = { nome: data.nome, inquilino_id: data.inquilino_id };
+  showApp();
+}
+
+function doLogout() {
+  localStorage.removeItem('portale_token');
+  pToken = null; pUser = null; pData = {};
+  showLoginScreen();
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').classList.remove('show');
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  document.getElementById('topbar-nome').textContent = pUser.nome || 'Inquilino';
+  showTab('dashboard', document.querySelector('.nav-tab.active'));
+}
+
+// ═══════════════════════════════════════════════════════════
+// API helper
+// ═══════════════════════════════════════════════════════════
+async function api(url, opts={}) {
+  const h = { 'Content-Type':'application/json', ...(pToken ? {Authorization:'Bearer '+pToken} : {}), ...(opts.headers||{}) };
+  try {
+    const r = await fetch(url, {...opts, headers:h});
+    if (r.status===401) { doLogout(); return null; }
+    if (!r.ok) { toast('Errore ' + r.status, 'error'); return null; }
+    return r.json();
+  } catch(e) { toast('Connessione persa', 'error'); return null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Tab navigation
+// ═══════════════════════════════════════════════════════════
+function showTab(name, btn) {
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  ['dashboard','pagamenti','bollette','documenti','ticket'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
+  });
+  const loaders = { dashboard:loadDashboard, pagamenti:loadPagamenti, bollette:loadBollette, documenti:loadDocumenti, ticket:loadTicket };
+  if (loaders[name]) loaders[name]();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Dashboard
+// ═══════════════════════════════════════════════════════════
+async function loadDashboard() {
+  const el = document.getElementById('tab-dashboard');
+  el.innerHTML = '<div class="empty">Caricamento…</div>';
+  const [subs, pagamenti, bollette, ticket] = await Promise.all([
+    api('/api/portale/miei-sub'),
+    api('/api/portale/pagamenti'),
+    api('/api/portale/bollette'),
+    api('/api/portale/ticket'),
+  ]);
+  if (!subs) return;
+  pData = {subs, pagamenti:pagamenti||[], bollette:bollette||[], ticket:ticket||[]};
+
+  const nScadenze = (bollette||[]).filter(b => b.stato==='da_pagare').length;
+  const nTicketAperti = (ticket||[]).filter(t => t.stato!=='chiuso').length;
+  const ultimoPag = (pagamenti||[]).find(p => p.stato==='pagato');
+
+  let html = '<div class="kpi-grid">' +
+    kpi((subs||[]).length, 'Immobili') +
+    kpi(nScadenze > 0 ? '⚠️ '+nScadenze : '✓ 0', 'Bollette da pagare', nScadenze > 0 ? 'var(--warning)' : 'var(--success)') +
+    kpi(nTicketAperti, 'Segnalazioni aperte') +
+    (ultimoPag ? kpi('€ '+parseFloat(ultimoPag.importo).toLocaleString('it-IT'), 'Ultimo pagamento') : '') +
+  '</div>';
+
+  // Miei immobili
+  if (subs && subs.length) {
+    html += '<div class="card"><div class="card-title">🏢 I tuoi immobili</div>';
+    subs.forEach(s => {
+      html += '<div class="list-row">' +
+        '<div class="list-icon">🏠</div>' +
+        '<div class="list-body">' +
+          '<div class="list-title">' + esc(s.codice) + (s.sede_nome ? ' — ' + esc(s.sede_nome) : '') + '</div>' +
+          '<div class="list-meta">' +
+            (s.indirizzo_completo ? esc(s.indirizzo_completo) + ' · ' : '') +
+            (s.mq_commerciali ? s.mq_commerciali + ' mq' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="list-right">' +
+          (s.canone_annuo ? '<div style="font-weight:600;font-size:13px;">€ ' + (parseFloat(s.canone_annuo)/12).toLocaleString('it-IT',{maximumFractionDigits:0}) + '/mese</div>' : '') +
+          '<div style="font-size:11px;color:var(--muted);">' + (s.tipo_contratto||'') + '</div>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function kpi(val, lbl, color) {
+  return '<div class="kpi-card">' +
+    '<div class="kpi-val" style="' + (color ? 'color:'+color : '') + '">' + val + '</div>' +
+    '<div class="kpi-lbl">' + lbl + '</div>' +
+  '</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// Pagamenti
+// ═══════════════════════════════════════════════════════════
+async function loadPagamenti() {
+  const el = document.getElementById('tab-pagamenti');
+  el.innerHTML = '<div class="empty">Caricamento…</div>';
+  const data = pData.pagamenti || await api('/api/portale/pagamenti');
+  if (!data) return;
+
+  const MESI = ['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const STATO_BADGE = { pagato:'badge-ok', da_pagare:'badge-danger', parziale:'badge-warn' };
+
+  let html = '<div class="card"><div class="card-title">💶 Pagamenti affitto (' + data.length + ')</div>';
+  if (!data.length) { html += '<div class="empty">Nessun pagamento registrato.</div>'; }
+  else {
+    data.forEach(p => {
+      html += '<div class="list-row">' +
+        '<div class="list-icon">' + (p.stato==='pagato'?'✅':'🔴') + '</div>' +
+        '<div class="list-body">' +
+          '<div class="list-title">' + MESI[p.mese] + ' ' + p.anno + ' — ' + esc(p.sub_codice||'') + '</div>' +
+          '<div class="list-meta">' + (p.data_pagamento ? 'Pagato il ' + fmt(p.data_pagamento) : 'Non ancora pagato') + (p.note?' · '+esc(p.note):'') + '</div>' +
+        '</div>' +
+        '<div class="list-right">' +
+          '<div style="font-weight:600;">€ ' + parseFloat(p.importo).toLocaleString('it-IT',{minimumFractionDigits:2}) + '</div>' +
+          '<span class="badge ' + (STATO_BADGE[p.stato]||'badge-muted') + '">' + (p.stato||'—') + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Bollette
+// ═══════════════════════════════════════════════════════════
+async function loadBollette() {
+  const el = document.getElementById('tab-bollette');
+  el.innerHTML = '<div class="empty">Caricamento…</div>';
+  const data = pData.bollette || await api('/api/portale/bollette');
+  if (!data) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const TIPO_ICON = {luce:'💡',gas:'🔥',acqua:'💧',telefono:'📞',internet:'🌐',condominio:'🏢',altro:'📄'};
+
+  let html = '<div class="card"><div class="card-title">⚡ Bollette (' + data.length + ')</div>';
+  if (!data.length) { html += '<div class="empty">Nessuna bolletta.</div>'; }
+  else {
+    data.forEach(b => {
+      const scad = b.scadenza ? new Date(b.scadenza) : null;
+      const scaduto = scad && scad < today && b.stato !== 'pagata';
+      const badgeCls = b.stato==='pagata'?'badge-ok': scaduto?'badge-danger':'badge-warn';
+      html += '<div class="list-row">' +
+        '<div class="list-icon">' + (TIPO_ICON[b.tipo]||'📄') + '</div>' +
+        '<div class="list-body">' +
+          '<div class="list-title">' + esc(b.tipo) + (b.fornitore_nome?' — '+esc(b.fornitore_nome):'') + '</div>' +
+          '<div class="list-meta">' +
+            esc(b.sub_codice||'') + (b.scadenza?' · Scade '+fmt(b.scadenza):'') +
+            (b.numero?' · N. '+esc(b.numero):'') +
+          '</div>' +
+        '</div>' +
+        '<div class="list-right">' +
+          (b.importo ? '<div style="font-weight:600;">€ ' + parseFloat(b.importo).toLocaleString('it-IT',{minimumFractionDigits:2}) + '</div>' : '') +
+          '<span class="badge ' + badgeCls + '">' + (b.stato||'—') + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Documenti
+// ═══════════════════════════════════════════════════════════
+async function loadDocumenti() {
+  const el = document.getElementById('tab-documenti');
+  el.innerHTML = '<div class="empty">Caricamento…</div>';
+  const data = pData.documenti || await api('/api/portale/documenti');
+  if (!data) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const ICON  = {fattura:'🧾',contratto:'📄',preventivo:'💼',verbale:'📋',catastale:'🏛️',planimetria:'📐',altro:'📂'};
+
+  let html = '<div class="card"><div class="card-title">📄 Documenti scaricabili (' + data.length + ')</div>';
+  if (!data.length) { html += '<div class="empty">Nessun documento disponibile.</div>'; }
+  else {
+    data.forEach(d => {
+      const scad = d.scadenza ? new Date(d.scadenza) : null;
+      const badgeCls = scad && scad < today ? 'badge-danger' : scad ? 'badge-warn' : '';
+      html += '<div class="list-row">' +
+        '<div class="list-icon">' + (ICON[d.tipo]||'📂') + '</div>' +
+        '<div class="list-body">' +
+          '<div class="list-title">' + esc(d.nome||'Documento') + '</div>' +
+          '<div class="list-meta">' +
+            esc(d.tipo||'') + (d.data_documento?' · '+fmt(d.data_documento):'') +
+            (scad ? ' · Scade '+fmt(d.scadenza) : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="list-right" style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">' +
+          (badgeCls ? '<span class="badge '+badgeCls+'">' + (scad < today ? 'Scaduto' : 'In scadenza') + '</span>' : '') +
+          '<a href="' + esc(d.url||'#') + '" target="_blank" class="btn btn-gray btn-xs">⬇ Scarica</a>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Ticket
+// ═══════════════════════════════════════════════════════════
+async function loadTicket() {
+  const el = document.getElementById('tab-ticket');
+  const data = await api('/api/portale/ticket');
+  const subs  = pData.subs || [];
+
+  const STATO_C = {aperto:'badge-warn', in_lavorazione:'badge-info', chiuso:'badge-ok', annullato:'badge-muted'};
+
+  let html = '<div class="card" style="margin-bottom:12px;">' +
+    '<div class="card-title">➕ Nuova segnalazione</div>' +
+    '<div class="field"><label>Immobile (opzionale)</label><select id="new-tick-sub"><option value="">— Seleziona —</option>' +
+      subs.map(s => '<option value="'+s.id+'">'+esc(s.codice)+' — '+esc(s.sede_nome||'')+'</option>').join('') +
+    '</select></div>' +
+    '<div class="field"><label>Titolo *</label><input type="text" id="new-tick-title" placeholder="Es. Infiltrazione tetto bagno"></div>' +
+    '<div class="field"><label>Descrizione</label><textarea id="new-tick-desc" rows="3" placeholder="Descriva il problema…"></textarea></div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+      '<div class="field"><label>Categoria</label><select id="new-tick-cat"><option value="">—</option><option>Idraulico</option><option>Elettrico</option><option>Strutturale</option><option>Climatizzazione</option><option>Sicurezza</option><option>Altro</option></select></div>' +
+      '<div class="field"><label>Priorità</label><select id="new-tick-pri"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>' +
+    '</div>' +
+    '<button class="btn btn-primary" onclick="submitTicket()">📤 Invia segnalazione</button>' +
+  '</div>';
+
+  html += '<div class="card"><div class="card-title">🎫 Le mie segnalazioni</div>';
+  if (!data || !data.length) {
+    html += '<div class="empty">Nessuna segnalazione inviata.</div>';
+  } else {
+    data.forEach(t => {
+      html += '<div class="list-row">' +
+        '<div class="list-icon">' + (t.stato==='chiuso'?'✅':t.priorita==='urgente'?'🚨':'🎫') + '</div>' +
+        '<div class="list-body">' +
+          '<div class="list-title">' + esc(t.titolo) + '</div>' +
+          '<div class="list-meta">' +
+            esc(t.sub_codice||'') + (t.categoria?' · '+esc(t.categoria):'') + ' · ' + fmt(t.created_at) +
+            (t.data_chiusura ? ' · Chiuso '+fmt(t.data_chiusura) : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="list-right">' +
+          '<span class="badge '+(STATO_C[t.stato]||'badge-muted')+'">' + esc(t.stato||'aperto') + '</span>' +
+        '</div>' +
+      '</div>';
+    });
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function submitTicket() {
+  const titolo = document.getElementById('new-tick-title').value.trim();
+  if (!titolo) { toast('Inserisci il titolo della segnalazione', 'error'); return; }
+  const r = await api('/api/portale/ticket', {
+    method:'POST',
+    body: JSON.stringify({
+      sub_id:     document.getElementById('new-tick-sub').value  || null,
+      titolo,
+      descrizione: document.getElementById('new-tick-desc').value || null,
+      categoria:   document.getElementById('new-tick-cat').value  || null,
+      priorita:    document.getElementById('new-tick-pri').value  || 'normale',
+    })
+  });
+  if (!r) return;
+  toast('✅ Segnalazione inviata');
+  document.getElementById('new-tick-title').value = '';
+  document.getElementById('new-tick-desc').value  = '';
+  loadTicket();
+}
+
+// ═══════════════════════════════════════════════════════════
+// Utils
+// ═══════════════════════════════════════════════════════════
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(d) {
+  if (!d) return '—';
+  const s = String(d).split('T')[0].split('-');
+  return s.length===3 ? s[2]+'/'+s[1]+'/'+s[0] : d;
+}
+let tT;
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = type||''; el.style.display = 'block';
+  clearTimeout(tT); tT = setTimeout(()=>el.style.display='none', 4000);
+}
+
+// ── Start ──
+init();
+</script>
+</body>
+</html>
