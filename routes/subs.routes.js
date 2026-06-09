@@ -169,7 +169,7 @@ router.post('/api/subs/import-bulk', authMiddleware, async (req, res) => {
         if (existing.rows.length) {
           await client.query(
             'UPDATE subs SET sede_id=COALESCE($1,sede_id),piano=COALESCE($2,piano),indirizzo_completo=COALESCE($3,indirizzo_completo),foglio=COALESCE($4,foglio),particella=COALESCE($5,particella),subalterno=COALESCE($6,subalterno),categoria_cat=COALESCE($7,categoria_cat),mq_commerciali=COALESCE($8::numeric,mq_commerciali),mq_calpestabili=COALESCE($9::numeric,mq_calpestabili),rendita=COALESCE($10::numeric,rendita),stato_occupazione=COALESCE($11,stato_occupazione),classe_energetica=COALESCE($12,classe_energetica),anno_costruzione=COALESCE($13::int,anno_costruzione),millesimi=COALESCE($14::numeric,millesimi) WHERE id=$15',
-            [sede_id,row.piano||null,row.indirizzo_completo||null,row.foglio||null,row.particella||null,row.subalterno||null,row.categoria_cat||null,row.mq_commerciali||null,row.mq_calpestabili||null,row.rendita||null,row.stato_occupazione||null,row.classe_energetica||null,row.anno_costruzione||null,existing.rows[0].id]
+            [sede_id,row.piano||null,row.indirizzo_completo||null,row.foglio||null,row.particella||null,row.subalterno||null,row.categoria_cat||null,row.mq_commerciali||null,row.mq_calpestabili||null,row.rendita||null,row.stato_occupazione||null,row.classe_energetica||null,row.anno_costruzione||null,row.millesimi||null,existing.rows[0].id]
           );
           updated++;
         } else {

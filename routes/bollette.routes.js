@@ -26,6 +26,8 @@ router.get('/api/bollette', authMiddleware, async (req, res) => {
 });
 
 router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, res) => {
+  const f = req.body;
+  const { sub_id } = f;
   // ── Blocco sicurezza: SUB deve essere attivo ──────────────
   if (sub_id) {
     const subCheck = await pool.query('SELECT stato_sub FROM subs WHERE id=$1', [sub_id]);
@@ -33,7 +35,6 @@ router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, 
       return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
     }
   }
-  const f = req.body;
   let url=null,cloudinary_id=null;
   if(req.file){
     if(process.env.CLOUDINARY_CLOUD_NAME){

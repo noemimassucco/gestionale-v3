@@ -17,6 +17,7 @@ router.get('/api/pagamenti-affitto', authMiddleware, async (req, res) => {
 });
 
 router.post('/api/pagamenti-affitto', authMiddleware, async (req, res) => {
+  const { sub_id, inquilino_id, anno, mese, importo, data_pagamento, stato, note } = req.body;
   // ── Blocco sicurezza: SUB deve essere attivo ──────────────
   if (sub_id) {
     const subCheck = await pool.query('SELECT stato_sub FROM subs WHERE id=$1', [sub_id]);
@@ -24,7 +25,6 @@ router.post('/api/pagamenti-affitto', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
     }
   }
-  const { sub_id, inquilino_id, anno, mese, importo, data_pagamento, stato, note } = req.body;
   if (!sub_id || !anno || !mese || !importo) return res.status(400).json({ error: 'Campi obbligatori mancanti' });
   const r = await pool.query(
     'INSERT INTO pagamenti_affitto (sub_id,inquilino_id,anno,mese,importo,data_pagamento,stato,note,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',

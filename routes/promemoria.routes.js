@@ -48,6 +48,7 @@ router.post('/api/promemoria', authMiddleware, async (req, res) => {
   const {
     titolo, descrizione, data_evento, ora_evento,
     entita_tipo, entita_id,
+    tipo_azione,
     alert_giorni_prima = [], alert_ore_prima = [],
   } = req.body;
 
@@ -59,12 +60,13 @@ router.post('/api/promemoria', authMiddleware, async (req, res) => {
     const r = await pool.query(`
       INSERT INTO promemoria
         (user_id, titolo, descrizione, data_evento, ora_evento,
-         entita_tipo, entita_id, alert_giorni_prima, alert_ore_prima)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         tipo_azione, entita_tipo, entita_id, alert_giorni_prima, alert_ore_prima)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       RETURNING *
     `, [
       req.user.id, titolo, descrizione || null,
       data_evento, ora_evento || null,
+      tipo_azione || null,
       entita_tipo || null, entita_id || null,
       alert_giorni_prima, alert_ore_prima,
     ]);

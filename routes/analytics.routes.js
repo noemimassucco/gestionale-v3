@@ -76,26 +76,28 @@ router.get('/api/notifiche', authMiddleware, async (req, res) => {
 
 router.get('/api/calendario', authMiddleware, async (req, res) => {
   const {mese,anno}=req.query;
-  const dal = mese&&anno ? `${anno}-${String(mese).padStart(2,'0')}-01` : null;
+  const dal = mese&&anno ? `${parseInt(anno)}-${String(parseInt(mese)).padStart(2,'0')}-01` : null;
   const al  = mese&&anno ? new Date(parseInt(anno),parseInt(mese),0).toISOString().split('T')[0] : null;
-  const w   = dal
-    ? `AND scadenza BETWEEN '${dal}' AND '${al}'`
-    : `AND scadenza >= CURRENT_DATE AND scadenza <= CURRENT_DATE + INTERVAL '90 days'`;
-  const wP  = dal
-    ? `AND data_evento BETWEEN '${dal}' AND '${al}'`
-    : `AND data_evento >= CURRENT_DATE AND data_evento <= CURRENT_DATE + INTERVAL '90 days'`;
+
+  // Clausole WHERE parametrizzate per evitare SQL injection
+  const wScad   = dal ? `AND scadenza BETWEEN $1 AND $2`                   : `AND scadenza >= CURRENT_DATE AND scadenza <= CURRENT_DATE + INTERVAL '90 days'`;
+  const wPScad  = dal ? `AND prossima_scadenza BETWEEN $1 AND $2`          : `AND prossima_scadenza >= CURRENT_DATE AND prossima_scadenza <= CURRENT_DATE + INTERVAL '90 days'`;
+  const wEvento = dal ? `AND data_evento BETWEEN $1 AND $2 AND p.user_id=$3 AND p.completato=false`
+                      : `AND data_evento >= CURRENT_DATE AND data_evento <= CURRENT_DATE + INTERVAL '90 days' AND p.user_id=$1 AND p.completato=false`;
+  const dateParams  = dal ? [dal, al]       : [];
+  const promsParams = dal ? [dal, al, req.user.id] : [req.user.id];
 
   try {
     const [docs,mans,bolls,istat,proms] = await Promise.all([
       pool.query(`SELECT 'documento' AS tipo,'📄' AS icon,d.nome AS titolo,d.scadenza,s.codice AS sub,sd.nome AS sede
         FROM documenti d LEFT JOIN subs s ON d.sub_id=s.id LEFT JOIN sedi sd ON d.sede_id=sd.id
-        WHERE d.scadenza IS NOT NULL ${w} ORDER BY d.scadenza`),
+        WHERE d.scadenza IS NOT NULL ${wScad} ORDER BY d.scadenza`, dateParams),
       pool.query(`SELECT 'manutenzione' AS tipo,'🔨' AS icon,m.tipo AS titolo,m.prossima_scadenza AS scadenza,s.codice AS sub,sd.nome AS sede,m.priorita
         FROM manutenzioni m LEFT JOIN subs s ON m.sub_id=s.id LEFT JOIN sedi sd ON m.sede_id=sd.id
-        WHERE m.prossima_scadenza IS NOT NULL AND m.stato!='annullata' ${w.replace(/scadenza/g,'prossima_scadenza')} ORDER BY m.prossima_scadenza`),
+        WHERE m.prossima_scadenza IS NOT NULL AND m.stato!='annullata' ${wPScad} ORDER BY m.prossima_scadenza`, dateParams),
       pool.query(`SELECT 'bolletta' AS tipo,'⚡' AS icon,b.tipo||' '||COALESCE(b.fornitore_nome,'') AS titolo,b.scadenza,s.codice AS sub,sd.nome AS sede
         FROM bollette b LEFT JOIN subs s ON b.sub_id=s.id LEFT JOIN sedi sd ON s.sede_id=sd.id
-        WHERE b.scadenza IS NOT NULL AND b.stato='da_pagare' ${w} ORDER BY b.scadenza`),
+        WHERE b.scadenza IS NOT NULL AND b.stato='da_pagare' ${wScad} ORDER BY b.scadenza`, dateParams),
       pool.query(`SELECT 'contratto_istat' AS tipo,'📈' AS icon,'ISTAT: '||s.codice AS titolo,
         (s.data_inizio_contratto + INTERVAL '12 months')::DATE AS scadenza,s.codice AS sub,sd.nome AS sede
         FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id
@@ -107,8 +109,8 @@ router.get('/api/calendario', authMiddleware, async (req, res) => {
           p.titolo, p.data_evento AS scadenza, p.ora_evento,
           p.id, p.completato, p.tipo_azione, p.entita_tipo, p.entita_id
         FROM promemoria p
-        WHERE p.user_id=$1 AND p.completato=false ${wP}
-        ORDER BY p.data_evento, p.ora_evento NULLS LAST`, [req.user.id]),
+        WHERE 1=1 ${wEvento}
+        ORDER BY p.data_evento, p.ora_evento NULLS LAST`, promsParams),
     ]);
     const events = [...docs.rows,...mans.rows,...bolls.rows,...istat.rows,...proms.rows]
       .sort((a,b) => new Date(a.scadenza) - new Date(b.scadenza));

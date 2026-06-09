@@ -72,10 +72,10 @@ router.get('/api/interventi/:id', authMiddleware, async (req, res) => {
   if (intervento.sub_id && intervento.descrizione) {
     const words = intervento.descrizione.toLowerCase().split(/\s+/).filter(w => w.length > 4).slice(0, 5);
     if (words.length) {
-      const likeClause = words.map((w, i) => `descrizione ILIKE $${i + 2}`).join(' OR ');
+      const likeClause = words.map((w, i) => `descrizione ILIKE $${i + 3}`).join(' OR ');
       const simili = await pool.query(
-        `SELECT id, data_intervento, descrizione, prezzo FROM interventi WHERE sub_id=$1 AND id!=${intervento.id} AND (${likeClause}) ORDER BY data_intervento DESC LIMIT 3`,
-        [intervento.sub_id, ...words.map(w => `%${w}%`)]
+        `SELECT id, data_intervento, descrizione, prezzo FROM interventi WHERE sub_id=$1 AND id!=$2 AND (${likeClause}) ORDER BY data_intervento DESC LIMIT 3`,
+        [intervento.sub_id, intervento.id, ...words.map(w => `%${w}%`)]
       );
       intervento.interventi_simili = simili.rows;
     }
