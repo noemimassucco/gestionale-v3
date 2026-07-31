@@ -25,7 +25,7 @@ function renderSubGrid(subs) {
 }
 
 async function openSubDetail(id) {
-  currentSubId=id; subDetTab='identita';
+  currentSubId=id; subDetTab='overview';
   document.getElementById('modal-sub-det').classList.add('open');
   document.getElementById('sub-det-content').innerHTML='<div class="empty" style="padding:40px;">Caricamento scheda…</div>';
   document.querySelectorAll('#sub-det-tabs .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
@@ -51,7 +51,7 @@ async function openSubDetail(id) {
   _disableSubButtons(s);
 
   document.getElementById('sub-det-edit-btn').onclick=()=>{closeM('modal-sub-det');openAnaById('sub',id);};
-  renderSubDetTab('identita');
+  renderSubDetTab('overview');
 }
 
 function subActionPagamento() {

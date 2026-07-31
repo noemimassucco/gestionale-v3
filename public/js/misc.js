@@ -439,15 +439,248 @@ function setSubDetTab(tab,btn){
   renderSubDetTab(tab);
 }
 
+// ═══════════════ SUB HUB: cartelle documenti, impianti, navigazione ═══════════════
+
+// Configurazione impianti con sottocartelle interne
+const SUB_IMPIANTI = {
+  elettrico:   { icona:'⚡',  nome:'Impianto elettrico',  sotto:{ dico:'DiCo / Conformità', progetto:'Progetto / Schemi', verifiche:'Verifiche periodiche', altro:'Altro' } },
+  idraulico:   { icona:'🚰', nome:'Impianto idraulico',  sotto:{ dico:'DiCo / Conformità', schemi:'Schemi', manutenzione:'Manutenzioni', altro:'Altro' } },
+  termico:     { icona:'🔥', nome:'Impianto termico',    sotto:{ libretto:'Libretto impianto', fumi:'Controllo fumi', dico:'DiCo', altro:'Altro' } },
+  clima:       { icona:'❄️',  nome:'Climatizzazione',     sotto:{ fgas:'F-GAS', manutenzione:'Manutenzioni', altro:'Altro' } },
+  ascensore:   { icona:'🛗', nome:'Ascensore',           sotto:{ collaudo:'Collaudo', verifiche:'Verifiche biennali', altro:'Altro' } },
+  antincendio: { icona:'🧯', nome:'Antincendio',         sotto:{ cpi:'CPI / SCIA', registri:'Registri estintori', altro:'Altro' } },
+};
+
+function _subDocs(prefix){
+  return (currentSubData?.documenti||[]).filter(d=>(d.tipo||'').startsWith(prefix));
+}
+
+function _subDocRow(d){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const scad=d.scadenza?new Date(d.scadenza):null;
+  const scadBadge = scad
+    ? (scad<today
+        ? `<span style="background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;">Scaduto ${fmt(d.scadenza)}</span>`
+        : `<span style="background:var(--warning-bg);color:var(--warning);border-radius:4px;padding:1px 6px;font-size:10px;">Scade ${fmt(d.scadenza)}</span>`)
+    : '';
+  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;background:var(--surface2);">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.nome||'Documento')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${d.data_documento?`<span>${fmt(d.data_documento)}</span>`:''}
+        ${d.fornitore_nome?`<span>· ${esc(d.fornitore_nome)}</span>`:''}
+        ${d.importo?`<span>· € ${parseFloat(d.importo).toLocaleString('it-IT')}</span>`:''}
+        ${scadBadge}
+      </div>
+    </div>
+    ${d.url?`<a href="${esc(d.url)}" target="_blank" class="btn btn-xs btn-gray" title="Apri">👁</a>`:'<span style="font-size:10px;color:var(--muted);" title="Nessun file allegato">solo dati</span>'}
+    <button class="btn btn-xs btn-gray" onclick="subDelDoc(${d.id})" title="Elimina">✕</button>
+  </div>`;
+}
+
+// Cartella documenti: titolo + pulsante aggiungi con tipo preimpostato + lista
+function _subDocFolder(titolo, prefix, hint){
+  const docs=_subDocs(prefix);
+  return `<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;">
+    <div class="flex-between" style="margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:700;">${titolo} <span style="color:var(--muted);font-weight:400;">(${docs.length})</span></div>
+      <button class="btn btn-xs btn-primary" onclick="subAddDocPreset('${prefix}','${titolo.replace(/'/g,"\\'")}')">+ Aggiungi</button>
+    </div>
+    ${docs.length?docs.map(_subDocRow).join(''):`<div style="font-size:11px;color:var(--muted);">${hint||'Nessun documento.'}</div>`}
+  </div>`;
+}
+
+// Apre il modale documento SENZA chiudere la scheda SUB, con tipo già impostato
+function subAddDocPreset(tipo, label){
+  openModalDoc();
+  const md=document.getElementById('modal-doc');
+  if(md) md.style.zIndex=3000; // sopra la scheda SUB
+  const sel=document.getElementById('doc-tipo');
+  if(sel){
+    if(![...sel.options].some(o=>o.value===tipo)) sel.add(new Option((label||tipo).replace(/<[^>]*>/g,''), tipo));
+    sel.value=tipo;
+  }
+  const ds=document.getElementById('doc-sub');
+  if(ds&&currentSubId) ds.value=currentSubId;
+  const dn=document.getElementById('doc-nome');
+  if(dn&&label) dn.placeholder=label;
+}
+
+async function subDelDoc(id){
+  if(!confirm('Eliminare questo documento?'))return;
+  await api('/api/documenti/'+id,{method:'DELETE'});
+  await subDetRefresh();
+  toast('Documento eliminato');
+}
+
+// Ricarica i dati del SUB e ridisegna la tab corrente (senza chiudere nulla)
+async function subDetRefresh(){
+  if(!currentSubId)return;
+  const d=await api('/api/subs/'+currentSubId+'/detail');
+  if(d?.sub){currentSubData=d;renderSubDetTab(subDetTab);}
+}
+
+// Trova il pulsante tab corrispondente (per riattivarlo tornando indietro)
+function _subTabBtn(tab){
+  return [...document.querySelectorAll('#sub-det-tabs .tab-btn')].find(b=>(b.getAttribute('onclick')||'').includes("'"+tab+"'"))||null;
+}
+
+// Vista secondaria con pulsante "← Indietro" (es. Bollette da Economico)
+async function subDetSubview(tab, backTo){
+  subDetTab=tab;
+  await renderSubDetTab(tab);
+  document.getElementById('sub-det-content').insertAdjacentHTML('afterbegin',
+    `<div style="margin-bottom:10px;"><button class="btn btn-xs btn-gray" onclick="setSubDetTab('${backTo}',_subTabBtn('${backTo}'))">← Indietro</button></div>`);
+}
+
+// Navigazione nella cartella di un impianto
+function subDetGoImpianto(key){
+  subDetTab='impianto:'+key;
+  renderSubDetTab(subDetTab);
+}
+
 async function renderSubDetTab(tab) {
   const data=currentSubData; if(!data)return;
   const s=data.sub;
   const el=document.getElementById('sub-det-content');
+
+  // ── Cartella di un singolo impianto (con sottocartelle) ──
+  if(tab&&tab.startsWith('impianto:')){
+    const key=tab.split(':')[1], cfg=SUB_IMPIANTI[key];
+    if(!cfg){renderSubDetTab('impianti');return;}
+    el.innerHTML=`
+      <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;">
+        <button class="btn btn-xs btn-gray" onclick="setSubDetTab('impianti',_subTabBtn('impianti'))">← Impianti</button>
+        <span style="font-size:15px;font-weight:700;">${cfg.icona} ${cfg.nome}</span>
+      </div>
+      ${Object.entries(cfg.sotto).map(([sk,label])=>
+        _subDocFolder(label,'imp_'+key+'_'+sk,'Nessun documento in questa sottocartella.')
+      ).join('')}`;
+    return;
+  }
   const df=(v)=>v?`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:3px;">${v[0]}</div><div style="font-size:13px;color:var(--text);font-weight:500;">${v[1]}</div>`:'';
   const card=(label,val,big=false)=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 14px;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">${label}</div><div style="font-size:${big?'20px':'13px'};color:${big?'var(--accent)':'var(--text)'};font-weight:${big?700:500};${big?'font-family:monospace;':''}">${val}</div></div>`;
   const sec=(t)=>`<div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin:16px 0 8px;font-weight:600;">${t}</div>`;
 
-  if(tab==='identita'){    let istatAlert='';
+  if(tab==='overview'){
+    const docs=data.documenti||[];
+    const has=p=>docs.some(d=>(d.tipo||'').startsWith(p));
+    const scadenze=data.scadenze||[];
+    const check=[
+      ['APE', has('ape')],
+      ['Visura catastale', has('visura')||has('catastale')],
+      ['Planimetria', has('planimetria')],
+      ['DiCo impianto elettrico', has('imp_elettrico')],
+      ['Libretto impianto termico', has('imp_termico')],
+      ['Contratto', (data.contratti||[]).length>0],
+      ['Foto', has('foto')],
+    ];
+    const mancanti=check.filter(c=>!c[1]);
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px;margin-bottom:14px;">
+        ${card('Conduttore attuale', esc(s.inquilino_nome||'Libero'))}
+        ${card('Canone annuo', s.canone_annuo?'€ '+parseFloat(s.canone_annuo).toLocaleString('it-IT',{minimumFractionDigits:2}):'—', true)}
+        ${card('Spese totali', '€ '+parseFloat(s.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}), true)}
+        ${card('Interventi', s.num_interventi||0)}
+        ${card('Documenti', docs.length)}
+        ${card('Manutenzioni aperte', s.manutenzioni_aperte||0)}
+      </div>
+      ${sec('Prossime scadenze')}
+      ${scadenze.length?scadenze.slice(0,6).map(sc=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;font-size:12px;">
+          <span>${sc.tipo==='manutenzione'?'🔨':'📄'} ${esc(sc.nome||sc.tipo)}</span>
+          <span style="color:${parseInt(sc.giorni)<15?'var(--danger)':'var(--accent)'};font-weight:600;">${fmt(sc.scadenza)} · ${sc.giorni}gg</span>
+        </div>`).join(''):'<div style="font-size:12px;color:var(--muted);">Nessuna scadenza imminente.</div>'}
+      ${sec('Completezza fascicolo')}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+        ${check.map(c=>`<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${c[1]?'rgba(16,185,129,.12)':'rgba(239,68,68,.10)'};color:${c[1]?'var(--green)':'var(--danger)'};">${c[1]?'✓':'✗'} ${c[0]}</span>`).join('')}
+      </div>
+      ${mancanti.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Mancano ${mancanti.length} elementi al fascicolo completo — aprili dalle tab qui sopra per aggiungerli.</div>`:''}
+      ${sec('Identificazione')}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:9px;margin-bottom:12px;">
+        ${card('Codice SUB',esc(s.codice))}
+        ${card('Sede',esc(s.sede_nome||'—'))}
+        ${s.piano?card('Piano',esc(s.piano)):''}
+        ${s.indirizzo_completo?card('Indirizzo',esc(s.indirizzo_completo)):''}
+        ${card('Stato',esc(s.stato_occupazione||'—'))}
+        ${s.ex_sub?card('Ex SUB',esc(s.ex_sub)):''}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-xs btn-gray" onclick="subDetSubview('documenti','overview')">📄 Tutti i documenti</button>
+        <button class="btn btn-xs btn-gray" onclick="subDetSubview('genealogia','overview')">🌳 Genealogia</button>
+        <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','overview')">📅 Tutte le scadenze</button>
+      </div>`;
+
+  }else if(tab==='catasto'){
+    el.innerHTML=`
+      ${sec('Dati catastali')}
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:14px;">
+        ${s.foglio?card('Foglio',esc(s.foglio)):''}
+        ${s.particella?card('Particella',esc(s.particella)):''}
+        ${s.subalterno?card('Subalterno',esc(s.subalterno)):''}
+        ${s.categoria_cat?card('Categoria',esc(s.categoria_cat)):''}
+        ${s.rendita?card('Rendita','€ '+parseFloat(s.rendita).toLocaleString('it-IT'),true):''}
+        ${s.mq_commerciali?card('mq commerciali',parseFloat(s.mq_commerciali).toFixed(1)+' mq'):''}
+        ${s.mq_calpestabili?card('mq calpestabili',parseFloat(s.mq_calpestabili).toFixed(1)+' mq'):''}
+        ${s.anno_costruzione?card('Anno costruzione',s.anno_costruzione):''}
+      </div>
+      ${(!s.foglio&&!s.particella)?'<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Nessun dato catastale inserito — usa ✏️ Modifica per aggiungerli.</div>':''}
+      ${s.note_catastali?sec('Note catastali')+`<div style="font-size:12px;color:var(--muted);background:var(--surface2);border-radius:8px;padding:10px 14px;margin-bottom:12px;">${esc(s.note_catastali)}</div>`:''}
+      ${sec('Documenti catastali')}
+      ${_subDocFolder('📑 Visure','visura','Carica qui le visure catastali.')}
+      ${_subDocFolder('📐 Planimetrie','planimetria','Carica qui le planimetrie.')}
+      ${_subDocFolder('🏛️ Altri documenti catastali','catastale','Volture, denunce, docfa…')}`;
+
+  }else if(tab==='ape'){
+    const apeDocs=_subDocs('ape');
+    el.innerHTML=`
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px;margin-bottom:14px;">
+        ${card('Classe energetica', s.classe_energetica?esc(s.classe_energetica):'—', true)}
+        ${apeDocs.length&&apeDocs[0].scadenza?card('Scadenza APE',fmt(apeDocs[0].scadenza)):''}
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">ℹ️ L'APE ha validità 10 anni dalla data di rilascio. Imposta la scadenza sul documento per ricevere l'avviso.</div>
+      ${_subDocFolder('⚡ Attestati APE','ape','Carica qui gli attestati di prestazione energetica.')}`;
+
+  }else if(tab==='impianti'){
+    el.innerHTML=`
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Clicca su un impianto per aprire le sue sottocartelle (DiCo, libretti, verifiche…).</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;">
+        ${Object.entries(SUB_IMPIANTI).map(([key,cfg])=>{
+          const n=_subDocs('imp_'+key).length;
+          return `<div onclick="subDetGoImpianto('${key}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='rgba(107,142,107,.5)'" onmouseout="this.style.borderColor='var(--border)'">
+            <div style="font-size:26px;margin-bottom:6px;">${cfg.icona}</div>
+            <div style="font-size:13px;font-weight:700;">${cfg.nome}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">${n} documenti · ${Object.keys(cfg.sotto).length} sottocartelle</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+  }else if(tab==='certificazioni'){
+    el.innerHTML=`
+      ${_subDocFolder('🏆 Certificazioni','certificazione','Agibilità, collaudi, certificati…')}
+      ${_subDocFolder('🏠 Agibilità','agibilita','Certificato di agibilità.')}
+      ${_subDocFolder('📋 Collaudi','collaudo','Collaudi statici e tecnici.')}
+      ${_subDocs('certif').length?_subDocFolder('📜 Altre certificazioni (archivio)','certif',''):''}`;
+
+  }else if(tab==='foto'){
+    const foto=_subDocs('foto');
+    const isImg=u=>u&&(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(u)||/\/image\/upload\//.test(u));
+    el.innerHTML=`
+      <div class="flex-between" style="margin-bottom:12px;">
+        <span style="font-size:13px;color:var(--muted);">${foto.length} foto</span>
+        <button class="btn btn-primary btn-sm" onclick="subAddDocPreset('foto','Foto immobile')">+ Aggiungi foto</button>
+      </div>
+      ${foto.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
+        ${foto.map(f=>`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface2);">
+          ${isImg(f.url)?`<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" style="width:100%;height:120px;object-fit:cover;display:block;" loading="lazy"></a>`:`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:34px;">🖼️</div>`}
+          <div style="padding:7px 10px;display:flex;justify-content:space-between;align-items:center;gap:6px;">
+            <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.nome||'Foto')}</span>
+            <button class="btn btn-xs btn-gray" onclick="subDelDoc(${f.id})">✕</button>
+          </div>
+        </div>`).join('')}
+      </div>`:'<div class="empty">Nessuna foto. Aggiungile per completare il fascicolo.</div>'}`;
+
+  }else if(tab==='identita'){    let istatAlert='';
     if(s.data_inizio_contratto&&s.canone_annuo){
       const inizio=new Date(s.data_inizio_contratto),oggi=new Date();
       const mesi=(oggi.getFullYear()-inizio.getFullYear())*12+(oggi.getMonth()-inizio.getMonth());
@@ -468,7 +701,11 @@ async function renderSubDetTab(tab) {
       ${s.note?sec('Note')+'<div style="font-size:13px;color:var(--muted);background:var(--surface2);border-radius:8px;padding:12px 14px;">'+esc(s.note)+'</div>':''}`;
 
   }else if(tab==='economico'){
-    el.innerHTML=renderTabEconomico(data);
+    el.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+      <button class="btn btn-xs btn-gray" onclick="subDetSubview('bollette','economico')">⚡ Bollette</button>
+      <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Costi</button>
+      <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','economico')">📅 Scadenze</button>
+    </div>`+renderTabEconomico(data);
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
   }else if(tab==='interventi'){
@@ -891,7 +1128,7 @@ function subActionNuovoIntervento() {
   }, 100);
 }
 
-function subActionNuovoDoc() { closeM('modal-sub-det'); openModalDoc(); setTimeout(()=>{ document.getElementById('doc-sub').value=currentSubId; },100); }
+function subActionNuovoDoc() { subAddDocPreset('documento'); }
 
 function subActionManutenzione() { closeM('modal-sub-det'); openModalMan(); setTimeout(()=>{ document.getElementById('man-sub').value=currentSubId; },100); }
 

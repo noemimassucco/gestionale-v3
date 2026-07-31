@@ -66,6 +66,10 @@ async function saveDoc(){
   const r=await apiUp('/api/documenti',fd);
   if(r?.error){toast('Errore: '+r.error,'error');return;}
   closeM('modal-doc');loadDocs();toast('Documento salvato ✓');
+  // Se la scheda SUB è aperta sotto, aggiornala senza chiuderla
+  if(typeof currentSubId!=='undefined'&&currentSubId&&document.getElementById('modal-sub-det')?.classList.contains('open')){
+    if(typeof subDetRefresh==='function') subDetRefresh();
+  }
 }
 
 async function delDoc(id){if(!confirm('Eliminare documento?'))return;

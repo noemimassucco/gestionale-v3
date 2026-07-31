@@ -1945,6 +1945,13 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
           <option value="verbale">📋 Verbale</option>
           <option value="bolletta">⚡ Bolletta</option>
           <option value="catastale">🏛️ Catastale</option>
+          <option value="visura">📑 Visura</option>
+          <option value="planimetria">📐 Planimetria</option>
+          <option value="ape">⚡ APE</option>
+          <option value="certificazione">🏆 Certificazione</option>
+          <option value="agibilita">🏠 Agibilità</option>
+          <option value="collaudo">📋 Collaudo</option>
+          <option value="foto">📷 Foto</option>
           <option value="condominiale">🏢 Condominiale</option>
           <option value="documento">📂 Altro</option>
         </select>
@@ -2390,17 +2397,18 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
       <a href="https://www.agenziaentrate.gov.it" target="_blank" class="btn btn-sm btn-gray" title="Vai al Catasto">🏛️ Catasto</a>
     </div>
     <div class="tab-btns" id="sub-det-tabs">
-      <button class="tab-btn active" onclick="setSubDetTab('identita',this)">🔵 Identità</button>
-      <button class="tab-btn" onclick="setSubDetTab('economico',this)">💰 Economico</button>
+      <button class="tab-btn active" onclick="setSubDetTab('overview',this)">📋 Panoramica</button>
+      <button class="tab-btn" onclick="setSubDetTab('catasto',this)">🏛️ Catasto</button>
+      <button class="tab-btn" onclick="setSubDetTab('ape',this)">⚡ APE</button>
+      <button class="tab-btn" onclick="setSubDetTab('impianti',this)">🔧 Impianti</button>
       <button class="tab-btn" onclick="setSubDetTab('inquilini',this)">👤 Inquilini</button>
-      <button class="tab-btn" onclick="setSubDetTab('interventi',this)">🔧 Interventi</button>
-      <button class="tab-btn" onclick="setSubDetTab('documenti',this)">📄 Documenti</button>
-          <button class="tab-btn" onclick="setSubDetTab('contratti',this)">📝 Contratti</button>
-      <button class="tab-btn" onclick="setSubDetTab('bollette',this)">⚡ Bollette</button>
+      <button class="tab-btn" onclick="setSubDetTab('certificazioni',this)">🏆 Certificazioni</button>
+      <button class="tab-btn" onclick="setSubDetTab('foto',this)">📷 Foto</button>
+      <button class="tab-btn" onclick="setSubDetTab('contratti',this)">📝 Contratti</button>
       <button class="tab-btn" onclick="setSubDetTab('manutenzioni',this)">🔨 Manutenzioni</button>
-      <button class="tab-btn" onclick="setSubDetTab('costi',this)">📊 Costi</button>
-      <button class="tab-btn" onclick="setSubDetTab('scadenze',this)">📅 Scadenze</button>
-      <button class="tab-btn" onclick="setSubDetTab('timeline',this)">📜 Timeline</button>
+      <button class="tab-btn" onclick="setSubDetTab('interventi',this)">🛠️ Interventi</button>
+      <button class="tab-btn" onclick="setSubDetTab('economico',this)">💰 Economico</button>
+      <button class="tab-btn" onclick="setSubDetTab('timeline',this)">📜 Storico</button>
     </div>
     <div id="sub-det-content" style="min-height:300px;">
       <div class="empty">Caricamento…</div>
