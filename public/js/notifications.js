@@ -2,6 +2,9 @@
 // MODULE: notifications.js
 // =======================================================
 
+// UID stabile di una notifica (usato anche dalla dashboard per contare le non lette)
+function notifUid(n){ return n.tipo + '_' + (n.id||'') + '_' + (n.data?String(n.data).slice(0,10):''); }
+
 function markNotifRead(id) {
   _readNotifs.add(id);
   localStorage.setItem('notif_read', JSON.stringify([..._readNotifs]));
@@ -29,11 +32,12 @@ async function loadNotificheSA() {
   _notifSAAll = await api('/api/notifiche') || [];
   // ID stabile: tipo + id sorgente (+ data per i rinnovi) — NON l'indice,
   // altrimenti lo stato letto/non-letto salta appena la lista cambia
-  _notifSAAll.forEach(n => { n._uid = n.tipo + '_' + (n.id||'') + '_' + (n.data?String(n.data).slice(0,10):''); });
+  _notifSAAll.forEach(n => { n._uid = notifUid(n); });
   const unread = _notifSAAll.filter(n => !_readNotifs.has(n._uid)).length;
+  const unreadImportanti = _notifSAAll.filter(n => !_readNotifs.has(n._uid) && n.tipo !== 'incompleto').length;
   const cnt = document.getElementById('notif-sa-cnt');
   if (cnt) cnt.textContent = `${_notifSAAll.length} notifiche · ${unread} non lette`;
-  updateNotifBadge(unread);
+  updateNotifBadge(unreadImportanti);
   renderNotifSAList();
 }
 
@@ -42,7 +46,7 @@ function openNotifica(uid) {
   const n = _notifSAAll.find(x => x._uid === uid);
   markNotifRead(uid);
   renderNotifSAList();
-  updateNotifBadge(_notifSAAll.filter(x => !_readNotifs.has(x._uid)).length);
+  updateNotifBadge(_notifSAAll.filter(x => !_readNotifs.has(x._uid) && x.tipo !== 'incompleto').length);
   if (!n) return;
   if (n.tipo === 'istat' || n.tipo === 'incompleto') {
     openSubDetail(n.id); // id = id del SUB → apri la scheda SUB (pagina)
@@ -61,7 +65,7 @@ function openNotifica(uid) {
 function renderNotifSAList() {
   const items = _notifSAFiltro === 'tutte' ? _notifSAAll : _notifSAAll.filter(n => n.tipo === _notifSAFiltro);
   const icons = { urgente:'⚠️', scadenza_doc:'📄', scadenza_man:'🔨', istat:'📈', incompleto:'⚠️' };
-  const colors = { urgente:'var(--red)', scadenza_doc:'var(--accent)', scadenza_man:'var(--orange)', istat:'#a3e635', incompleto:'var(--muted)' };
+  const colors = { urgente:'var(--red)', scadenza_doc:'var(--accent)', scadenza_man:'var(--orange)', istat:'var(--success)', incompleto:'var(--muted)' };
   const labels = { urgente:'Urgente', scadenza_doc:'Scadenza documento', scadenza_man:'Scadenza manutenzione', istat:'ISTAT dovuto', incompleto:'Dati incompleti' };
   const navTargets = { urgente:'interventi', scadenza_doc:'documenti', scadenza_man:'manutenzioni', istat:'subs', incompleto:'subs' };
 

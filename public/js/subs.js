@@ -45,7 +45,7 @@ async function openSubDetail(id) {
   const s=data.sub;
   document.getElementById('sub-det-header').innerHTML=`
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <span style="font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:#0f172a;">SUB ${esc(s.codice)}</span>
+      <span style="font-family:'Sora',sans-serif;font-size:24px;font-weight:700;color:#0f172a;">SUB ${esc(s.codice)}</span>
       ${s.ex_sub?`<span class="ex-sub">ex ${esc(s.ex_sub)}</span>`:''}
       <span class="badge badge-sede">${esc(s.sede_nome||'—')}</span>
       ${s.stato_occupazione?`<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${s.stato_occupazione==='occupato'?'rgba(16,185,129,.15)':'rgba(100,116,139,.15)'};color:${s.stato_occupazione==='occupato'?'var(--green)':'var(--muted)'};">${esc(s.stato_occupazione)}</span>`:''}
@@ -392,4 +392,14 @@ function _fillSubSelects(ids, activoOnly = true) {
     el.innerHTML = '<option value="">— Seleziona —</option>' +
       subs.map(s => `<option value="${s.id}">${esc(s.codice)} — ${esc(s.sede_nome||'')}</option>`).join('');
   });
+}
+
+// Mostra/nascondi il pannello azioni rapide della scheda SUB
+function toggleSubActions(){
+  const b=document.getElementById('sub-action-bar');
+  if(!b)return;
+  const open=b.style.display==='none';
+  b.style.display=open?'flex':'none';
+  const t=document.getElementById('subdet-actions-toggle');
+  if(t)t.textContent=open?'⚡ Chiudi azioni':'⚡ Azioni rapide';
 }

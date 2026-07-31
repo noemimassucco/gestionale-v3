@@ -13,19 +13,23 @@ async function loadDashboard(){
   ]);
   if(!dash)return;
 
-  // KPI
-  const nc=(notifiche||[]).length;
+  // KPI — nc = notifiche NON LETTE importanti (il totale ignorava lo stato letto
+  // e teneva il badge rosso fisso anche dopo averle lette tutte)
+  const _uid = n => (typeof notifUid==='function') ? notifUid(n) : n.tipo+'_'+(n.id||'');
+  const _read = (typeof _readNotifs!=='undefined') ? _readNotifs : new Set();
+  const notifNonLette=(notifiche||[]).filter(n=>!_read.has(_uid(n)));
+  const nc=notifNonLette.filter(n=>n.tipo!=='incompleto').length;
   const kpis=[
-    {l:'SUB Gestiti',v:dash.totali?.num_subs||0,c:'var(--info)',i:'🏢',s:'subs'},
-    {l:'Interventi',v:dash.totali?.num_interventi||0,c:'var(--text)',i:'📋',s:'interventi'},
-    {l:'Spese totali',v:'€ '+parseFloat(dash.totali?.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}),c:'var(--accent)',i:'💰',s:'riepilogo'},
-    {l:'Manutenzioni',v:dash.totali?.manutenzioni_aperte||0,c:'var(--orange)',i:'🔨',s:'manutenzioni'},
-    {l:'Documenti',v:dash.totali?.num_documenti||0,c:'var(--muted)',i:'📄',s:'documenti'},
-    {l:'Notifiche',v:nc,c:nc>0?'var(--red)':'var(--green)',i:'🔔',s:'notifiche'},
+    {l:'SUB Gestiti',v:dash.totali?.num_subs||0,c:'var(--info)',i:'🏢',bg:'#e0efef',s:'subs'},
+    {l:'Interventi',v:dash.totali?.num_interventi||0,c:'var(--text)',i:'📋',bg:'#ede9df',s:'interventi'},
+    {l:'Spese totali',v:'€ '+parseFloat(dash.totali?.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}),c:'var(--accent)',i:'💰',bg:'#faf0d4',s:'riepilogo'},
+    {l:'Manutenzioni',v:dash.totali?.manutenzioni_aperte||0,c:'var(--orange)',i:'🔨',bg:'#f5e4de',s:'manutenzioni'},
+    {l:'Documenti',v:dash.totali?.num_documenti||0,c:'var(--muted)',i:'📄',bg:'#e8e6f0',s:'documenti'},
+    {l:'Notifiche',v:nc,c:nc>0?'var(--red)':'var(--green)',i:'🔔',bg:nc>0?'#f5dede':'#e3efde',s:'notifiche'},
   ];
   const kpiEl=document.getElementById('dash-kpi');
   if(kpiEl)kpiEl.innerHTML=kpis.map(k=>`<div class="home-kpi-card" onclick="showSection('${k.s}')" style="cursor:pointer;">
-    <div style="font-size:18px;margin-bottom:5px;">${k.i}</div>
+    <div style="width:34px;height:34px;border-radius:9px;background:${k.bg};display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:7px;box-shadow:0 1px 3px rgba(60,70,50,.08);">${k.i}</div>
     <div class="stat-label">${k.l}</div>
     <div style="font-size:20px;font-weight:700;color:${k.c};font-family:monospace;">${k.v}</div>
   </div>`).join('');
@@ -35,7 +39,7 @@ async function loadDashboard(){
   const alertText=document.getElementById('dash-alert-text');
   if(nc>0&&alertBanner&&alertText){
     alertBanner.classList.remove('hidden');
-    alertText.textContent=`${nc} notifiche attive — contratti ISTAT, scadenze documenti, manutenzioni programmate`;
+    alertText.textContent=`${nc} notifiche da leggere — ISTAT, scadenze documenti, manutenzioni`;
   }
 
   // Notif badge (mostra E nasconde)
@@ -104,7 +108,7 @@ async function loadDashboard(){
   // Notifiche rapide
   const notifQuick=document.getElementById('dash-notif-quick');
   if(notifQuick){
-    const nn=(notifiche||[]).slice(0,4);
+    const nn=notifNonLette.slice(0,4);
     notifQuick.innerHTML=nn.length?nn.map(n=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onclick="showSection('notifiche')">
       <div style="width:7px;height:7px;border-radius:50%;background:${n.tipo==='urgente'?'var(--red)':n.tipo==='istat'?'#a3e635':'var(--orange)'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;">${esc(n.titolo||n.tipo)}</div>
