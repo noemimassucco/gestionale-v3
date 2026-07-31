@@ -49,6 +49,8 @@ async function initDB() {
       ['canone_annuo', 'DECIMAL(12,2)'],
       ['tipo_contratto', 'VARCHAR(50)'],
       ['durata_contratto_anni', 'INTEGER'],
+      ['millesimi', 'DECIMAL(10,2)'],
+      ['spesa_cond_totale', 'DECIMAL(12,2)'],
     ];
     for (const [col, type] of newSubCols) {
       try { await client.query(`ALTER TABLE subs ADD COLUMN IF NOT EXISTS ${col} ${type}`); } catch(e) {}

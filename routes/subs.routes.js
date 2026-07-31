@@ -102,8 +102,11 @@ router.post('/api/subs', authMiddleware, async (req, res) => {
 
 router.put('/api/subs/:id/millesimi', authMiddleware, async (req, res) => {
   try {
-    const r = await pool.query('UPDATE subs SET millesimi=$1::numeric, updated_at=NOW() WHERE id=$2 RETURNING id,codice,millesimi',
-      [req.body.millesimi||null, req.params.id]);
+    const r = await pool.query(
+      `UPDATE subs SET millesimi=COALESCE($1::numeric,millesimi),
+         spesa_cond_totale=COALESCE($2::numeric,spesa_cond_totale), updated_at=NOW()
+       WHERE id=$3 RETURNING id,codice,millesimi,spesa_cond_totale`,
+      [req.body.millesimi||null, req.body.spesa_cond_totale||null, req.params.id]);
     res.json(r.rows[0]||{error:'SUB non trovato'});
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

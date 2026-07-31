@@ -449,7 +449,7 @@ tr.row-click:hover td{background:var(--accent-bg);}
   #sub-action-bar{overflow-x:auto;flex-wrap:nowrap!important;}
   #sub-action-bar .btn{white-space:nowrap;}
   .table-wrap{max-height:none;}
-  #fab-quicknote{right:14px;bottom:calc(14px + env(safe-area-inset-bottom));}
+  #fab-quicknote{right:16px;bottom:calc(90px + env(safe-area-inset-bottom));}
   input,select,textarea{font-size:16px!important;} /* evita lo zoom automatico di iOS */
 }
 
@@ -2632,7 +2632,7 @@ tr.row-click{transition:background .12s;}
 
 <!-- FAB NOTA RAPIDA (visibile ovunque, comodo da cellulare) -->
 <button id="fab-quicknote" onclick="openQuickNote()" title="Nota rapida"
-  style="position:fixed;right:18px;bottom:18px;z-index:250;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:24px;background:var(--primary);color:#fff;box-shadow:0 6px 20px rgba(107,142,107,.45);display:flex;align-items:center;justify-content:center;">📝</button>
+  style="position:fixed;right:24px;bottom:92px;z-index:250;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:24px;background:var(--primary);color:#fff;box-shadow:0 6px 20px rgba(107,142,107,.45);display:flex;align-items:center;justify-content:center;">📝</button>
 
 <!-- MODAL NOTA RAPIDA -->
 <div id="modal-quicknote" class="overlay" style="z-index:3000;">

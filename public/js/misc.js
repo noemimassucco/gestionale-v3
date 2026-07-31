@@ -719,8 +719,8 @@ async function renderSubDetTab(tab) {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;">
         <span style="color:var(--muted);">Calcola la tua quota:</span>
         <span>spesa totale condominio €</span>
-        <input id="sub-mill-spesa" type="number" step="0.01" placeholder="0.00" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="calcQuotaMillesimi()">
-        <span>→ quota SUB: <strong id="sub-mill-quota" style="color:var(--accent);font-family:monospace;">—</strong></span>
+        <input id="sub-mill-spesa" type="number" step="0.01" value="${s.spesa_cond_totale||''}" placeholder="0.00" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="calcQuotaMillesimi()" onchange="saveMillesimiSub()">
+        <span>→ quota SUB: <strong id="sub-mill-quota" style="color:var(--accent);font-family:monospace;">${(s.millesimi&&s.spesa_cond_totale)?('€ '+(parseFloat(s.spesa_cond_totale)*parseFloat(s.millesimi)/1000).toLocaleString('it-IT',{minimumFractionDigits:2})+' ('+parseFloat(s.millesimi)+'‰)'):'—'}</strong></span>
       </div>
     </div>`
     +_subDocFolder('🏢 Spese condominiali','condominiale','Carica qui riparti, verbali assemblea e rendiconti condominiali (con importo e scadenza).');
@@ -1394,10 +1394,11 @@ function addChatMsg(html,role,id=null,isHtml=false){
 // ═══ Millesimi (tab Economico) ═══
 async function saveMillesimiSub(){
   const val=document.getElementById('sub-millesimi-inp')?.value||'';
-  const r=await api('/api/subs/'+currentSubId+'/millesimi',{method:'PUT',body:JSON.stringify({millesimi:val||null})});
+  const spesa=document.getElementById('sub-mill-spesa')?.value||'';
+  const r=await api('/api/subs/'+currentSubId+'/millesimi',{method:'PUT',body:JSON.stringify({millesimi:val||null,spesa_cond_totale:spesa||null})});
   if(!r||r.error){toast('Errore: '+(r?.error||'salvataggio fallito'),'error');return;}
-  if(currentSubData?.sub)currentSubData.sub.millesimi=r.millesimi;
-  toast('📐 Millesimi salvati ✓');
+  if(currentSubData?.sub){currentSubData.sub.millesimi=r.millesimi;currentSubData.sub.spesa_cond_totale=r.spesa_cond_totale;}
+  toast('📐 Millesimi e spesa salvati ✓');
   calcQuotaMillesimi();
 }
 function calcQuotaMillesimi(){
