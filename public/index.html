@@ -436,6 +436,64 @@ tr.row-click:hover td{background:var(--accent-bg);}
   input,select,textarea{font-size:16px!important;} /* evita lo zoom automatico di iOS */
 }
 
+
+/* ═══════════ ICONE IN RILIEVO E MICRO-ANIMAZIONI ═══════════ */
+
+/* Icone sidebar: tile morbido, si sollevano al passaggio */
+.sb-ico{
+  background:var(--bg2);
+  border-radius:8px;
+  width:30px;min-width:30px;height:30px;
+  box-shadow:inset 0 -1px 0 rgba(0,0,0,.04), 0 1px 2px rgba(60,70,50,.06);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s, background .18s;
+}
+.sb-item:hover .sb-ico{
+  transform:translateY(-2px) scale(1.12);
+  background:#fff;
+  box-shadow:0 5px 12px rgba(107,142,107,.28);
+}
+.sb-item.active .sb-ico{
+  background:#fff;
+  box-shadow:0 3px 8px rgba(107,142,107,.25);
+}
+.sb-item:active .sb-ico{transform:translateY(0) scale(1.04);}
+
+/* Bottoni: rilievo al passaggio, pressione al click */
+.btn{transition:transform .15s ease, box-shadow .15s ease, background .15s, border-color .15s;}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(60,70,50,.14);}
+.btn:active{transform:translateY(0);box-shadow:0 1px 3px rgba(60,70,50,.10);}
+
+/* Card KPI e card dashboard: sollevamento dolce */
+.home-kpi-card{transition:transform .18s ease, box-shadow .18s ease;}
+.home-kpi-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(60,70,50,.12);}
+.home-kpi-card:hover>div:first-child{transform:scale(1.18);}
+.home-kpi-card>div:first-child{transition:transform .18s cubic-bezier(.34,1.56,.64,1);display:inline-block;}
+.card{transition:transform .18s ease, box-shadow .18s ease, border-color .18s;}
+.home-sub-card{transition:transform .18s ease, box-shadow .18s ease, border-color .18s;}
+.home-sub-card:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,70,50,.12);border-color:var(--primary-2);}
+
+/* Tab: sottolineatura viva */
+.tab-btn{transition:transform .15s, background .15s, color .15s, border-color .15s, box-shadow .15s;}
+.tab-btn:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(60,70,50,.10);}
+
+/* Barra azioni della scheda SUB: bottoni che rispondono */
+#sub-action-bar .btn:hover{transform:translateY(-2px) scale(1.03);}
+
+/* FAB nota rapida: pulsazione leggera al passaggio */
+#fab-quicknote{transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;}
+#fab-quicknote:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 10px 26px rgba(107,142,107,.55);}
+#fab-quicknote:active{transform:scale(.96);}
+
+/* Cartelle impianti / documenti nella scheda SUB */
+#sub-det-content [onclick]{transition:transform .16s ease, box-shadow .16s ease, border-color .16s;}
+#sub-det-content div[onclick^="subDetGoImpianto"]:hover{transform:translateY(-3px);box-shadow:0 8px 18px rgba(60,70,50,.13);}
+
+/* Righe tabella: leggero rialzo del contenuto */
+tr.row-click{transition:background .12s;}
+
+/* Icone dei titoli card dashboard */
+.card-title{display:flex;align-items:center;gap:6px;}
+
 /* Toast coerente col tema */
 #toast{box-shadow:var(--shadow-lg);}
 
