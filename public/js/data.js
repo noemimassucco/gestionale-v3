@@ -88,10 +88,17 @@ async function loadSubs() {
 }
 
 function renderTbSubs() {
-  const tb = document.getElementById('tb-subs') || document.getElementById('tb-subs-ana');
-  if (!tb) return;
+  // Esistono DUE tabelle SUB nel DOM (#tb-subs-ana nella sezione SUB, #tb-subs
+  // nella vecchia scheda Anagrafica). Scriviamo in TUTTE quelle presenti,
+  // altrimenti la tabella visibile resta bloccata su "Caricamento SUB…".
+  const tbs = ['tb-subs-ana', 'tb-subs']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  if (!tbs.length) return;
+  const paint = html => tbs.forEach(el => { el.innerHTML = html; });
+
   if (!DB.subs || !DB.subs.length) {
-    tb.innerHTML = '<tr><td colspan="11" class="empty">Nessun SUB trovato.</td></tr>';
+    paint('<tr><td colspan="11" class="empty">Nessun SUB trovato.</td></tr>');
     return;
   }
 
@@ -103,7 +110,7 @@ function renderTbSubs() {
     cessato:       '<span style="background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;">Cessato</span>',
   };
 
-  tb.innerHTML = DB.subs.map(function(s) {
+  paint(DB.subs.map(function(s) {
     const stato  = s.stato_sub || 'attivo';
     const attivo = stato === 'attivo';
     const sal    = parseInt(s.manutenzioni_aperte) > 0 ? '🟡'
@@ -138,7 +145,7 @@ function renderTbSubs() {
         (attivo ? ' <button class="btn btn-xs btn-gray" onclick="openAna(\'sub\',' + s.id + ')" title="Modifica">✏️</button>' : '') +
       '</td>' +
     '</tr>';
-  }).join('');
+  }).join(''));
 }
 
 function renderTbForn(){
