@@ -1926,34 +1926,11 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
   </div>
 </div>
 
-<!-- MODAL IMPORT SUB -->
-<div id="modal-sub-import" class="overlay">
-  <div class="modal" style="max-width:820px;">
-    <div class="modal-title">🏠 Import massivo SUB da Excel</div>
-    <div id="sub-import-s1">
-      <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
-        Carica un file Excel con la lista dei SUB. Le colonne verranno mappate automaticamente.<br>
-        <strong style="color:var(--text);">Sedi riconosciute automaticamente</strong> per nome (es. "Orbassano", "Rivoli").<br>
-        <strong style="color:var(--text);">Inquilini</strong> vengono collegati per ragione sociale se già presenti in anagrafica.
-      </p>
-      <div class="import-zone" onclick="document.getElementById('subFile').click()">
-        <div style="font-size:26px;margin-bottom:7px;">📂</div>
-        <div style="font-weight:600;font-size:13px;">Seleziona file .xlsx con i SUB</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Colonne tipiche: Codice SUB, Ex SUB, Sede, Piano, Inquilino, Note</div>
-      </div>
-      <input type="file" id="subFile" accept=".xlsx,.xls" style="display:none" onchange="loadSubImport(this)">
-    </div>
-    <div id="sub-import-s2" style="display:none;">
-      <div id="sub-import-mapping"></div>
-      <div id="sub-import-preview" style="margin-top:12px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;"></div>
-      <div id="sub-import-stats" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeM('modal-sub-import')">Annulla</button>
-      <button class="btn btn-success" id="sub-import-ok" style="display:none" onclick="commitSubImport()">✓ Importa SUB</button>
-    </div>
-  </div>
-</div>
+<!-- MODAL IMPORT SUB: rimosso.
+     Aveva ID duplicati (sub-import-s1/s2/ok/preview/stats) identici a quelli
+     della sezione Import/OCR: getElementById restituiva sempre quelli della
+     sezione, quindi il modale restava vuoto. Il pulsante Import della pagina
+     SUB ora porta direttamente alla sezione Import/OCR. -->
 
 <!-- MODAL DOCUMENTO -->
 <div id="modal-doc" class="overlay">

@@ -369,12 +369,28 @@ function parseOCRDate(s) {
 }
 
 function openImportSub() {
+  // Il vecchio modale è stato rimosso: aveva ID duplicati rispetto alla sezione
+  // Import/OCR, quindi loadSubImport() scriveva nella sezione e il modale restava
+  // vuoto. Ora il pulsante porta direttamente all'import SUB funzionante.
   subImportRows = []; subImportMap = {};
-  document.getElementById('sub-import-s1').style.display = '';
-  document.getElementById('sub-import-s2').style.display = 'none';
-  document.getElementById('sub-import-ok').style.display = 'none';
-  document.getElementById('subFile').value = '';
-  document.getElementById('modal-sub-import').classList.add('open');
+  const wiz = document.getElementById('sub-import-wiz');
+  if (wiz) wiz.style.display = 'none';
+  const s1 = document.getElementById('sub-import-s1');
+  if (s1) s1.style.display = '';
+  const s2 = document.getElementById('sub-import-s2');
+  if (s2) s2.style.display = 'none';
+  const an = document.getElementById('sub-import-analyze');
+  if (an) an.style.display = '';
+  const f = document.getElementById('subImportFile');
+  if (f) f.value = '';
+
+  showSection('import');
+  setTimeout(function() {
+    const card = document.getElementById('sub-import-wiz');
+    if (card && card.parentElement) {
+      card.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, 100);
 }
 
 async function editMan(id){
