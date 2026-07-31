@@ -44,14 +44,15 @@ async function openSubDetail(id) {
   currentSubData=data;
   const s=data.sub;
   document.getElementById('sub-det-header').innerHTML=`
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <span style="font-family:'Sora',sans-serif;font-size:24px;font-weight:700;color:#0f172a;">SUB ${esc(s.codice)}</span>
-      ${s.ex_sub?`<span class="ex-sub">ex ${esc(s.ex_sub)}</span>`:''}
-      <span class="badge badge-sede">${esc(s.sede_nome||'—')}</span>
-      ${s.stato_occupazione?`<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${s.stato_occupazione==='occupato'?'rgba(16,185,129,.15)':'rgba(100,116,139,.15)'};color:${s.stato_occupazione==='occupato'?'var(--green)':'var(--muted)'};">${esc(s.stato_occupazione)}</span>`:''}
-      <div style="margin-left:auto;text-align:right;">
-        <div style="font-size:22px;font-weight:700;color:var(--accent);font-family:monospace;">€ ${parseFloat(s.totale_spese||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
-        <div style="font-size:11px;color:var(--muted);">${s.num_interventi||0} interventi · ${s.num_documenti||0} documenti</div>
+    <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+      <span style="font-family:'Sora',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.3px;color:var(--text-strong);">${esc(s.codice)}</span>
+      <span style="font-size:12px;color:var(--muted);">${esc(s.sede_nome||'')}${s.piano?' · '+esc(s.piano):''}${s.indirizzo_completo?' · '+esc(s.indirizzo_completo):''}</span>
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700;color:${s.stato_occupazione==='occupato'?'var(--success)':'var(--muted-2)'};">${esc(s.stato_occupazione||'')}</span>
+      ${s.ex_sub?`<span style="font-size:10px;color:var(--muted-2);">ex ${esc(s.ex_sub)}</span>`:''}
+      <div style="margin-left:auto;display:flex;gap:22px;text-align:right;">
+        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);">Conduttore</div><div style="font-size:13px;font-weight:600;color:var(--text);">${esc(s.inquilino_nome||'Libero')}</div></div>
+        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);">Canone/anno</div><div style="font-size:13px;font-weight:600;font-family:monospace;color:var(--text);">${s.canone_annuo?'€ '+parseFloat(s.canone_annuo).toLocaleString('it-IT'):'—'}</div></div>
+        <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);">Spese totali</div><div style="font-size:13px;font-weight:600;font-family:monospace;color:var(--accent);">€ ${parseFloat(s.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0})}</div></div>
       </div>
     </div>`;
 
@@ -65,6 +66,9 @@ async function openSubDetail(id) {
 }
 
 function subActionPagamento() {
+  // Se chiamato dalla scheda SUB il campo di scelta SUB resta nascosto (il SUB è quello aperto)
+  const _fld = document.getElementById('pag-sub-field');
+  if (_fld && document.getElementById('sec-subdet')?.classList.contains('active')) _fld.style.display = 'none';
   const s = currentSubData?.sub;
   document.getElementById('pag-anno').value = new Date().getFullYear();
   document.getElementById('pag-mese').value = new Date().getMonth()+1;

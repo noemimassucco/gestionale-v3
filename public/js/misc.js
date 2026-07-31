@@ -568,50 +568,65 @@ async function renderSubDetTab(tab) {
     const scadenze=data.scadenze||[];
     const check=[
       ['APE', has('ape')],
-      ['Visura catastale', has('visura')||has('catastale')],
+      ['Visura', has('visura')||has('catastale')],
       ['Planimetria', has('planimetria')],
-      ['DiCo impianto elettrico', has('imp_elettrico')],
-      ['Libretto impianto termico', has('imp_termico')],
+      ['DiCo elettrico', has('imp_elettrico')],
+      ['Libretto termico', has('imp_termico')],
       ['Contratto', (data.contratti||[]).length>0],
       ['Foto', has('foto')],
     ];
-    const mancanti=check.filter(c=>!c[1]);
+    const okN=check.filter(c=>c[1]).length;
+    const riga=(label,val)=>val?`<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px;"><span style="color:var(--muted);">${label}</span><span style="font-weight:500;text-align:right;">${val}</span></div>`:'';
     el.innerHTML=`
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:9px;margin-bottom:14px;">
-        ${card('Conduttore attuale', esc(s.inquilino_nome||'Libero'))}
-        ${card('Canone annuo', s.canone_annuo?'€ '+parseFloat(s.canone_annuo).toLocaleString('it-IT',{minimumFractionDigits:2}):'—', true)}
-        ${card('Spese totali', '€ '+parseFloat(s.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}), true)}
-        ${card('Interventi', s.num_interventi||0)}
-        ${card('Documenti', docs.length)}
-        ${card('Manutenzioni aperte', s.manutenzioni_aperte||0)}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start;">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;margin-bottom:6px;">Identificazione</div>
+          ${riga('Codice',esc(s.codice))}
+          ${riga('Sede',esc(s.sede_nome||''))}
+          ${riga('Piano',s.piano?esc(s.piano):'')}
+          ${riga('Indirizzo',s.indirizzo_completo?esc(s.indirizzo_completo):'')}
+          ${riga('Catasto',(s.foglio||s.particella)?('Fg. '+esc(s.foglio||'—')+' · Part. '+esc(s.particella||'—')+(s.subalterno?' · Sub. '+esc(s.subalterno):'')):'')}
+          ${riga('Categoria',s.categoria_cat?esc(s.categoria_cat):'')}
+          ${riga('Superficie',s.mq_commerciali?parseFloat(s.mq_commerciali).toFixed(0)+' mq comm.'+(s.mq_calpestabili?' · '+parseFloat(s.mq_calpestabili).toFixed(0)+' mq calp.':''):'')}
+          ${riga('Rendita',s.rendita?'€ '+parseFloat(s.rendita).toLocaleString('it-IT'):'')}
+          ${riga('Classe energetica',s.classe_energetica?esc(s.classe_energetica):'')}
+
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;margin:22px 0 6px;">Locazione</div>
+          ${riga('Conduttore',esc(s.inquilino_nome||'Libero'))}
+          ${riga('Canone annuo',s.canone_annuo?'€ '+parseFloat(s.canone_annuo).toLocaleString('it-IT',{minimumFractionDigits:2}):'')}
+          ${riga('Canone mensile',s.canone_annuo?'€ '+(parseFloat(s.canone_annuo)/12).toLocaleString('it-IT',{minimumFractionDigits:2}):'')}
+          ${riga('Contratto',s.tipo_contratto?esc(s.tipo_contratto)+(s.data_inizio_contratto?' · dal '+fmt(s.data_inizio_contratto):''):'')}
+        </div>
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;margin-bottom:6px;">Prossime scadenze</div>
+          ${scadenze.length?scadenze.slice(0,6).map(sc=>`
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px;">
+              <span>${esc(sc.nome||sc.tipo)}</span>
+              <span style="white-space:nowrap;font-weight:600;color:${parseInt(sc.giorni)<15?'var(--danger)':'var(--muted)'};">${fmt(sc.scadenza)} · ${sc.giorni}g</span>
+            </div>`).join(''):'<div style="font-size:12px;color:var(--muted);padding:7px 0;">Nessuna scadenza imminente.</div>'}
+
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 6px;">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;">Fascicolo</span>
+            <span style="font-size:11px;color:var(--muted);">${okN}/${check.length} completo</span>
+          </div>
+          <div style="height:4px;background:var(--bg2);border-radius:2px;margin-bottom:10px;"><div style="height:4px;width:${Math.round(okN/check.length*100)}%;background:var(--primary);border-radius:2px;"></div></div>
+          ${check.map(c=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;"><span style="color:var(--muted);">${c[0]}</span><span style="font-weight:600;color:${c[1]?'var(--success)':'var(--muted-2)'};">${c[1]?'presente':'mancante'}</span></div>`).join('')}
+
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;margin:22px 0 6px;">Attività</div>
+          ${riga('Interventi',String(s.num_interventi||0))}
+          ${riga('Documenti',String(docs.length))}
+          ${riga('Manutenzioni aperte',String(s.manutenzioni_aperte||0))}
+          ${riga('Spese totali','€ '+parseFloat(s.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}))}
+        </div>
       </div>
-      ${sec('Prossime scadenze')}
-      ${scadenze.length?scadenze.slice(0,6).map(sc=>`
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;font-size:12px;">
-          <span>${sc.tipo==='manutenzione'?'🔨':'📄'} ${esc(sc.nome||sc.tipo)}</span>
-          <span style="color:${parseInt(sc.giorni)<15?'var(--danger)':'var(--accent)'};font-weight:600;">${fmt(sc.scadenza)} · ${sc.giorni}gg</span>
-        </div>`).join(''):'<div style="font-size:12px;color:var(--muted);">Nessuna scadenza imminente.</div>'}
-      ${sec('Completezza fascicolo')}
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-        ${check.map(c=>`<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:${c[1]?'rgba(16,185,129,.12)':'rgba(239,68,68,.10)'};color:${c[1]?'var(--green)':'var(--danger)'};">${c[1]?'✓':'✗'} ${c[0]}</span>`).join('')}
-      </div>
-      ${mancanti.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Mancano ${mancanti.length} elementi al fascicolo completo — aprili dalle tab qui sopra per aggiungerli.</div>`:''}
-      ${sec('Identificazione')}
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:9px;margin-bottom:12px;">
-        ${card('Codice SUB',esc(s.codice))}
-        ${card('Sede',esc(s.sede_nome||'—'))}
-        ${s.piano?card('Piano',esc(s.piano)):''}
-        ${s.indirizzo_completo?card('Indirizzo',esc(s.indirizzo_completo)):''}
-        ${card('Stato',esc(s.stato_occupazione||'—'))}
-        ${s.ex_sub?card('Ex SUB',esc(s.ex_sub)):''}
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-xs btn-gray" onclick="subDetSubview('documenti','overview')">📄 Tutti i documenti</button>
-        <button class="btn btn-xs btn-gray" onclick="subDetSubview('genealogia','overview')">🌳 Genealogia</button>
-        <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','overview')">📅 Tutte le scadenze</button>
+      ${s.note?`<div style="margin-top:18px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">${esc(s.note)}</div>`:''}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:18px;">
+        <button class="btn btn-xs btn-gray" onclick="subDetSubview('documenti','overview')">Tutti i documenti</button>
+        <button class="btn btn-xs btn-gray" onclick="subDetSubview('genealogia','overview')">Genealogia</button>
+        <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','overview')">Tutte le scadenze</button>
       </div>`;
 
-  }else if(tab==='catasto'){
+    }else if(tab==='catasto'){
     el.innerHTML=`
       ${sec('Dati catastali')}
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:14px;">
@@ -1161,13 +1176,13 @@ function subActionNuovaBolletta() {
 }
 
 function subActionNuovoAffitto() {
-  // Da sec-affitti non c'è un SUB corrente: mostra il select nel modale
+  // Da Affitti: mostra SEMPRE il campo SUB (preselezionato se c'è un SUB corrente)
   const fld = document.getElementById('pag-sub-field');
   const sel = document.getElementById('pag-sub-sel');
   if (fld && sel) {
     sel.innerHTML = '<option value="">— Seleziona il SUB —</option>' +
       (DB.subs||[]).map(s => `<option value="${s.id}">${esc(s.codice)}</option>`).join('');
-    fld.style.display = currentSubId ? 'none' : '';
+    fld.style.display = '';
     if (currentSubId) sel.value = currentSubId;
   }
   subActionPagamento();
@@ -1178,7 +1193,7 @@ function subActionNota() { setSubDetTab('timeline',_subTabBtn('timeline')); setT
 async function savePagamento() {
   const v = id => document.getElementById(id)?.value||'';
   if(!v('pag-anno')||!v('pag-importo')){toast('Anno e importo obbligatori','error');return;}
-  const subId = currentSubId || parseInt(v('pag-sub-sel')) || null;
+  const subId = parseInt(v('pag-sub-sel')) || currentSubId || null;
   if(!subId){toast('Seleziona il SUB','error');return;}
   const s = currentSubData?.sub;
   const r = await api('/api/pagamenti-affitto',{method:'POST',body:JSON.stringify({

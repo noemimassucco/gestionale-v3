@@ -18,38 +18,38 @@
 
 /* ── CSS VARIABLES ── */
 :root {
-  /* Sfondi */
-  --bg:          #f7f8f4;
-  --bg2:         #f0f2eb;
+  /* Sfondi — neutri caldi, professionali */
+  --bg:          #f4f4f1;
+  --bg2:         #ebebe6;
   --card:        #ffffff;
-  --card-alt:    #fafbf7;
+  --card-alt:    #fafaf8;
 
-  /* Testi */
-  --text:        #1f2937;
-  --text-strong: #111827;
-  --muted:       #6b7280;
-  --muted-2:     #9ca3af;
+  /* Testi — carbone */
+  --text:        #2b2f33;
+  --text-strong: #16191c;
+  --muted:       #70757c;
+  --muted-2:     #a2a7ad;
 
-  /* Verde salvia */
-  --primary:     #6b8e6b;
-  --primary-2:   #87a987;
-  --primary-dark:#4f6f4f;
-  --primary-bg:  #e8f0e6;
+  /* Primario: verde profondo, istituzionale */
+  --primary:     #38524a;
+  --primary-2:   #58756c;
+  --primary-dark:#243832;
+  --primary-bg:  #edf0ee;
 
-  /* Accent freddo (teal salvia) — sostituito marroncino */
-  --accent:      #5a8a8a;
-  --accent-bg:   #e0efef;
-  --accent-dark: #3f6b6b;
+  /* Accent: bronzo sobrio */
+  --accent:      #8c6f45;
+  --accent-bg:   #f3efe7;
+  --accent-dark: #6d5535;
 
-  /* Stati */
-  --success:     #4f7f4f;
-  --success-bg:  #e3efde;
-  --warning:     #b8860b;
-  --warning-bg:  #faf0d4;
-  --danger:      #a04848;
-  --danger-bg:   #f5dede;
-  --info:        #5a8a8a;
-  --info-bg:     #e0efef;
+  /* Stati — desaturati */
+  --success:     #3e6b52;
+  --success-bg:  #eaf0ec;
+  --warning:     #96742e;
+  --warning-bg:  #f5f0e2;
+  --danger:      #8e4343;
+  --danger-bg:   #f4e8e8;
+  --info:        #46656e;
+  --info-bg:     #e9eff1;
 
   /* Bordi e ombre */
   --border:      #e5e7e0;
@@ -528,6 +528,54 @@ tr.row-click{transition:background .12s;}
 #lead-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;}
 #lead-cards-grid>div{transition:transform .16s,box-shadow .16s;}
 #lead-cards-grid>div:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,70,50,.12);}
+
+
+/* ═══════════ TEMA PROFESSIONALE (via l'effetto giocattolo) ═══════════ */
+
+/* Icone: desaturate e discrete, niente riquadro colorato */
+.sb-ico{background:transparent;box-shadow:none;width:22px;min-width:22px;height:22px;font-size:13px;filter:grayscale(.85) opacity(.75);}
+.sb-item:hover .sb-ico{transform:none;background:transparent;box-shadow:none;filter:grayscale(.3) opacity(1);}
+.sb-item.active .sb-ico{background:transparent;box-shadow:none;filter:grayscale(0);}
+.sn-ico{filter:grayscale(.85) opacity(.75);}
+.subdet-nav .tab-btn.active .sn-ico,.subdet-nav .tab-btn:hover .sn-ico{filter:grayscale(.2) opacity(1);}
+.home-kpi-card>div:first-child{filter:grayscale(.5);box-shadow:none!important;}
+#fab-quicknote{filter:none;background:var(--primary);}
+
+/* Micro-animazioni più contenute */
+.sb-item:hover .sb-ico,.home-kpi-card:hover>div:first-child{transform:none;}
+.home-kpi-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,35,30,.08);}
+.btn:hover{transform:none;box-shadow:0 2px 6px rgba(30,35,30,.12);}
+#sub-action-bar .btn:hover{transform:none;}
+#fab-quicknote:hover{transform:translateY(-2px) scale(1.03);}
+
+/* Titoli: meno rotondi, più autorevoli */
+.page-title{font-family:'Sora',sans-serif;font-weight:700;letter-spacing:-.3px;color:var(--text-strong);}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:700;}
+.sb-logo{font-weight:700;letter-spacing:-.2px;}
+.sb-group-title{color:var(--muted-2);letter-spacing:2px;}
+
+/* Sidebar attiva: marcatore sottile, niente blocco colorato */
+.sb-item.active{background:transparent;border-left:2px solid var(--primary);border-radius:0 8px 8px 0;color:var(--text-strong);}
+.sb-item:hover{background:var(--bg2);}
+
+/* Tabelle: intestazioni in maiuscoletto sobrio */
+thead th{background:var(--card);color:var(--muted-2);font-size:9.5px;letter-spacing:1.8px;border-bottom:2px solid var(--border-2);}
+tr:hover td{background:var(--card-alt);}
+tr.row-click:hover td{background:var(--primary-bg);}
+
+/* Tab della scheda SUB: pulite */
+.subdet-nav{border-radius:8px;}
+.subdet-nav .tab-btn.active{background:transparent;border-left:2px solid var(--primary);border-radius:0;color:var(--text-strong);font-weight:600;}
+.subdet-nav .tab-btn:hover{background:var(--bg2);}
+.subdet-header{border-left:3px solid var(--primary);}
+
+/* Bottoni primari scuri, sobri */
+.btn-primary{background:var(--primary);border:1px solid var(--primary-dark);}
+.btn-primary:hover{background:var(--primary-dark);}
+.btn-success{background:var(--success);border:1px solid var(--success);color:#fff;}
+
+/* Emoji nei titoli di sezione: attenuate */
+.page-title,.modal-title{filter:none;}
 
 /* Toast coerente col tema */
 #toast{box-shadow:var(--shadow-lg);}
@@ -1377,7 +1425,7 @@ tr.row-click{transition:background .12s;}
     <div id="sec-affitti" class="section">
       <div class="flex-between mb-16">
         <div><h2 class="page-title">💳 Affitti</h2><p class="page-sub">Pagamenti affitto per SUB e anno</p></div>
-        <button class="btn btn-primary" onclick="subActionPagamento()">+ Registra pagamento</button>
+        <button class="btn btn-primary" onclick="subActionNuovoAffitto()">+ Registra pagamento</button>
       </div>
       <div id="affitti-stats" class="home-kpi" style="margin-bottom:20px;"></div>
       <div class="filter-bar mb-16">
