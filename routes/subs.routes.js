@@ -67,11 +67,13 @@ router.get('/api/subs', authMiddleware, async (req, res) => {
     const r = await pool.query(SQL);
     res.json(r.rows);
   } catch(e) {
+    console.error('⚠️ GET /api/subs (query principale) fallita:', e.message);
     // Colonne P18-20 non ancora migrate → usa fallback senza sub_destinazione_id/stato_sub
     try {
       const r2 = await pool.query(SQL_FALLBACK);
       res.json(r2.rows);
     } catch(e2) {
+      console.error('⚠️ GET /api/subs (query fallback) fallita:', e2.message);
       res.status(500).json({ error: e2.message });
     }
   }

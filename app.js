@@ -12,6 +12,12 @@ app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── REQUEST LOG (diagnostica temporanea) ──
+app.use('/api', (req, res, next) => {
+  console.log('→', req.method, req.originalUrl);
+  next();
+});
+
 // ── ROUTES (mounted at root — route files keep full /api/... paths) ──
 app.use('/', require('./routes/auth.routes'));
 app.use('/', require('./routes/subs.routes'));
