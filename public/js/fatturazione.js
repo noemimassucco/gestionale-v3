@@ -58,7 +58,7 @@ async function openFattDetail(id) {
     </div>`;
 
   document.getElementById('fatt-detail-title').textContent =
-    (obj.numero_fattura ? 'Fattura '+obj.numero_fattura+' — ' : '') + esc(obj.cliente_nome||'Dettaglio');
+    (obj.numero_fattura ? 'Fattura '+obj.numero_fattura+' — ' : '') + (obj.cliente_nome||'Dettaglio');
   document.getElementById('modal-fatt-detail').classList.add('open');
 }
 // =======================================================
@@ -273,7 +273,7 @@ async function fattBulkPaga() {
   if (!_fattSel.size || !await appConfirm(`Segnare ${_fattSel.size} ordini come pagati?`)) return;
   const dp = new Date().toISOString().split('T')[0];
   await Promise.all([..._fattSel].map(id => api('/api/fatturazione/' + id + '/paga', { method: 'POST', body: JSON.stringify({ data_pagamento: dp }) })));
-  _fattSel.clear(); loadFatturazione(); toast(`✅ ${_fattSel.size || 'N'} ordini segnati pagati`);
+  const _n=_fattSel.size; _fattSel.clear(); loadFatturazione(); toast(`✅ ${_n} ordini segnati pagati`);
 }
 
 async function fattBulkContabilizza() {

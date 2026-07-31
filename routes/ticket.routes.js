@@ -22,19 +22,26 @@ router.get('/api/ticket', authMiddleware, async (req, res) => {
 router.post('/api/ticket', authMiddleware, async (req, res) => {
   const f=req.body;
   const r=await pool.query(
-    'INSERT INTO ticket (sub_id,inquilino_id,titolo,descrizione,categoria,priorita,stato,assegnato_a,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-    [f.sub_id||null,f.inquilino_id||null,f.titolo,f.descrizione||null,f.categoria||null,f.priorita||'normale',f.stato||'aperto',f.assegnato_a||null,req.user.id]);
+    'INSERT INTO ticket (sub_id,inquilino_id,titolo,descrizione,categoria,priorita,stato,assegnato_a,note,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *',
+    [f.sub_id||null,f.inquilino_id||null,f.titolo,f.descrizione||null,f.categoria||null,f.priorita||'normale',f.stato||'aperto',f.assegnato_a||null,f.note||null,req.user.id]);
   if(f.sub_id) await pool.query('INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
     [f.sub_id,'ticket',`Ticket: ${f.titolo}`,f.descrizione||'',req.user.id]);
   res.json(r.rows[0]);
 });
 
 router.put('/api/ticket/:id', authMiddleware, async (req, res) => {
+  // Update PARZIALE: i campi non inviati restano invariati (prima venivano azzerati → 500 su titolo NOT NULL)
   const f=req.body;
-  const chiusura=f.stato==='chiuso'?'NOW()':null;
   const r=await pool.query(
-    'UPDATE ticket SET titolo=$1,descrizione=$2,categoria=$3,priorita=$4,stato=$5,assegnato_a=$6,data_chiusura=COALESCE($7::TIMESTAMP,data_chiusura),updated_at=NOW() WHERE id=$8 RETURNING *',
-    [f.titolo,f.descrizione||null,f.categoria||null,f.priorita||'normale',f.stato||'aperto',f.assegnato_a||null,chiusura,req.params.id]);
+    `UPDATE ticket SET
+       titolo=COALESCE($1,titolo), descrizione=COALESCE($2,descrizione),
+       categoria=COALESCE($3,categoria), priorita=COALESCE($4,priorita),
+       stato=COALESCE($5,stato), assegnato_a=COALESCE($6::int,assegnato_a),
+       note=COALESCE($7,note),
+       data_chiusura=CASE WHEN $5::text='chiuso' THEN NOW() ELSE data_chiusura END,
+       updated_at=NOW()
+     WHERE id=$8 RETURNING *`,
+    [f.titolo||null,f.descrizione||null,f.categoria||null,f.priorita||null,f.stato||null,f.assegnato_a||null,f.note||null,req.params.id]);
   res.json(r.rows[0]);
 });
 

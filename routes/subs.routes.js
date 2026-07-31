@@ -100,6 +100,14 @@ router.post('/api/subs', authMiddleware, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+router.put('/api/subs/:id/millesimi', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('UPDATE subs SET millesimi=$1::numeric, updated_at=NOW() WHERE id=$2 RETURNING id,codice,millesimi',
+      [req.body.millesimi||null, req.params.id]);
+    res.json(r.rows[0]||{error:'SUB non trovato'});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.put('/api/subs/:id', authMiddleware, async (req, res) => {
   const f = req.body;
   try {

@@ -126,6 +126,7 @@ async function saveFusione(){
 }
 
 function quickScissione(subId, codice){
+  codice = codice || (DB.subs||[]).find(s=>s.id==subId)?.codice || '';
   currentSubId = subId;
   document.getElementById('sc-codice').value = '';
   document.getElementById('sc-note').value = '';
@@ -174,6 +175,7 @@ function calcIstatPreview(){
 }
 
 async function exportSubCSV(subId, codice) {
+  codice = codice || (DB.subs||[]).find(s=>s.id==subId)?.codice || '';
   const data = await api('/api/subs/' + subId + '/detail');
   if (!data) return;
   const s = data.sub;

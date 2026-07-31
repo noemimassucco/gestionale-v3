@@ -13,8 +13,8 @@ async function initApp() {
       token = savedToken;
       currentUser = JSON.parse(savedUser);
       _showApp();
-      await loadDD();
-      showSection('dashboard'); // showSection chiama già loadDashboard()
+      try { await loadDD(); showSection('dashboard'); } // showSection chiama già loadDashboard()
+      catch(renderErr) { console.error('Errore render iniziale:', renderErr); }
     } catch(e) {
       // Token scaduto o corrotto — torna al login
       _showLogin();
@@ -96,6 +96,7 @@ async function doLogin() {
 }
 
 function doLogout() {
+  if(typeof _promIntervalId!=='undefined'&&_promIntervalId){clearInterval(_promIntervalId);_promIntervalId=null;}
   sessionStorage.clear();
   token = '';
   currentUser = null;

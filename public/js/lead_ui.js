@@ -226,7 +226,7 @@ function _renderLeadCard(l) {
     telHtml + emailHtml + ricercaHtml + promHtml +
     '<div style="display:flex;gap:6px;margin-top:10px;">' +
       '<button class="btn btn-xs btn-primary" onclick="event.stopPropagation();convertiLead(' + l.id + ')">✅ Converti</button>' +
-      '<button class="btn btn-xs btn-gray" onclick="event.stopPropagation();openNuovoPromemoriaLead(' + l.id + ',\'' + esc(l.ragione_sociale) + '\')">📅</button>' +
+      '<button class="btn btn-xs btn-gray" onclick="event.stopPropagation();openNuovoPromemoriaLead(' + l.id + ')">📅</button>' +
     '</div>' +
   '</div>';
 }

@@ -291,11 +291,11 @@ async function runOCR(input) {
 
   try {
     const r = await apiUp('/api/ocr', fd);
-    if (!r.ok) {
-      status.textContent = '❌ ' + (r.error || 'Errore lettura');
+    const d = r?.dati;
+    if (!d) {
+      status.textContent = '❌ ' + (r?.error || 'Errore lettura');
       return;
     }
-    const d = r.data;
     status.textContent = '✅ Dati estratti! Verifica e completa i campi mancanti.';
     status.style.color = 'var(--green)';
 
@@ -396,8 +396,8 @@ function openImportSub() {
 async function editMan(id){
   const data=await api('/api/manutenzioni');
   const m=(data||[]).find(x=>x.id==id);if(!m)return;
+  openModalMan(); // prima apre (resetta manEditId), POI marca la modifica
   manEditId=id;document.getElementById('m-man-ttl').textContent='Modifica Manutenzione';
-  openModalMan();
   const s=id2=>document.getElementById(id2);
   s('man-tipo').value=m.tipo||'';s('man-prior').value=m.priorita||'normale';s('man-stato').value=m.stato||'programmata';
   s('man-sub').value=m.sub_id||'';s('man-sede').value=m.sede_id||'';s('man-forn').value=m.fornitore_id||'';
@@ -657,6 +657,7 @@ async function renderSubDetTab(tab) {
 
   }else if(tab==='certificazioni'){
     el.innerHTML=`
+      ${_subDocFolder('🛡️ Assicurazioni','polizza','Polizze fabbricato, RC, incendio — metti la scadenza per l\'avviso di rinnovo.')}
       ${_subDocFolder('🏆 Certificazioni','certificazione','Agibilità, collaudi, certificati…')}
       ${_subDocFolder('🏠 Agibilità','agibilita','Certificato di agibilità.')}
       ${_subDocFolder('📋 Collaudi','collaudo','Collaudi statici e tecnici.')}
@@ -706,6 +707,22 @@ async function renderSubDetTab(tab) {
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Costi</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','economico')">📅 Scadenze</button>
     </div>`+renderTabEconomico(data)
+    +`<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;background:var(--card-alt);">
+      <div class="flex-between" style="margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+        <div style="font-size:12px;font-weight:700;">📐 Millesimi di proprietà</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input id="sub-millesimi-inp" type="number" step="0.01" value="${s.millesimi||''}" placeholder="es. 125.50" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;">
+          <span style="font-size:11px;color:var(--muted);">‰</span>
+          <button class="btn btn-xs btn-primary" onclick="saveMillesimiSub()">Salva</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;">
+        <span style="color:var(--muted);">Calcola la tua quota:</span>
+        <span>spesa totale condominio €</span>
+        <input id="sub-mill-spesa" type="number" step="0.01" placeholder="0.00" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="calcQuotaMillesimi()">
+        <span>→ quota SUB: <strong id="sub-mill-quota" style="color:var(--accent);font-family:monospace;">—</strong></span>
+      </div>
+    </div>`
     +_subDocFolder('🏢 Spese condominiali','condominiale','Carica qui riparti, verbali assemblea e rendiconti condominiali (con importo e scadenza).');
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
@@ -1144,31 +1161,38 @@ function subActionNuovaBolletta() {
 }
 
 function subActionNuovoAffitto() {
-  const subId = currentSubId;
-  
-  if (typeof openModalPagamento === 'function') {
-    openModalPagamento();
-    setTimeout(() => { const el = document.getElementById('pag-sub'); if (el) el.value = subId; }, 100);
-  } else {
-    toast('Funzione affitto non disponibile', 'error');
+  // Da sec-affitti non c'è un SUB corrente: mostra il select nel modale
+  const fld = document.getElementById('pag-sub-field');
+  const sel = document.getElementById('pag-sub-sel');
+  if (fld && sel) {
+    sel.innerHTML = '<option value="">— Seleziona il SUB —</option>' +
+      (DB.subs||[]).map(s => `<option value="${s.id}">${esc(s.codice)}</option>`).join('');
+    fld.style.display = currentSubId ? 'none' : '';
+    if (currentSubId) sel.value = currentSubId;
   }
+  subActionPagamento();
 }
 
-function subActionNota() { setSubDetTab('timeline',null); document.querySelectorAll('#sub-det-tabs .tab-btn').forEach((b,i)=>{if(i===8)b.classList.add('active');else b.classList.remove('active');}); document.getElementById('tl-nota-txt')?.focus(); }
+function subActionNota() { setSubDetTab('timeline',_subTabBtn('timeline')); setTimeout(()=>document.getElementById('tl-nota-txt')?.focus(),150); }
 
 async function savePagamento() {
   const v = id => document.getElementById(id)?.value||'';
   if(!v('pag-anno')||!v('pag-importo')){toast('Anno e importo obbligatori','error');return;}
+  const subId = currentSubId || parseInt(v('pag-sub-sel')) || null;
+  if(!subId){toast('Seleziona il SUB','error');return;}
   const s = currentSubData?.sub;
   const r = await api('/api/pagamenti-affitto',{method:'POST',body:JSON.stringify({
-    sub_id: currentSubId, inquilino_id: s?.inquilino_id||null,
+    sub_id: subId, inquilino_id: s?.inquilino_id||null,
     anno: parseInt(v('pag-anno')), mese: parseInt(v('pag-mese')),
     importo: v('pag-importo'), data_pagamento: v('pag-data')||null,
     stato: v('pag-stato'), note: v('pag-note'),
   })});
   closeM('modal-pagamento');
-  const data = await api('/api/subs/'+currentSubId+'/detail');
-  if(data){currentSubData=data; renderSubDetTab(subDetTab);}
+  if(typeof loadAffitti==='function'&&document.getElementById('sec-affitti')?.classList.contains('active'))loadAffitti();
+  if(currentSubId&&document.getElementById('sec-subdet')?.classList.contains('active')){
+    const data = await api('/api/subs/'+currentSubId+'/detail');
+    if(data){currentSubData=data; renderSubDetTab(subDetTab);}
+  }
   toast('Pagamento registrato ✓');
 }
 
@@ -1365,4 +1389,21 @@ function addChatMsg(html,role,id=null,isHtml=false){
   if(isHtml)div.innerHTML=html;else div.textContent=html;
   msgs.appendChild(div);
   msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ═══ Millesimi (tab Economico) ═══
+async function saveMillesimiSub(){
+  const val=document.getElementById('sub-millesimi-inp')?.value||'';
+  const r=await api('/api/subs/'+currentSubId+'/millesimi',{method:'PUT',body:JSON.stringify({millesimi:val||null})});
+  if(!r||r.error){toast('Errore: '+(r?.error||'salvataggio fallito'),'error');return;}
+  if(currentSubData?.sub)currentSubData.sub.millesimi=r.millesimi;
+  toast('📐 Millesimi salvati ✓');
+  calcQuotaMillesimi();
+}
+function calcQuotaMillesimi(){
+  const mill=parseFloat(document.getElementById('sub-millesimi-inp')?.value||currentSubData?.sub?.millesimi||0);
+  const tot=parseFloat(document.getElementById('sub-mill-spesa')?.value||0);
+  const out=document.getElementById('sub-mill-quota');
+  if(!out)return;
+  out.textContent=(mill&&tot)?('€ '+(tot*mill/1000).toLocaleString('it-IT',{minimumFractionDigits:2}))+' ('+mill+'‰)':'—';
 }

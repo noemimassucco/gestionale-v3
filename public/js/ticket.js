@@ -22,7 +22,7 @@ async function loadTicket(){
         ${t.sub_codice?`<span class="badge badge-sede">SUB ${esc(t.sub_codice)}</span>`:''}
         ${t.sede_nome?`<span style="font-size:11px;color:var(--muted);">${esc(t.sede_nome)}</span>`:''}
         <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${t.stato==='chiuso'?'rgba(16,185,129,.2)':t.stato==='in_corso'?'rgba(184,134,11,.2)':'rgba(107,142,107,.2)'};color:${t.stato==='chiuso'?'var(--green)':t.stato==='in_corso'?'var(--accent)':'var(--accent)'};">${t.stato?.replace('_',' ')||'—'}</span>
-        <button class="btn btn-edit btn-xs" onclick="openEditTicket({t.id})" style="flex-shrink:0;">✏️</button><button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="delTicket(${t.id})">✕</button>
+        <button class="btn btn-edit btn-xs" onclick="openEditTicket(${t.id})" style="flex-shrink:0;">✏️</button><button class="btn btn-danger btn-sm" style="margin-left:auto;" onclick="delTicket(${t.id})">✕</button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">
         ${t.inquilino_nome?`👤 ${esc(t.inquilino_nome)} · `:''}${fmt(t.created_at)}${t.autore?' · '+esc(t.autore):''}
@@ -48,7 +48,7 @@ async function saveTicket(){
   const editId=document.getElementById('modal-ticket').__editId;
   if(editId){
     const v=id=>document.getElementById(id)?.value||'';
-    const r=await api('/api/ticket/'+editId,{method:'PUT',body:JSON.stringify({titolo:v('tick-titolo'),descrizione:v('tick-desc')||null,categoria:v('tick-cat')||null,priorita:v('tick-prior'),stato:'aperto',note:v('tick-note')||null})});
+    const r=await api('/api/ticket/'+editId,{method:'PUT',body:JSON.stringify({titolo:v('tick-titolo'),descrizione:v('tick-desc')||null,categoria:v('tick-cat')||null,priorita:v('tick-prior'),note:v('tick-note')||null})});
     if(!r||r.error){toast('Errore: '+(r?.error||'?'),'error');return;}
     document.getElementById('modal-ticket').__editId=null;
     closeM('modal-ticket');loadTicket();toast('Ticket aggiornato ✓');return;

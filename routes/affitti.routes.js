@@ -39,8 +39,8 @@ router.post('/api/pagamenti-affitto', authMiddleware, async (req, res) => {
 router.put('/api/pagamenti-affitto/:id', authMiddleware, async (req, res) => {
   const { importo, data_pagamento, stato, note } = req.body;
   const r = await pool.query(
-    'UPDATE pagamenti_affitto SET importo=$1,data_pagamento=$2,stato=$3,note=$4 WHERE id=$5 RETURNING *',
-    [importo, data_pagamento||null, stato||'pagato', note||null, req.params.id]
+    `UPDATE pagamenti_affitto SET importo=COALESCE($1::numeric,importo),data_pagamento=COALESCE($2::date,data_pagamento),stato=COALESCE($3,stato),note=COALESCE($4,note) WHERE id=$5 RETURNING *`,
+    [importo||null, data_pagamento||null, stato||null, note||null, req.params.id]
   );
   res.json(r.rows[0]);
 });

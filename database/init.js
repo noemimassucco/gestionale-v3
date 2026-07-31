@@ -18,8 +18,12 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS contratti (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id), fornitore_id INTEGER REFERENCES fornitori(id), tipo VARCHAR(100), nome VARCHAR(200), url TEXT, cloudinary_id VARCHAR(200), data_inizio DATE, data_scadenza DATE, note TEXT, created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS sub_storia (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id) ON DELETE CASCADE, tipo VARCHAR(100) NOT NULL, titolo VARCHAR(300), descrizione TEXT, dati_vecchi JSONB, dati_nuovi JSONB, created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS documenti (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id), sede_id INTEGER REFERENCES sedi(id), fornitore_id INTEGER REFERENCES fornitori(id), tipo VARCHAR(80) DEFAULT 'documento', nome VARCHAR(300), url TEXT, cloudinary_id VARCHAR(300), data_documento DATE, scadenza DATE, importo DECIMAL(12,2), descrizione TEXT, note TEXT, tags TEXT[], created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS team_messaggi (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), testo TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS settings (cfg_key VARCHAR(100) PRIMARY KEY, value TEXT, updated_by INTEGER, updated_at TIMESTAMP DEFAULT NOW());
     `);
+
+    // Migrazioni puntuali
+    try { await client.query(`ALTER TABLE ticket ADD COLUMN IF NOT EXISTS note TEXT`); } catch(e) {}
 
     // Step 2: Migrazione colonna key -> cfg_key se esiste ancora
     try {
@@ -133,7 +137,7 @@ async function initDB() {
     }
     // FK sub_destinazione_id → subs(id) (aggiunta separatamente perché richiede la tabella già pronta)
     try {
-      await client.query(`ALTER TABLE subs ADD CONSTRAINT IF NOT EXISTS fk_sub_dest
+      await client.query(`ALTER TABLE subs ADD CONSTRAINT fk_sub_dest
         FOREIGN KEY (sub_destinazione_id) REFERENCES subs(id) ON DELETE SET NULL`);
     } catch(e) {}
 
@@ -162,9 +166,9 @@ async function initDB() {
       try { await client.query(`ALTER TABLE inquilini ADD COLUMN IF NOT EXISTS ${col} ${def}`); } catch(e) {}
     }
     // FK lead_owner e ricerca_sub
-    try { await client.query(`ALTER TABLE inquilini ADD CONSTRAINT IF NOT EXISTS fk_lead_owner
+    try { await client.query(`ALTER TABLE inquilini ADD CONSTRAINT fk_lead_owner
       FOREIGN KEY (lead_owner_user_id) REFERENCES users(id) ON DELETE SET NULL`); } catch(e) {}
-    try { await client.query(`ALTER TABLE inquilini ADD CONSTRAINT IF NOT EXISTS fk_ricerca_sub
+    try { await client.query(`ALTER TABLE inquilini ADD CONSTRAINT fk_ricerca_sub
       FOREIGN KEY (ricerca_sub_interesse_id) REFERENCES subs(id) ON DELETE SET NULL`); } catch(e) {}
 
     // ── Tabella promemoria (P17) — CREATE PRIMA dell'ALTER ───

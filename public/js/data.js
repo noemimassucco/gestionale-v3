@@ -120,7 +120,7 @@ function renderTbSubs() {
     const rowOp  = attivo ? '' : ' style="opacity:.7;"';
 
     const checkCell = attivo
-      ? '<input type="checkbox" class="sel-check subs-chk" data-id="' + s.id + '" onchange="toggleSel(' + s.id + ',this)">'
+      ? '<input type="checkbox" class="sel-check subs-chk" data-id="' + s.id + '" onchange="subToggle(' + s.id + ',this)">'
       : '';
 
     const destLink = s.sub_destinazione_codice
@@ -431,7 +431,7 @@ async function loadClienti(stato = 'attivo') {
       <td>${esc(i.email||'—')}</td>
       <td>${BADGE[i.stato_calcolato] || BADGE.ex}</td>
       <td onclick="event.stopPropagation()">
-        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id}, '${esc(i.ragione_sociale||'').replace(/'/g,'&#39;')}')" title="Assegna SUB">🏠</button>
+        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id})" title="Assegna SUB">🏠</button>
         <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})" title="Elimina">🗑</button>
       </td>
     </tr>`).join('');
@@ -600,6 +600,7 @@ let _assegnaInquilinoId = null;
 
 function openAssegnaSub(inquilinoId, nomeInquilino) {
   _assegnaInquilinoId = inquilinoId;
+  if (!nomeInquilino) nomeInquilino = (DB.inquilini||[]).find(x=>x.id==inquilinoId)?.ragione_sociale || '';
   document.getElementById('assegna-sub-nome').textContent = 'Cliente: ' + nomeInquilino;
 
   // Popola SUB liberi

@@ -7,6 +7,7 @@ let _riaccSubId = null;
 let _riacCodice = '';
 
 function openRiaccatastamento(subId, codice) {
+  codice = codice || (DB.subs||[]).find(s=>s.id==subId)?.codice || '';
   _riaccSubId = subId;
   _riacCodice = codice;
 
@@ -98,6 +99,7 @@ async function saveRiaccatastamento() {
 
 // ── TIMELINE COMPLETA ──
 async function openSubTimeline(subId, codice) {
+  codice = codice || (DB.subs||[]).find(s=>s.id==subId)?.codice || '';
   const data = await api('/api/subs/' + subId + '/timeline');
   if (!data) return;
 
@@ -144,6 +146,7 @@ async function openSubTimeline(subId, codice) {
 
 // ── DUPLICA SUB ──
 async function duplicaSub(subId, codice) {
+  codice = codice || (DB.subs||[]).find(s=>s.id==subId)?.codice || '';
   if(!await appConfirm(`Duplicare il SUB ${codice}? Verrà creato un nuovo SUB con gli stessi dati catastali.`)) return;
 
   const sub = DB.subs.find(s => s.id == subId);

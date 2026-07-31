@@ -58,13 +58,16 @@ router.put('/api/manutenzioni/:id', authMiddleware, async (req, res) => {
     prossima = base.toISOString().split('T')[0];
   }
   const r = await pool.query(`
-    UPDATE manutenzioni SET sub_id=$1,sede_id=$2,fornitore_id=$3,tipo=$4,descrizione=$5,
-      priorita=$6,stato=$7,data_programmata=$8,data_eseguita=$9,ricorrenza=$10,
-      prossima_scadenza=$11,costo=$12,note=$13,updated_at=NOW()
+    UPDATE manutenzioni SET sub_id=COALESCE($1::int,sub_id),sede_id=COALESCE($2::int,sede_id),
+      fornitore_id=COALESCE($3::int,fornitore_id),tipo=COALESCE($4,tipo),descrizione=COALESCE($5,descrizione),
+      priorita=COALESCE($6,priorita),stato=COALESCE($7,stato),
+      data_programmata=COALESCE($8::date,data_programmata),data_eseguita=COALESCE($9::date,data_eseguita),
+      ricorrenza=COALESCE($10,ricorrenza),prossima_scadenza=COALESCE($11::date,prossima_scadenza),
+      costo=COALESCE($12::numeric,costo),note=COALESCE($13,note),updated_at=NOW()
     WHERE id=$14 RETURNING *`,
-    [v.sub_id||null, v.sede_id||null, v.fornitore_id||null, v.tipo, v.descrizione||null,
-     v.priorita||'normale', v.stato||'programmata', v.data_programmata||null, v.data_eseguita||null,
-     v.ricorrenza||null, prossima, v.costo||null, v.note||null, req.params.id]);
+    [v.sub_id||null, v.sede_id||null, v.fornitore_id||null, v.tipo||null, v.descrizione||null,
+     v.priorita||null, v.stato||null, v.data_programmata||null, v.data_eseguita||null,
+     v.ricorrenza||null, prossima||null, v.costo||null, v.note||null, req.params.id]);
   res.json(r.rows[0]);
 });
 

@@ -82,3 +82,18 @@ let subImportMap = {};
 
 // ── DATA CACHE (per rendering immediato) ──
 let _cache = {};
+
+
+// ═══ Costanti mancanti (riferite ma mai definite → sezioni morte) ═══
+const STATO_COLORS={programmata:'rgba(184,134,11,.25)',in_corso:'rgba(90,138,138,.25)',completata:'rgba(79,127,79,.25)',annullata:'rgba(160,72,72,.2)'};
+const BOLL_ICONS={luce:'💡',energia:'💡',gas:'🔥',acqua:'💧',rifiuti:'🗑️',telefono:'📞',internet:'🌐',condominio:'🏢',altro:'📄'};
+const DOC_ICONS={fattura:'🧾',contratto:'📄',preventivo:'💼',verbale:'📋',bolletta:'⚡',catastale:'🏛️',planimetria:'📐',visura:'📑',ape:'⚡',certificazione:'🏆',agibilita:'🏠',collaudo:'📋',foto:'📷',condominiale:'🏢',certif:'🏆',documento:'📂'};
+// ═══ Globali usati tra più file (prima erano impliciti) ═══
+let sT=null;                 // debounce ricerca globale
+let currentRiepTab='fornitori';
+let chatOpen=false;
+let currentSubData=null;
+let subDetTab='overview';
+let manEditId=null;
+let docFileInput=null;
+let timelineSubId=null;

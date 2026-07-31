@@ -36,8 +36,7 @@ async function loadMan(){
       </div>
       ${m.descrizione?`<div style="margin-top:7px;font-size:12px;color:var(--muted);">${esc(m.descrizione.slice(0,100))}</div>`:''}
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-edit btn-sm" onclick="editMan(${m.id})">✏️</button>
-        <button class="btn btn-edit btn-xs" onclick="openEditMan({m.id})" style="flex-shrink:0;">✏️</button><button class="btn btn-danger btn-sm" onclick="delMan(${m.id})">✕</button>
+        <button class="btn btn-edit btn-sm" onclick="openEditMan(${m.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="delMan(${m.id})">✕</button>
         ${m.stato==='programmata'?`<button class="btn btn-success btn-sm" onclick="completaMan(${m.id})">✓ Completata</button>`:''}
       </div>
     </div>`;
@@ -66,7 +65,7 @@ async function saveMan(){
   const editId=document.getElementById('modal-man').__editId;
   if(editId){
     const v=id=>document.getElementById(id)?.value||'';
-    const r=await api('/api/manutenzioni/'+editId,{method:'PUT',body:JSON.stringify({sub_id:parseInt(v('man-sub'))||null,sede_id:parseInt(v('man-sede'))||null,fornitore_id:parseInt(v('man-forn'))||null,tipo:v('man-tipo'),descrizione:v('man-desc')||null,priorita:v('man-prior'),stato:v('man-stato'),data_programmata:v('man-dprog')||null,costo:v('man-costo')||null,note:v('man-note')||null})});
+    const r=await api('/api/manutenzioni/'+editId,{method:'PUT',body:JSON.stringify({sub_id:parseInt(v('man-sub'))||null,sede_id:parseInt(v('man-sede'))||null,fornitore_id:parseInt(v('man-forn'))||null,tipo:v('man-tipo'),descrizione:v('man-desc')||null,priorita:v('man-prior'),stato:v('man-stato'),data_programmata:v('man-data-prog')||null,costo:v('man-costo')||null,note:v('man-note')||null})});
     if(!r||r.error){toast('Errore: '+(r?.error||'?'),'error');return;}
     document.getElementById('modal-man').__editId=null;
     closeM('modal-man');loadMan();toast('Manutenzione aggiornata ✓');return;
@@ -103,7 +102,7 @@ async function openEditMan(id){
     sv('man-sub',m.sub_id||'');sv('man-sede',m.sede_id||'');sv('man-forn',m.fornitore_id||'');
     sv('man-tipo',m.tipo);sv('man-desc',m.descrizione||'');
     sv('man-prior',m.priorita||'normale');sv('man-stato',m.stato||'programmata');
-    sv('man-dprog',m.data_programmata?.split('T')[0]||'');
+    sv('man-data-prog',m.data_programmata?.split('T')[0]||'');
     sv('man-costo',m.costo||'');sv('man-note',m.note||'');
     document.getElementById('m-man-ttl').textContent='✏️ Modifica Manutenzione';
     document.getElementById('modal-man').__editId=id;

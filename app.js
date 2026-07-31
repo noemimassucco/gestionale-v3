@@ -33,6 +33,7 @@ app.use('/', require('./routes/backup.routes'));
 app.use('/', require('./routes/portale.routes'));
 app.use('/', require('./routes/clienti.routes'));
 app.use('/', require('./routes/promemoria.routes'));
+app.use('/', require('./routes/team.routes'));
 
 // ── 404 API ──
 app.use('/api', (req, res) => {

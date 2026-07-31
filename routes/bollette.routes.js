@@ -57,8 +57,8 @@ router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, 
 router.put('/api/bollette/:id', authMiddleware, async (req, res) => {
   const f=req.body;
   const r=await pool.query(
-    'UPDATE bollette SET tipo=$1,fornitore_nome=$2,numero=$3,importo=$4,periodo_dal=$5,periodo_al=$6,scadenza=$7,data_pagamento=$8,stato=$9,note=$10 WHERE id=$11 RETURNING *',
-    [f.tipo,f.fornitore_nome||null,f.numero||null,f.importo||null,f.periodo_dal||null,f.periodo_al||null,f.scadenza||null,f.data_pagamento||null,f.stato||'da_pagare',f.note||null,req.params.id]);
+    `UPDATE bollette SET tipo=COALESCE($1,tipo),fornitore_nome=COALESCE($2,fornitore_nome),numero=COALESCE($3,numero),importo=COALESCE($4::numeric,importo),periodo_dal=COALESCE($5::date,periodo_dal),periodo_al=COALESCE($6::date,periodo_al),scadenza=COALESCE($7::date,scadenza),data_pagamento=COALESCE($8::date,data_pagamento),stato=COALESCE($9,stato),note=COALESCE($10,note) WHERE id=$11 RETURNING *`,
+    [f.tipo||null,f.fornitore_nome||null,f.numero||null,f.importo||null,f.periodo_dal||null,f.periodo_al||null,f.scadenza||null,f.data_pagamento||null,f.stato||null,f.note||null,req.params.id]);
   res.json(r.rows[0]);
 });
 

@@ -59,6 +59,7 @@ function renderMenuPrefs(){
 }
 
 function showSection(name){
+  if(name!=='teamchat'&&typeof stopTeamChatPolling==='function')stopTeamChatPolling();
   document.querySelectorAll('#app-main .section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+name)?.classList.add('active');
@@ -100,6 +101,7 @@ function showSection(name){
   else if(name==='calendario'){if(typeof initFullCalendar==='function'&&!window._fcInstance)initFullCalendar();loadCalendario();}
   else if(name==='inquilini'){ loadClienti(_clientiTabAttivo||'attivo'); _updateClienteTabCounts(); }
   else if(name==='fornitori')renderTbForn();
+  else if(name==='teamchat'){ loadTeamChat(); startTeamChatPolling(); }
   else if(name==='chat'){
     setTimeout(()=>document.getElementById('chat-input-page')?.focus(),200);
   }
@@ -125,7 +127,7 @@ function showSubCtx(e, subId, codice) {
   menu.innerHTML = `
     <div class="ctx-item" onclick="closeCtx();openSubDetail(${subId})">🔍 Apri scheda completa</div>
     <div class="ctx-item" onclick="closeCtx();openAnaById('sub',${subId})">✏️ Modifica dati</div>
-    <div class="ctx-item" onclick="closeCtx();duplicaSub(${subId},'${codice}')">📋 Duplica SUB</div>
+    <div class="ctx-item" onclick="closeCtx();duplicaSub(${subId})">📋 Duplica SUB</div>
     <div class="ctx-sep"></div>
     <div class="ctx-item" onclick="closeCtx();openModalInt();setTimeout(()=>{const el=document.getElementById('fi-sub');if(el)el.value=${subId};},100)">➕ Crea intervento</div>
     <div class="ctx-item" onclick="closeCtx();openModalDoc();setTimeout(()=>{const el=document.getElementById('doc-sub');if(el)el.value=${subId};},100)">📄 Aggiungi documento</div>
@@ -133,13 +135,13 @@ function showSubCtx(e, subId, codice) {
     <div class="ctx-item" onclick="closeCtx();currentSubId=${subId};subActionPagamento()">💳 Registra affitto</div>
     <div class="ctx-item" onclick="closeCtx();openModalTicket(${subId})">🎫 Apri ticket</div>
     <div class="ctx-sep"></div>
-    <div class="ctx-item" style="font-weight:600;color:var(--accent);" onclick="closeCtx();openRiaccatastamento(${subId},'${codice}')">🏛️ Riaccatasta SUB</div>
-    <div class="ctx-item" onclick="closeCtx();quickScissione(${subId},'${codice}')">✂️ Scindi SUB</div>
+    <div class="ctx-item" style="font-weight:600;color:var(--accent);" onclick="closeCtx();openRiaccatastamento(${subId})">🏛️ Riaccatasta SUB</div>
+    <div class="ctx-item" onclick="closeCtx();quickScissione(${subId})">✂️ Scindi SUB</div>
     <div class="ctx-item" onclick="closeCtx();openModalFusione(${subId})">🔗 Fondi SUB</div>
     <div class="ctx-item" onclick="closeCtx();openIstatCfg(${subId})">📈 Config ISTAT</div>
     <div class="ctx-sep"></div>
-    <div class="ctx-item" onclick="closeCtx();openSubTimeline(${subId},'${codice}')">📅 Storico completo</div>
-    <div class="ctx-item" onclick="closeCtx();exportSubCSV(${subId},'${codice}')">⬇️ Esporta CSV</div>
+    <div class="ctx-item" onclick="closeCtx();openSubTimeline(${subId})">📅 Storico completo</div>
+    <div class="ctx-item" onclick="closeCtx();exportSubCSV(${subId})">⬇️ Esporta CSV</div>
     <div class="ctx-sep"></div>
     <div class="ctx-item danger" onclick="closeCtx();delAna('subs',${subId})">🗑 Elimina SUB</div>`;
   document.body.appendChild(menu);

@@ -184,7 +184,7 @@ function popF(){
 
 function toggleSel(){selMode=!selMode;selIds.clear();document.getElementById('mass-bar').classList.toggle('hidden',!selMode);document.getElementById('sel-btn').style.background=selMode?'rgba(107,142,107,.2)':'';loadInt();}
 
-function toggleSel2(id){id=parseInt(id);if(selIds.has(id)){selIds.delete(id);getSelSet('interventi').delete(id);}else{selIds.add(id);getSelSet('interventi').add(id);}document.getElementById('mass-cnt').textContent=`${selIds.size} selezionati`;document.querySelectorAll('.int-card[data-id=+id+]').forEach(el=>{el.classList.toggle('selected',selIds.has(id));const chk=el.querySelector('input[type=checkbox]');if(chk)chk.checked=selIds.has(id);});}
+function toggleSel2(id){id=parseInt(id);if(selIds.has(id)){selIds.delete(id);getSelSet('interventi').delete(id);}else{selIds.add(id);getSelSet('interventi').add(id);}document.getElementById('mass-cnt').textContent=`${selIds.size} selezionati`;document.querySelectorAll('.int-card[data-id="'+id+'"]').forEach(el=>{el.classList.toggle('selected',selIds.has(id));const chk=el.querySelector('input[type=checkbox]');if(chk)chk.checked=selIds.has(id);});}
 
 function selAll(){document.querySelectorAll('.int-card[data-id]').forEach(el=>{const id=parseInt(el.getAttribute('data-id'));if(id)selIds.add(id);el.classList.add('selected');const chk=el.querySelector('input[type=checkbox]');if(chk)chk.checked=true;});document.getElementById('mass-cnt').textContent=`${selIds.size} selezionati`;}
 

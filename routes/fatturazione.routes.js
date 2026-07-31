@@ -58,16 +58,18 @@ router.put('/api/fatturazione/:id', authMiddleware, async (req, res) => {
         sub_id=$1,inquilino_id=$2,tipo_servizio=$3,nome_servizio=$4,descrizione=$5,
         importo=$6,periodicita=$7,data_inizio=$8,data_fine=$9,stato=$10,
         mese_riferimento=$11,anno_riferimento=$12,numero_fattura=$13,data_fatturazione=$14,
-        data_pagamento=$15,stato_pagamento=$16,flag_contabilizzato=$17,
-        importo_pagato=$18,note_contabili=$19,note=$20,updated_at=NOW()
+        data_pagamento=COALESCE($15::date,data_pagamento),stato_pagamento=COALESCE($16,stato_pagamento),
+        flag_contabilizzato=COALESCE($17::boolean,flag_contabilizzato),
+        importo_pagato=COALESCE($18::numeric,importo_pagato),note_contabili=COALESCE($19,note_contabili),
+        note=$20,updated_at=NOW()
        WHERE id=$21 RETURNING *`,
       [f.sub_id||null,f.inquilino_id||null,f.tipo_servizio||'servizio_vario',
        f.nome_servizio||null,f.descrizione||null,f.importo||null,f.periodicita||'mensile',
        f.data_inizio||null,f.data_fine||null,f.stato||'attivo',
        f.mese_riferimento||null,f.anno_riferimento||null,
        f.numero_fattura||null,f.data_fatturazione||null,
-       f.data_pagamento||null,f.stato_pagamento||'non_pagato',
-       f.flag_contabilizzato||false,f.importo_pagato||null,
+       f.data_pagamento||null,f.stato_pagamento||null,
+       (f.flag_contabilizzato===true||f.flag_contabilizzato===false)?f.flag_contabilizzato:null,f.importo_pagato||null,
        f.note_contabili||null,f.note||null,req.params.id]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }

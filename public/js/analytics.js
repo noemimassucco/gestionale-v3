@@ -42,8 +42,4 @@ async function loadAffitti(){
     </div>`).join('');
 }
 
-function filterSubBySede(){const sedeId=document.getElementById('fi-sede').value;const subs=sedeId?DB.subs.filter(s=>s.sede_id==sedeId):DB.subs;document.getElementById('fi-sub').innerHTML='<option value="">— SUB —</option>'+subs.map(s=>`<option value="${s.id}">${s.codice}${s.ex_sub?' (ex '+s.ex_sub+')':''}</option>`).join('');}
-
-async function loadUsers(){const u=await api('/api/users');if(!u)return;document.getElementById('users-list').innerHTML=u.map(x=>`<div style="display:flex;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="flex:1;"><strong>${esc(x.nome)}</strong><div style="font-size:10px;color:var(--muted);">${esc(x.email)} — ${x.ruolo}</div></div><span style="font-size:10px;color:${x.attivo?'var(--green)':'var(--red)'};">${x.attivo?'Attivo':'Off'}</span></div>`).join('')||'<div style="color:var(--muted);font-size:12px;">Nessun utente</div>';}
-
-async function saveUser(){const v=id=>document.getElementById(id)?.value||'';const n=v('u-nome'),e=v('u-email'),p=v('u-pwd'),r=v('u-ruolo');if(!n||!e||!p){toast('Compila tutti i campi','error');return;}await api('/api/users',{method:'POST',body:JSON.stringify({nome:n,email:e,password:p,ruolo:r})});closeM('modal-user');loadUsers();toast('Utente creato ✓');}
+// (filterSubBySede: si usa la versione di interventi.js)

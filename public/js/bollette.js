@@ -38,7 +38,7 @@ async function loadBollette(){
       <div style="display:flex;flex-direction:column;gap:4px;margin-left:8px;">
         ${b.url?`<a href="${b.url}" target="_blank" class="btn btn-edit btn-sm">👁</a>`:''}
         ${b.stato==='da_pagare'?`<button class="btn btn-success btn-sm" onclick="pagaBolletta(${b.id})">✓ Paga</button>`:''}
-        <button class="btn btn-edit btn-xs" onclick="openEditBolletta({b.id})" style="flex-shrink:0;">✏️</button><button class="btn btn-danger btn-sm" onclick="delBolletta(${b.id})">✕</button>
+        <button class="btn btn-edit btn-xs" onclick="openEditBolletta(${b.id})" style="flex-shrink:0;">✏️</button><button class="btn btn-danger btn-sm" onclick="delBolletta(${b.id})">✕</button>
       </div>
     </div>`;
   }).join('');
