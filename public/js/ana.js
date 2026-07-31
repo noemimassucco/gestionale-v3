@@ -151,7 +151,7 @@ async function saveAna(){
 
 async function delAna(table, id) {
   const labels = {subs:'SUB',fornitori:'fornitore',inquilini:'inquilino',sedi:'sede',categorie:'categoria'};
-  if (!confirm('Eliminare questo ' + (labels[table]||table) + '?')) return;
+  if(!await appConfirm('Eliminare questo ' + (labels[table]||table) + '?')) return;
 
   // Rimuovi subito dalla cache e da DB (UI istantanea)
   if (_cache[table]) _cache[table] = _cache[table].filter(x => Number(x.id) !== Number(id));

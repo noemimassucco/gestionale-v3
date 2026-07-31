@@ -263,14 +263,14 @@ async function fattToggleContabilizza(id) {
 }
 
 async function delFatt(id) {
-  if (!confirm('Eliminare questo ordine?')) return;
+  if(!await appConfirm('Eliminare questo ordine?')) return;
   await api('/api/fatturazione/' + id, { method: 'DELETE' });
   loadFatturazione();
   toast('Eliminato', 'error');
 }
 
 async function fattBulkPaga() {
-  if (!_fattSel.size || !confirm(`Segnare ${_fattSel.size} ordini come pagati?`)) return;
+  if (!_fattSel.size || !await appConfirm(`Segnare ${_fattSel.size} ordini come pagati?`)) return;
   const dp = new Date().toISOString().split('T')[0];
   await Promise.all([..._fattSel].map(id => api('/api/fatturazione/' + id + '/paga', { method: 'POST', body: JSON.stringify({ data_pagamento: dp }) })));
   _fattSel.clear(); loadFatturazione(); toast(`✅ ${_fattSel.size || 'N'} ordini segnati pagati`);
@@ -282,7 +282,7 @@ async function fattBulkContabilizza() {
 }
 
 async function fattBulkElimina() {
-  if (!confirm(`Eliminare ${_fattSel.size} ordini?`)) return;
+  if(!await appConfirm(`Eliminare ${_fattSel.size} ordini?`)) return;
   await Promise.all([..._fattSel].map(id => api('/api/fatturazione/' + id, { method: 'DELETE' })));
   _fattSel.clear(); loadFatturazione(); toast('Eliminati', 'error');
 }

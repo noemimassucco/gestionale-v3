@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestionale Immobili</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6b8e6b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Gestionale">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -366,6 +372,73 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
 .badge-warning{background:var(--warning-bg);color:var(--warning);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;}
 .badge-danger{background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;}
 .badge-info{background:var(--info-bg);color:var(--info);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600;}
+
+/* ═══════════ RESTYLING: allineamenti, colori coerenti, pulizia ═══════════ */
+
+/* Sidebar: icone allineate in colonna fissa */
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;line-height:1.2;}
+.sb-ico{width:22px;min-width:22px;text-align:center;font-size:15px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;}
+.sb-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sb-item .badge{margin-left:auto;}
+.sb-group-title{padding-left:12px;}
+
+/* Tabelle: bordi leggeri (via il blu scuro ereditato dal vecchio tema) */
+td{border-bottom:1px solid var(--border);}
+thead th{background:var(--card-alt);position:sticky;top:0;z-index:2;}
+tr:hover td{background:var(--primary-bg);}
+.table-wrap{border-radius:10px;overflow:auto;max-height:calc(100vh - 260px);}
+
+/* Tab più pulite */
+.tab-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.tab-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);}
+.tab-btn:hover{border-color:var(--primary-2);color:var(--primary-dark);}
+.tab-btn.active{background:var(--primary-bg);color:var(--primary-dark);border-color:var(--primary-2);font-weight:600;}
+
+/* Card e titoli sezione */
+.card{box-shadow:var(--shadow-sm);}
+.card:hover{box-shadow:var(--shadow);}
+.page-title{font-size:22px;}
+.page-sub{color:var(--muted-2);}
+
+/* Scheda SUB (pagina): area contenuto in card */
+#sec-subdet #sub-det-content{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow-sm);}
+#sec-subdet #sub-det-tabs{background:var(--card-alt);border:1px solid var(--border);border-radius:10px;padding:8px;}
+#sec-subdet #sub-action-bar{background:var(--primary-bg);}
+
+/* Righe cliccabili */
+tr.row-click{cursor:pointer;}
+tr.row-click:hover td{background:var(--accent-bg);}
+
+/* Empty state più morbido */
+.empty{color:var(--muted-2);padding:22px;text-align:center;font-size:12px;}
+
+
+/* ═══════════ MOBILE (il punto che mancava: sidebar off-canvas) ═══════════ */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:300;width:min(280px,84vw);transform:translateX(-100%);box-shadow:var(--shadow-lg);}
+  .sidebar.open{transform:translateX(0);}
+  #sidebar-overlay{z-index:299!important;}
+  .app-main{padding:12px;width:100%;}
+  .app-topbar{padding:8px 10px;gap:8px;}
+  .search-wrap{max-width:44vw;}
+  /* modali quasi a schermo intero, comodi col pollice */
+  .overlay .modal{width:100%;max-width:100%!important;max-height:92vh;border-radius:14px 14px 0 0;margin-top:auto;overflow-y:auto;}
+  .overlay{align-items:flex-end;padding:0;}
+  .btn{min-height:38px;}
+  .sb-item{padding:12px;font-size:14px;}
+  .home-kpi{grid-template-columns:1fr 1fr;gap:8px;}
+  .home-sub-grid{grid-template-columns:1fr 1fr;}
+  .page-title{font-size:18px;}
+  #sub-action-bar{overflow-x:auto;flex-wrap:nowrap!important;}
+  #sub-action-bar .btn{white-space:nowrap;}
+  .table-wrap{max-height:none;}
+  #fab-quicknote{right:14px;bottom:calc(14px + env(safe-area-inset-bottom));}
+  input,select,textarea{font-size:16px!important;} /* evita lo zoom automatico di iOS */
+}
+
+/* Toast coerente col tema */
+#toast{box-shadow:var(--shadow-lg);}
+
 </style>
   <!-- FullCalendar -->
   <link  href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.css" rel="stylesheet">
@@ -499,43 +572,43 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
       <div class="sb-logo" onclick="showSection('dashboard')" style="cursor:pointer;">🏢 Gestionale Immobili</div>
       <div class="sb-group">
         <div class="sb-group-title">Immobiliare</div>
-        <button class="sb-item active" id="sb-dashboard" onclick="showSection('dashboard')">🏠 Dashboard</button>
-        <button class="sb-item" id="sb-subs" onclick="showSection('subs')">🏢 SUB</button>
-        <button class="sb-item" id="sb-catasto" onclick="showSection('catasto')">🏛️ Catasto & ISTAT</button>
-        <button class="sb-item" id="sb-inquilini" onclick="showSection('inquilini')">👤 Clienti</button>
+        <button class="sb-item active" id="sb-dashboard" onclick="showSection('dashboard')"><span class="sb-ico">🏠</span><span class="sb-lbl">Dashboard</span></button>
+        <button class="sb-item" id="sb-subs" onclick="showSection('subs')"><span class="sb-ico">🏢</span><span class="sb-lbl">SUB</span></button>
+        <button class="sb-item" id="sb-inquilini" onclick="showSection('inquilini')"><span class="sb-ico">👤</span><span class="sb-lbl">Clienti</span></button>
+        <button class="sb-item" id="sb-catasto" onclick="showSection('catasto')"><span class="sb-ico">🏛️</span><span class="sb-lbl">Catasto & ISTAT</span></button>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-group">
         <div class="sb-group-title">Operatività</div>
-        <button class="sb-item" id="sb-interventi" onclick="showSection('interventi')">📋 Interventi</button>
-        <button class="sb-item" id="sb-manutenzioni" onclick="showSection('manutenzioni')">🔨 Manutenzioni</button>
-        <button class="sb-item" id="sb-ticket" onclick="showSection('ticket')">🎫 Ticket</button>
-        <button class="sb-item" id="sb-fornitori" onclick="showSection('fornitori')">🔧 Fornitori</button>
+        <button class="sb-item" id="sb-interventi" onclick="showSection('interventi')"><span class="sb-ico">📋</span><span class="sb-lbl">Interventi</span></button>
+        <button class="sb-item" id="sb-manutenzioni" onclick="showSection('manutenzioni')"><span class="sb-ico">🔨</span><span class="sb-lbl">Manutenzioni</span></button>
+        <button class="sb-item" id="sb-ticket" onclick="showSection('ticket')"><span class="sb-ico">🎫</span><span class="sb-lbl">Ticket</span></button>
+        <button class="sb-item" id="sb-fornitori" onclick="showSection('fornitori')"><span class="sb-ico">🔧</span><span class="sb-lbl">Fornitori</span></button>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-group">
         <div class="sb-group-title">Documenti</div>
-        <button class="sb-item" id="sb-documenti" onclick="showSection('documenti')">📄 Documenti</button>
-        <button class="sb-item" id="sb-import" onclick="showSection('import')">⬆️ Import / OCR</button>
+        <button class="sb-item" id="sb-documenti" onclick="showSection('documenti')"><span class="sb-ico">📄</span><span class="sb-lbl">Documenti</span></button>
+        <button class="sb-item" id="sb-import" onclick="showSection('import')"><span class="sb-ico">⬆️</span><span class="sb-lbl">Import / OCR</span></button>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-group">
         <div class="sb-group-title">Economico</div>
-        <button class="sb-item" id="sb-fatturazione" onclick="showSection('fatturazione')">🧾 Schema Fatturazione</button>
-        <button class="sb-item" id="sb-affitti" onclick="showSection('affitti')">💳 Affitti</button>
-        <button class="sb-item" id="sb-bollette" onclick="showSection('bollette')">⚡ Bollette</button>
-        <button class="sb-item" id="sb-riepilogo" onclick="showSection('riepilogo')">📊 Riepilogo</button>
+        <button class="sb-item" id="sb-fatturazione" onclick="showSection('fatturazione')"><span class="sb-ico">🧾</span><span class="sb-lbl">Schema Fatturazione</span></button>
+        <button class="sb-item" id="sb-affitti" onclick="showSection('affitti')"><span class="sb-ico">💳</span><span class="sb-lbl">Affitti</span></button>
+        <button class="sb-item" id="sb-bollette" onclick="showSection('bollette')"><span class="sb-ico">⚡</span><span class="sb-lbl">Bollette</span></button>
+        <button class="sb-item" id="sb-riepilogo" onclick="showSection('riepilogo')"><span class="sb-ico">📊</span><span class="sb-lbl">Riepilogo</span></button>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-group">
-        <button class="sb-item" id="sb-notifiche" onclick="showSection('notifiche')">🔔 Notifiche <span id="sb-notif-badge" class="badge hidden">0</span></button>
-        <button class="sb-item" id="sb-chat" onclick="showSection('chat')">🤖 Chat AI</button>
-        <button class="sb-item" id="sb-calendario" onclick="showSection('calendario')">📅 Calendario</button>
+        <button class="sb-item" id="sb-notifiche" onclick="showSection('notifiche')"><span class="sb-ico">🔔</span><span class="sb-lbl">Notifiche</span><span id="sb-notif-badge" class="badge hidden">0</span></button>
+        <button class="sb-item" id="sb-chat" onclick="showSection('chat')"><span class="sb-ico">🤖</span><span class="sb-lbl">Chat AI</span></button>
+        <button class="sb-item" id="sb-calendario" onclick="showSection('calendario')"><span class="sb-ico">📅</span><span class="sb-lbl">Calendario</span></button>
       </div>
       <div class="sb-divider"></div>
       <div class="sb-group">
-        <button class="sb-item" id="sb-anagrafiche" onclick="showSection('anagrafiche')">📁 Anagrafiche</button>
-        <button class="sb-item" id="sb-impostazioni" onclick="showSection('impostazioni')">⚙️ Impostazioni</button>
+        <button class="sb-item" id="sb-anagrafiche" onclick="showSection('anagrafiche')"><span class="sb-ico">📁</span><span class="sb-lbl">Anagrafiche</span></button>
+        <button class="sb-item" id="sb-impostazioni" onclick="showSection('impostazioni')"><span class="sb-ico">⚙️</span><span class="sb-lbl">Impostazioni</span></button>
       </div>
     </aside>
     <div id="sidebar-overlay" onclick="toggleSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:199;"></div>
@@ -829,6 +902,11 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
     <div id="sec-impostazioni" class="section">
       <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#0f172a;margin-bottom:20px;">⚙️ Impostazioni</h2>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-title">📌 Personalizza menu laterale</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Scegli quali voci vedere nel menu di sinistra. Le voci nascoste restano raggiungibili riattivandole da qui.</p>
+          <div id="menu-prefs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;"></div>
+        </div>
         <div class="card">
           <div class="card-title">🎨 Personalizzazione</div>
           <div class="form-grid" style="grid-template-columns:1fr;">
@@ -1509,7 +1587,7 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
       <button class="btn btn-sm" style="background:#ede9fe;color:#c19a6b;border:1px solid rgba(107,142,107,.3);" onclick="subActionNuovoDoc()" title="Aggiungi documento">📄 Documento</button>
       <button class="btn btn-sm" style="background:#dcfce7;color:#059669;border:1px solid rgba(16,185,129,.3);" onclick="subActionPagamento()" title="Registra pagamento affitto">💳 Affitto</button>
       <button class="btn btn-sm" style="background:#e0efef;color:var(--info);border:1px solid rgba(107,142,107,.3);" onclick="subActionCambioInquilino()" title="Cambia inquilino">👤 Inquilino</button>
-      <button class="btn btn-sm" style="background:#fee2e2;color:#fca5a5;border:1px solid rgba(239,68,68,.3);" onclick="subActionManutenzione()" title="Nuova manutenzione">🔨 Manutenzione</button>
+      <button class="btn btn-sm" style="background:#fee2e2;color:var(--danger);border:1px solid rgba(239,68,68,.3);" onclick="subActionManutenzione()" title="Nuova manutenzione">🔨 Manutenzione</button>
       <button class="btn btn-sm" style="background:#fef3c7;color:#b8860b;border:1px solid rgba(184,134,11,.3);" onclick="subActionNota()" title="Aggiungi nota timeline">📝 Nota</button>
       <button class="btn btn-sm" style="background:#dcfce7;color:var(--green);border:1px solid rgba(16,185,129,.2);" onclick="subActionGeneraAnno()" title="Genera tutti i mesi dell'anno">📅 Genera anno affitti</button>
       <button class="btn btn-sm btn-gray" onclick="subActionScissione()" title="Scissione SUB">🔀 Scissione</button>
@@ -2425,6 +2503,30 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeM('modal-pagamento')">Annulla</button>
       <button class="btn btn-success" onclick="savePagamento()">✓ Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- FAB NOTA RAPIDA (visibile ovunque, comodo da cellulare) -->
+<button id="fab-quicknote" onclick="openQuickNote()" title="Nota rapida"
+  style="position:fixed;right:18px;bottom:18px;z-index:250;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:24px;background:var(--primary);color:#fff;box-shadow:0 6px 20px rgba(107,142,107,.45);display:flex;align-items:center;justify-content:center;">📝</button>
+
+<!-- MODAL NOTA RAPIDA -->
+<div id="modal-quicknote" class="overlay" style="z-index:3000;">
+  <div class="modal" style="max-width:430px;">
+    <div class="modal-title">📝 Nota rapida</div>
+    <div class="form-grid" style="grid-template-columns:1fr;">
+      <div class="field"><label>Cosa devi ricordare? *</label><input id="qn-titolo" placeholder="es. Richiamare il sig. Bianchi" autocomplete="off"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field"><label>Quando</label><input type="date" id="qn-data"></div>
+        <div class="field"><label>Ora (opz.)</label><input type="time" id="qn-ora"></div>
+      </div>
+      <div class="field"><label>Cliente collegato (opz.)</label><select id="qn-cliente"><option value="">— Nessuno —</option></select></div>
+      <div class="field"><label>Note (opz.)</label><textarea id="qn-desc" rows="2" placeholder="Dettagli…"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-quicknote')">Annulla</button>
+      <button class="btn btn-success" onclick="saveQuickNote()">✓ Salva promemoria</button>
     </div>
   </div>
 </div>

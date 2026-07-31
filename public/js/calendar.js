@@ -119,10 +119,10 @@ function _onEventClick(event) {
   }
 }
 
-function _showPromemoriaDetail(e) {
+async function _showPromemoriaDetail(e) {
   const dataFmt = fmtDate(e.scadenza);
   const ora = e.ora_evento ? e.ora_evento.slice(0,5) : '';
-  if (confirm(`${e.icon||'📅'} ${e.titolo}\n${dataFmt}${ora?' '+ora:''}\n\nSegna come completato?`)) {
+  if (await appConfirm(`${e.icon||'📅'} ${e.titolo}\n${dataFmt}${ora?' '+ora:''}\n\nSegna come completato?`)) {
     completaPromemoria(e.id);
   }
 }

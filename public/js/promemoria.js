@@ -213,3 +213,36 @@ function startPromemoriaPolling() {
 function onCalendarDayClick(dateStr) {
   openNuovoPromemoria({ data: dateStr });
 }
+
+// ═══════ NOTA RAPIDA (FAB) ═══════
+// Pensata per il cellulare: cliente chiama → 📝 → salvi il promemoria in 5 secondi.
+function openQuickNote(){
+  const d=document.getElementById('qn-data');
+  if(d&&!d.value) d.value=new Date().toISOString().split('T')[0];
+  const sel=document.getElementById('qn-cliente');
+  if(sel) sel.innerHTML='<option value="">— Nessuno —</option>'+
+    (DB.inquilini||[]).map(i=>`<option value="${i.id}">${esc(i.ragione_sociale)}</option>`).join('');
+  document.getElementById('modal-quicknote').classList.add('open');
+  setTimeout(()=>document.getElementById('qn-titolo')?.focus(),150);
+}
+
+async function saveQuickNote(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('qn-titolo')){toast('Scrivi cosa devi ricordare','error');return;}
+  const body={
+    titolo:v('qn-titolo'),
+    descrizione:v('qn-desc')||null,
+    data_evento:v('qn-data')||new Date().toISOString().split('T')[0],
+    ora_evento:v('qn-ora')||null,
+    tipo_azione:'chiamata',
+    entita_tipo:v('qn-cliente')?'cliente':null,
+    entita_id:v('qn-cliente')?parseInt(v('qn-cliente')):null,
+  };
+  const r=await api('/api/promemoria',{method:'POST',body:JSON.stringify(body)});
+  if(!r||r.error){toast('Errore: '+(r?.error||'salvataggio fallito'),'error');return;}
+  ['qn-titolo','qn-ora','qn-desc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const qc=document.getElementById('qn-cliente'); if(qc)qc.value='';
+  closeM('modal-quicknote');
+  toast('📝 Promemoria salvato ✓');
+  if(typeof loadPromemoriaAttivi==='function')loadPromemoriaAttivi();
+}

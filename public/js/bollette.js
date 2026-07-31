@@ -69,7 +69,7 @@ async function saveBolletta(){
   closeM('modal-boll');loadBollette();toast('Bolletta salvata ✓');
 }
 
-async function delBolletta(id){if(!confirm('Eliminare?'))return;
+async function delBolletta(id){if(!await appConfirm('Eliminare?'))return;
   // Rimuovi subito dalla cache e rirender (UI istantanea)
   if (_cache.bollette) {
     _cache.bollette = _cache.bollette.filter(x => Number(x.id) !== Number(id));

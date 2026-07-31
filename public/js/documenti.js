@@ -21,7 +21,7 @@ async function loadDocs(){
   el.innerHTML=docs.map(d=>{
     const icon=DOC_ICONS[d.tipo]||'📂';
     const scadGiorni=d.scadenza?Math.floor((new Date(d.scadenza)-new Date())/(1000*60*60*24)):null;
-    const scadHtml=scadGiorni!==null?`<span class="doc-scad" style="background:${scadGiorni<30?'rgba(239,68,68,.2)':scadGiorni<90?'rgba(184,134,11,.2)':'rgba(16,185,129,.2)'};color:${scadGiorni<30?'#f87171':scadGiorni<90?'#fcd34d':'#6ee7b7'};">${scadGiorni===0?'Scade oggi':scadGiorni<0?`Scaduto ${-scadGiorni}gg fa`:`${scadGiorni}gg`}</span>`:'';
+    const scadHtml=scadGiorni!==null?`<span class="doc-scad" style="background:${scadGiorni<30?'rgba(239,68,68,.2)':scadGiorni<90?'rgba(184,134,11,.2)':'rgba(16,185,129,.2)'};color:${scadGiorni<30?'var(--danger)':scadGiorni<90?'var(--warning)':'var(--success)'};">${scadGiorni===0?'Scade oggi':scadGiorni<0?`Scaduto ${-scadGiorni}gg fa`:`${scadGiorni}gg`}</span>`:'';
     return`<div class="doc-card"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(d.nome)}</div><div class="doc-meta">${d.sub_codice?'SUB '+esc(d.sub_codice)+' · ':''}${d.sede_nome?esc(d.sede_nome)+' · ':''}${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · <strong style="color:var(--accent);">€ '+parseFloat(d.importo).toLocaleString('it-IT')+'</strong>':''}</div>${d.descrizione?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(d.descrizione.slice(0,80))}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">${scadHtml}${d.url?`<a href="${d.url}" target="_blank" class="btn btn-edit btn-sm">👁 Apri</a>`:''}<button class="btn btn-danger btn-sm" onclick="delDoc(${d.id})">✕</button></div></div>`;
   }).join('');
   loadScadenze();
@@ -72,7 +72,7 @@ async function saveDoc(){
   }
 }
 
-async function delDoc(id){if(!confirm('Eliminare documento?'))return;
+async function delDoc(id){if(!await appConfirm('Eliminare documento?'))return;
   // Rimuovi subito dalla cache e rirender (UI istantanea)
   if (_cache.documenti) {
     _cache.documenti = _cache.documenti.filter(x => Number(x.id) !== Number(id));

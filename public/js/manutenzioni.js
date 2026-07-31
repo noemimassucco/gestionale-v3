@@ -86,7 +86,7 @@ async function saveMan(){
   closeM('modal-man');loadMan();toast('Manutenzione salvata ✓');
 }
 
-async function delMan(id){if(!confirm('Eliminare?'))return;
+async function delMan(id){if(!await appConfirm('Eliminare?'))return;
   // Rimuovi subito dalla cache e rirender (UI istantanea)
   if (_cache.manutenzioni) {
     _cache.manutenzioni = _cache.manutenzioni.filter(x => Number(x.id) !== Number(id));

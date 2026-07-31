@@ -129,10 +129,11 @@ function renderTbSubs() {
 
     const statoBadge = (STATO_BADGE[stato] || STATO_BADGE.attivo) + destLink;
 
-    return '<tr' + rowOp + '>' +
-      '<td>' + checkCell + '</td>' +
+    // Tutta la riga apre la scheda completa del SUB (pagina)
+    return '<tr class="row-click"' + rowOp + ' onclick="openSubDetail(' + s.id + ')" title="Apri scheda completa">' +
+      '<td onclick="event.stopPropagation()">' + checkCell + '</td>' +
       '<td style="font-size:16px;">' + sal + '</td>' +
-      '<td class="td-bold" style="cursor:pointer;" onclick="openSubDetail(' + s.id + ')">' + esc(s.codice||'—') + '</td>' +
+      '<td class="td-bold">' + esc(s.codice||'—') + '</td>' +
       '<td>' + esc(s.sede_nome||'—') + '</td>' +
       '<td style="font-size:12px;color:var(--muted);">' + esc(s.stato_occupazione||'—') + '</td>' +
       '<td style="font-size:12px;">' + esc(s.inquilino_nome||'—') + '</td>' +
@@ -140,7 +141,7 @@ function renderTbSubs() {
       '<td style="font-size:12px;color:var(--muted);">' + (s.mq_commerciali ? s.mq_commerciali + ' mq' : '—') + '</td>' +
       '<td style="font-size:12px;">' + (s.num_interventi||0) + '</td>' +
       '<td style="font-size:12px;font-family:monospace;">' + speseFmt + '</td>' +
-      '<td>' +
+      '<td onclick="event.stopPropagation()">' +
         '<button class="btn btn-xs btn-gray" onclick="openSubDetail(' + s.id + ')" title="Scheda">📋</button>' +
         (attivo ? ' <button class="btn btn-xs btn-gray" onclick="openAnaById(\'sub\',' + s.id + ')" title="Modifica">✏️</button>' : '') +
       '</td>' +
@@ -219,7 +220,7 @@ async function bulkDelete(table, cntId, reloadFn) {
     toast('Seleziona almeno un elemento con le ☑ checkbox', 'error');
     return;
   }
-  if (!confirm('Eliminare ' + ids.length + ' elementi?\nQuesta operazione NON può essere annullata.')) return;
+  if(!await appConfirm('Eliminare ' + ids.length + ' elementi?\nQuesta operazione NON può essere annullata.')) return;
 
   // ── Rimuovi dalla cache locale SUBITO (UI istantanea) ──
   if (_cache[table]) {
@@ -418,19 +419,20 @@ async function loadClienti(stato = 'attivo') {
     return;
   }
 
+  // Click sulla riga → apre direttamente l'anagrafica in modifica (niente matitina).
+  // La prima e l'ultima cella fermano il click (checkbox e azioni).
   tbody.innerHTML = data.map(i => `
-    <tr>
-      <td><input type="checkbox" class="sel-check inquilini-chk" data-id="${i.id}" onchange="genToggle('inquilini',${i.id},this)"></td>
+    <tr class="row-click" onclick="openAnaById('inquilino',${i.id})" title="Clicca per modificare">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="sel-check inquilini-chk" data-id="${i.id}" onchange="genToggle('inquilini',${i.id},this)"></td>
       <td class="td-bold">${esc(i.ragione_sociale)}</td>
       <td style="font-size:12px;color:var(--muted);">${esc(i.cf||i.piva||'—')}</td>
       <td>${esc(i.citta||'—')}</td>
       <td>${esc(i.tel||'—')}</td>
       <td>${esc(i.email||'—')}</td>
       <td>${BADGE[i.stato_calcolato] || BADGE.ex}</td>
-      <td>
-        <button class="btn btn-xs btn-gray" onclick="openAnaById('inquilino',${i.id})">✏️</button>
-        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id}, '${esc(i.ragione_sociale||'').replace(/'/g,'&#39;')}')">🏠</button>
-        <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})">🗑</button>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id}, '${esc(i.ragione_sociale||'').replace(/'/g,'&#39;')}')" title="Assegna SUB">🏠</button>
+        <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})" title="Elimina">🗑</button>
       </td>
     </tr>`).join('');
 }
@@ -441,7 +443,7 @@ async function loadClienti(stato = 'attivo') {
 function applyLeadFilter() { loadLeadCards(); }
 
 async function convertiLead(id) {
-  if (!confirm('Convertire questo lead in cliente attivo?')) return;
+  if(!await appConfirm('Convertire questo lead in cliente attivo?')) return;
   const r = await api(`/api/clienti/${id}/converti-lead`, { method: 'PUT' });
   if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
   toast('✅ Lead convertito in cliente attivo');

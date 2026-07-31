@@ -64,7 +64,7 @@ async function saveTicket(){
   closeM('modal-ticket');loadTicket();toast('Ticket creato ✓');
 }
 
-async function delTicket(id){if(!confirm('Eliminare?'))return;
+async function delTicket(id){if(!await appConfirm('Eliminare?'))return;
   // Rimuovi subito dalla cache e rirender (UI istantanea)
   if (_cache.ticket) {
     _cache.ticket = _cache.ticket.filter(x => Number(x.id) !== Number(id));

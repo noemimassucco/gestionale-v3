@@ -100,7 +100,7 @@ async function openDet(id){
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeM('modal-det')">Chiudi</button>
       <button class="btn btn-edit" onclick="closeM('modal-det');editInt(${inv.id})">✏️ Modifica</button>
-      <button class="btn btn-danger" onclick="if(confirm('Eliminare?')){delInt(${inv.id});closeM('modal-det');}">🗑 Elimina</button>
+      <button class="btn btn-danger" onclick="closeM('modal-det');delInt(${inv.id})">🗑 Elimina</button>
     </div>`;
   document.getElementById('modal-det').classList.add('open');
 }
@@ -139,7 +139,7 @@ async function saveInt(){
   await checkDup(data);
 }
 
-async function delInt(id){if(!confirm('Eliminare?'))return;
+async function delInt(id){if(!await appConfirm('Eliminare?'))return;
   // Rimuovi subito dalla cache e rirender (UI istantanea)
   if (_cache.interventi) {
     _cache.interventi = _cache.interventi.filter(x => Number(x.id) !== Number(id));
@@ -192,7 +192,7 @@ function deselAll(){selIds.clear();document.getElementById('mass-cnt').textConte
 
 async function deleteMass(){
   if(!selIds.size){toast('Nessun intervento selezionato','error');return;}
-  if(!confirm('Eliminare ' + selIds.size + ' interventi? Non può essere annullato.'))return;
+  if(!await appConfirm('Eliminare ' + selIds.size + ' interventi? Non può essere annullato.'))return;
   const ids=[...selIds].map(Number);
   const r=await api('/api/bulk-delete',{method:'POST',body:JSON.stringify({table:'interventi',ids})});
   if(r?.error){toast('Errore: '+r.error,'error');return;}

@@ -144,7 +144,7 @@ async function openSubTimeline(subId, codice) {
 
 // ── DUPLICA SUB ──
 async function duplicaSub(subId, codice) {
-  if (!confirm(`Duplicare il SUB ${codice}? Verrà creato un nuovo SUB con gli stessi dati catastali.`)) return;
+  if(!await appConfirm(`Duplicare il SUB ${codice}? Verrà creato un nuovo SUB con gli stessi dati catastali.`)) return;
 
   const sub = DB.subs.find(s => s.id == subId);
   if (!sub) { toast('SUB non trovato', 'error'); return; }

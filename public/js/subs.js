@@ -255,7 +255,7 @@ async function eseguiFusione() {
   if (!codice)    { toast('Inserisci il codice del nuovo SUB', 'error'); return; }
   if (p1 === p2)  { toast('I due SUB devono essere diversi', 'error'); return; }
 
-  if (!confirm(`Fondere SUB ${DB.subs.find(s=>s.id==p1)?.codice} + ${DB.subs.find(s=>s.id==p2)?.codice} → ${codice}?\n\nQuesta operazione è IRREVERSIBILE.`)) return;
+  if(!await appConfirm(`Fondere SUB ${DB.subs.find(s=>s.id==p1)?.codice} + ${DB.subs.find(s=>s.id==p2)?.codice} → ${codice}?\n\nQuesta operazione è IRREVERSIBILE.`)) return;
 
   const r = await api('/api/subs/fusione', {
     method: 'POST',
@@ -298,7 +298,7 @@ async function eseguiScissione() {
   if (c1 === c2) { toast('I codici dei figli devono essere diversi', 'error'); return; }
 
   const origCodice = DB.subs.find(s=>s.id==origId)?.codice || origId;
-  if (!confirm(`Scindere SUB ${origCodice} → ${c1} + ${c2}?\n\nQuesta operazione è IRREVERSIBILE.`)) return;
+  if(!await appConfirm(`Scindere SUB ${origCodice} → ${c1} + ${c2}?\n\nQuesta operazione è IRREVERSIBILE.`)) return;
 
   const r = await api(`/api/subs/${origId}/scissione`, {
     method: 'POST',
@@ -357,7 +357,7 @@ async function eseguiRiaccatastamento() {
   if (!codice) { toast('Inserisci il nuovo codice', 'error'); return; }
 
   const origCodice = DB.subs.find(s=>s.id==origId)?.codice || origId;
-  if (!confirm(`Riaccatastate SUB ${origCodice} → ${codice}?\n\nL'originale sarà marcato come riaccatastato.`)) return;
+  if(!await appConfirm(`Riaccatastate SUB ${origCodice} → ${codice}?\n\nL'originale sarà marcato come riaccatastato.`)) return;
 
   const r = await api('/api/subs/riaccatastamento', {
     method: 'POST',

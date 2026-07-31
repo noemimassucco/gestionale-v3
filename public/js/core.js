@@ -104,3 +104,40 @@ async function exportTicket()      { exportCSV(await api('/api/ticket'),       '
 async function exportSubs()        { exportCSV(await api('/api/subs'),         'subs',         ['id','codice','sede_nome','piano','inquilino_nome','stato_occupazione','categoria_cat','mq_commerciali','rendita','canone_annuo']); }
 async function exportFornitori()   { exportCSV(await api('/api/fornitori'),    'fornitori',    ['id','ragione_sociale','piva','citta','tel','email','spec']); }
 async function exportInquilini()   { exportCSV(await api('/api/inquilini'),    'inquilini',    ['id','ragione_sociale','piva','cf','citta','tel','email']); }
+
+// ═══════ CONFERMA IN STILE GESTIONALE (sostituisce il popup del browser) ═══════
+function appConfirm(message, opts) {
+  opts = opts || {};
+  return new Promise(resolve => {
+    let ov = document.getElementById('app-confirm-ov');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'app-confirm-ov';
+      ov.style.cssText = 'position:fixed;inset:0;background:rgba(31,41,55,.45);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px);';
+      document.body.appendChild(ov);
+    }
+    const danger = opts.danger !== false; // di default rosso (quasi sempre eliminazioni)
+    ov.innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);max-width:400px;width:100%;padding:22px;animation:fadeIn .12s ease;">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;">
+          <div style="width:38px;height:38px;border-radius:10px;background:${danger?'var(--danger-bg)':'var(--primary-bg)'};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">${opts.icon||(danger?'🗑':'❓')}</div>
+          <div style="flex:1;">
+            <div style="font-weight:700;font-size:14px;color:var(--text-strong);margin-bottom:4px;">${opts.title||'Confermi?'}</div>
+            <div style="font-size:12.5px;color:var(--muted);line-height:1.5;white-space:pre-line;">${message}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="app-confirm-no" class="btn btn-gray btn-sm">Annulla</button>
+          <button id="app-confirm-yes" class="btn btn-sm" style="background:${danger?'var(--danger)':'var(--primary)'};color:#fff;border:none;">${opts.okText||(danger?'Elimina':'Conferma')}</button>
+        </div>
+      </div>`;
+    ov.style.display = 'flex';
+    const done = val => { ov.style.display = 'none'; ov.innerHTML=''; document.removeEventListener('keydown', onKey); resolve(val); };
+    const onKey = e => { if (e.key === 'Escape') done(false); if (e.key === 'Enter') done(true); };
+    document.addEventListener('keydown', onKey);
+    ov.querySelector('#app-confirm-yes').onclick = () => done(true);
+    ov.querySelector('#app-confirm-no').onclick  = () => done(false);
+    ov.onclick = e => { if (e.target === ov) done(false); };
+    setTimeout(()=>ov.querySelector('#app-confirm-no')?.focus(),50);
+  });
+}

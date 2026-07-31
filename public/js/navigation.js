@@ -9,6 +9,55 @@ function toggleSidebar(){
   if(ov)ov.style.display=sidebarOpen?'block':'none';
 }
 
+// ═══════ MENU PERSONALIZZABILE ═══════
+// Le voci nascoste dall'utente sono salvate in localStorage ('menu_hidden').
+// 'sb-impostazioni' non è nascondibile (altrimenti non potresti più riattivare nulla).
+
+function _menuHidden(){
+  try { return new Set(JSON.parse(localStorage.getItem('menu_hidden')||'[]')); }
+  catch(e){ return new Set(); }
+}
+
+function applyMenuPrefs(){
+  const hidden=_menuHidden();
+  document.querySelectorAll('.sb-item[id]').forEach(btn=>{
+    btn.style.display = hidden.has(btn.id) ? 'none' : '';
+  });
+  // Nascondi i gruppi rimasti completamente vuoti (titolo compreso)
+  document.querySelectorAll('.sb-group').forEach(g=>{
+    const items=[...g.querySelectorAll('.sb-item')];
+    const anyVisible=items.some(b=>b.style.display!=='none');
+    g.style.display=anyVisible?'':'none';
+    const prev=g.previousElementSibling;
+    if(prev&&prev.classList.contains('sb-divider')) prev.style.display=anyVisible?'':'none';
+  });
+}
+
+function toggleMenuItem(id, visible){
+  const hidden=_menuHidden();
+  if(visible) hidden.delete(id); else hidden.add(id);
+  localStorage.setItem('menu_hidden', JSON.stringify([...hidden]));
+  applyMenuPrefs();
+}
+
+function renderMenuPrefs(){
+  const grid=document.getElementById('menu-prefs-grid');
+  if(!grid) return;
+  const hidden=_menuHidden();
+  grid.innerHTML=[...document.querySelectorAll('.sb-item[id]')].map(btn=>{
+    const id=btn.id;
+    const ico=btn.querySelector('.sb-ico')?.textContent||'•';
+    const lbl=btn.querySelector('.sb-lbl')?.textContent||btn.textContent.trim();
+    const locked=id==='sb-impostazioni';
+    const on=!hidden.has(id);
+    return `<label style="display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;cursor:${locked?'not-allowed':'pointer'};background:${on?'var(--card)':'var(--bg2)'};opacity:${locked?.6:1};">
+      <input type="checkbox" ${on?'checked':''} ${locked?'disabled':''} onchange="toggleMenuItem('${id}',this.checked);renderMenuPrefs();">
+      <span style="width:20px;text-align:center;">${ico}</span>
+      <span style="font-size:12px;color:var(--text);">${lbl}</span>
+    </label>`;
+  }).join('');
+}
+
 function showSection(name){
   document.querySelectorAll('#app-main .section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
@@ -42,7 +91,7 @@ function showSection(name){
     loadAffitti();
   }
   else if(name==='riepilogo')renderRiep();
-  else if(name==='impostazioni')loadUsers();
+  else if(name==='impostazioni'){loadUsers();renderMenuPrefs();}
   else if(name==='fatturazione'){
     document.getElementById('fatt-f-anno').value=new Date().getFullYear();
     loadFatturazione();
@@ -136,3 +185,5 @@ function documentiSelAll() { tableSelAll('documenti'); }
 function manutenzioniSelAll() { tableSelAll('manutenzioni'); }
 
 function ticketSelAll() { tableSelAll('ticket'); }
+// Applica le preferenze del menu all'avvio (gli script sono in fondo al body, il DOM c'è già)
+try { applyMenuPrefs(); } catch(e) {}

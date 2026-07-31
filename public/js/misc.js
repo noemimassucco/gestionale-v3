@@ -42,7 +42,7 @@ async function doSave(data){
 
 async function upAll(input,intId){for(const f of input.files){const tipo=f.type.startsWith('image/')?'foto':f.name.toLowerCase().endsWith('.pdf')?'fattura':'documento';const fd=new FormData();fd.append('file',f);fd.append('intervento_id',intId);fd.append('tipo',tipo);toast('Caricamento…','warning');await apiUp('/api/allegati',fd);toast('Caricato ✓');}openDet(intId);}
 
-async function delAll(alId,intId){if(!confirm('Eliminare allegato?'))return;await api('/api/allegati/'+alId,{method:'DELETE'});openDet(intId);}
+async function delAll(alId,intId){if(!await appConfirm('Eliminare allegato?'))return;await api('/api/allegati/'+alId,{method:'DELETE'});openDet(intId);}
 
 function setAnaTab(tab,btn){['subs','fornitori','inquilini','sedi','categorie'].forEach(t=>document.getElementById('ana-'+t).style.display=t===tab?'':'none');document.querySelectorAll('#sec-anagrafiche .tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
@@ -239,7 +239,7 @@ async function renderRiepTab(tab) {
 }
 
 async function extractAllPrices() {
-  if(!confirm('Scansiono tutte le descrizioni degli interventi senza prezzo e cerco importi in euro. Continuare?')) return;
+  if(!await appConfirm('Scansiono tutte le descrizioni degli interventi senza prezzo e cerco importi in euro. Continuare?')) return;
   toast('Estrazione in corso…','warning');
   const r = await api('/api/interventi/extract-prices',{method:'POST'});
   toast(`✓ Estratti ${r?.updated||0} prezzi dalle descrizioni`,'success');
@@ -507,7 +507,7 @@ function subAddDocPreset(tipo, label){
 }
 
 async function subDelDoc(id){
-  if(!confirm('Eliminare questo documento?'))return;
+  if(!await appConfirm('Eliminare questo documento?'))return;
   await api('/api/documenti/'+id,{method:'DELETE'});
   await subDetRefresh();
   toast('Documento eliminato');
@@ -684,7 +684,7 @@ async function renderSubDetTab(tab) {
     if(s.data_inizio_contratto&&s.canone_annuo){
       const inizio=new Date(s.data_inizio_contratto),oggi=new Date();
       const mesi=(oggi.getFullYear()-inizio.getFullYear())*12+(oggi.getMonth()-inizio.getMonth());
-      if(mesi>=12){const pct=s.tipo_contratto==='abitativo'?1.125:1.5;const aum=parseFloat(s.canone_annuo)*pct/100;istatAlert=`<div style="background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);border-radius:8px;padding:12px 14px;font-size:12px;color:#fcd34d;margin-bottom:12px;">📈 <strong>ISTAT dovuto!</strong> Contratto del ${fmt(s.data_inizio_contratto)} (${mesi} mesi fa). Aumento stimato: +€ ${aum.toLocaleString('it-IT',{minimumFractionDigits:2})}/anno (${pct}% FOI). <button class="btn btn-sm" style="background:rgba(184,134,11,.2);color:#fcd34d;border:1px solid rgba(184,134,11,.4);margin-left:8px;" onclick="showSec('catasto',null)">Calcola ISTAT →</button></div>`;}
+      if(mesi>=12){const pct=s.tipo_contratto==='abitativo'?1.125:1.5;const aum=parseFloat(s.canone_annuo)*pct/100;istatAlert=`<div style="background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--warning);margin-bottom:12px;">📈 <strong>ISTAT dovuto!</strong> Contratto del ${fmt(s.data_inizio_contratto)} (${mesi} mesi fa). Aumento stimato: +€ ${aum.toLocaleString('it-IT',{minimumFractionDigits:2})}/anno (${pct}% FOI). <button class="btn btn-sm" style="background:rgba(184,134,11,.2);color:var(--warning);border:1px solid rgba(184,134,11,.4);margin-left:8px;" onclick="showSec('catasto',null)">Calcola ISTAT →</button></div>`;}
     }else if(!s.data_inizio_contratto||!s.canone_annuo){
       istatAlert=`<div style="background:rgba(100,116,139,.08);border:1px solid rgba(100,116,139,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:12px;">ℹ️ Aggiungi <strong style="color:var(--text);">data inizio contratto</strong> e <strong style="color:var(--text);">canone annuo</strong> per il calcolo ISTAT automatico. <button class="btn btn-sm btn-gray" onclick="openAnaById('sub',currentSubId);" style="margin-left:8px;">Completa dati →</button></div>`;
     }
@@ -705,7 +705,8 @@ async function renderSubDetTab(tab) {
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('bollette','economico')">⚡ Bollette</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Costi</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','economico')">📅 Scadenze</button>
-    </div>`+renderTabEconomico(data);
+    </div>`+renderTabEconomico(data)
+    +_subDocFolder('🏢 Spese condominiali','condominiale','Carica qui riparti, verbali assemblea e rendiconti condominiali (con importo e scadenza).');
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
   }else if(tab==='interventi'){
@@ -1172,7 +1173,7 @@ async function savePagamento() {
 }
 
 async function deletePagamento(id) {
-  if(!confirm('Eliminare questo pagamento?'))return;
+  if(!await appConfirm('Eliminare questo pagamento?'))return;
   await api('/api/pagamenti-affitto/'+id,{method:'DELETE'});
   const data=await api('/api/subs/'+currentSubId+'/detail');
   if(data){currentSubData=data;renderSubDetTab('economico');}
@@ -1232,7 +1233,7 @@ async function saveCambioInquilino() {
 }
 
 async function deleteStorInq(id){
-  if(!confirm('Eliminare record storico?'))return;
+  if(!await appConfirm('Eliminare record storico?'))return;
   await api('/api/storico-inquilini/'+id,{method:'DELETE'});
   const data=await api('/api/subs/'+currentSubId+'/detail');
   if(data){currentSubData=data;renderSubDetTab('inquilini');}
@@ -1269,7 +1270,7 @@ async function segnaAffittoPagato(id){
   loadAffitti();toast('✓ Pagamento registrato');
 }
 
-async function delAffitto(id){if(!confirm('Eliminare?'))return;await api('/api/pagamenti-affitto/'+id,{method:'DELETE'});loadAffitti();toast('Eliminato','error');}
+async function delAffitto(id){if(!await appConfirm('Eliminare?'))return;await api('/api/pagamenti-affitto/'+id,{method:'DELETE'});loadAffitti();toast('Eliminato','error');}
 
 function getDaysUntil(dateStr){
   if(!dateStr||dateStr==='senza data')return 999;
