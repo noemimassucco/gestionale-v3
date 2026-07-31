@@ -523,6 +523,7 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
         <div class="sb-group-title">Economico</div>
         <button class="sb-item" id="sb-fatturazione" onclick="showSection('fatturazione')">🧾 Schema Fatturazione</button>
         <button class="sb-item" id="sb-affitti" onclick="showSection('affitti')">💳 Affitti</button>
+        <button class="sb-item" id="sb-bollette" onclick="showSection('bollette')">⚡ Bollette</button>
         <button class="sb-item" id="sb-riepilogo" onclick="showSection('riepilogo')">📊 Riepilogo</button>
       </div>
       <div class="sb-divider"></div>
@@ -542,7 +543,7 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
     <div class="app-main" id="app-main">
 
     <!-- INTERVENTI -->
-    <div id="sec-interventi" class="section active">
+    <div id="sec-interventi" class="section">
       <div class="flex-between mb-16">
         <div>
           <h2 style="font-family:'Playfair Display',serif;font-size:20px;color:#0f172a;">Storico Interventi</h2>
@@ -1060,7 +1061,7 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
       </div>
 
       <!-- Filtri (visibili solo su tab Lead) -->
-      <div id="lead-filtri" style="display:none;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <div id="lead-filtri" style="display:none;margin-bottom:12px;gap:8px;flex-wrap:wrap;align-items:center;">
         <select id="filt-pipeline" onchange="applyLeadFilter()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);">
           <option value="">Tutti gli stati pipeline</option>
           <option value="nuovo">🆕 Nuovo</option>
@@ -1432,7 +1433,24 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
         <span style="font-size:11px;color:var(--muted);">→ Notifiche</span>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;">
+      <!-- Riga 1: occupazione + spese mensili + SUB da attenzionare -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:18px;">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:10px;font-size:13px;">🏠 Occupazione</div>
+          <div id="dash-occupazione" style="display:flex;align-items:center;gap:16px;">Caricamento…</div>
+        </div>
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">📊 Spese ultimi mesi</div><button class="btn btn-xs btn-gray" onclick="showSection('riepilogo')">→</button></div>
+          <div id="dash-chart" style="height:130px;display:flex;align-items:flex-end;gap:6px;padding-bottom:4px;"></div>
+        </div>
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">⚠️ SUB da attenzionare</div><button class="btn btn-xs btn-gray" onclick="showSection('subs')">→</button></div>
+          <div id="dash-critici" style="font-size:11px;color:var(--muted);">Caricamento…</div>
+        </div>
+      </div>
+
+      <!-- Riga 2: scadenze + attività + promemoria + notifiche -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px;">
         <div class="card">
           <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">📅 Scadenze 7gg</div><button class="btn btn-xs btn-gray" onclick="showSection('calendario')">→</button></div>
           <div id="dash-scadenze" style="font-size:11px;color:var(--muted);">Caricamento…</div>
@@ -1441,36 +1459,28 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
           <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">⚡ Ultime attività</div><button class="btn btn-xs btn-gray" onclick="showSection('interventi')">→</button></div>
           <div id="dash-activity" style="font-size:11px;color:var(--muted);">Caricamento…</div>
         </div>
-                <!-- Promemoria attivi card -->
-        <div class="card" style="margin-bottom:14px;">
+        <div class="card">
           <div class="flex-between" style="margin-bottom:10px;">
-            <div class="card-title" style="margin-bottom:0;">🔔 Promemoria attivi</div>
-            <button class="btn btn-xs btn-gray" onclick="loadPromemoriaAttivi()">↻ Aggiorna</button>
+            <div class="card-title" style="margin:0;font-size:13px;">🗓️ Promemoria attivi</div>
+            <button class="btn btn-xs btn-gray" onclick="loadPromemoriaAttivi()">↻</button>
           </div>
           <div id="dash-promemoria-list">
             <div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;">Caricamento…</div>
           </div>
         </div>
-<div class="card">
+        <div class="card">
           <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">🔔 Notifiche</div><button class="btn btn-xs btn-gray" onclick="showSection('notifiche')">→</button></div>
           <div id="dash-notif-quick" style="font-size:11px;color:var(--muted);">Caricamento…</div>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px;">
-        <div>
-          <div class="flex-between" style="margin-bottom:10px;">
-            <div style="font-size:14px;font-weight:600;color:#0f172a;">🏢 I tuoi SUB</div>
-            <button class="btn btn-primary btn-sm" onclick="showSection('subs')">Gestisci →</button>
-          </div>
-          <div id="dash-sub-grid" class="home-sub-grid"></div>
+      <!-- Riga 3: i tuoi SUB -->
+      <div style="margin-bottom:18px;">
+        <div class="flex-between" style="margin-bottom:10px;">
+          <div style="font-size:14px;font-weight:600;color:#0f172a;">🏢 I tuoi SUB</div>
+          <button class="btn btn-primary btn-sm" onclick="showSection('subs')">Gestisci →</button>
         </div>
-        <div>
-          <div class="flex-between" style="margin-bottom:10px;">
-            <div style="font-size:14px;font-weight:600;color:#0f172a;">📊 Spese mensili</div>
-          </div>
-          <div id="dash-chart" style="height:120px;display:flex;align-items:flex-end;gap:5px;padding-bottom:4px;"></div>
-        </div>
+        <div id="dash-sub-grid" class="home-sub-grid"></div>
       </div>
 
       <div>
@@ -1481,6 +1491,48 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
         <div id="dash-news" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;"></div>
       </div>
 
+    </div>
+
+    <!-- SEZIONE DETTAGLIO SUB (pagina piena, non più modale) -->
+    <div id="sec-subdet" class="section">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn btn-gray btn-sm" onclick="showSection('subs')">← Torna ai SUB</button>
+        <button class="btn btn-edit btn-sm" id="sub-det-edit-btn">✏️ Modifica</button>
+      </div>
+      <div id="sub-det-header" style="margin-bottom:12px;">
+      <div id="sub-det-banner"></div>
+      <!-- Filled by JS -->
+    </div>
+    <!-- BARRA AZIONI RAPIDE -->
+    <div id="sub-action-bar" style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px;background:#e8f0e6;border:1px solid rgba(107,142,107,.15);border-radius:10px;margin-bottom:14px;">
+      <button class="btn btn-primary btn-sm" onclick="subActionNuovoIntervento()" title="Nuovo intervento">➕ Intervento</button>
+      <button class="btn btn-sm" style="background:#ede9fe;color:#c19a6b;border:1px solid rgba(107,142,107,.3);" onclick="subActionNuovoDoc()" title="Aggiungi documento">📄 Documento</button>
+      <button class="btn btn-sm" style="background:#dcfce7;color:#059669;border:1px solid rgba(16,185,129,.3);" onclick="subActionPagamento()" title="Registra pagamento affitto">💳 Affitto</button>
+      <button class="btn btn-sm" style="background:#e0efef;color:var(--info);border:1px solid rgba(107,142,107,.3);" onclick="subActionCambioInquilino()" title="Cambia inquilino">👤 Inquilino</button>
+      <button class="btn btn-sm" style="background:#fee2e2;color:#fca5a5;border:1px solid rgba(239,68,68,.3);" onclick="subActionManutenzione()" title="Nuova manutenzione">🔨 Manutenzione</button>
+      <button class="btn btn-sm" style="background:#fef3c7;color:#b8860b;border:1px solid rgba(184,134,11,.3);" onclick="subActionNota()" title="Aggiungi nota timeline">📝 Nota</button>
+      <button class="btn btn-sm" style="background:#dcfce7;color:var(--green);border:1px solid rgba(16,185,129,.2);" onclick="subActionGeneraAnno()" title="Genera tutti i mesi dell'anno">📅 Genera anno affitti</button>
+      <button class="btn btn-sm btn-gray" onclick="subActionScissione()" title="Scissione SUB">🔀 Scissione</button>
+      <a href="https://www.agenziaentrate.gov.it" target="_blank" class="btn btn-sm btn-gray" title="Vai al Catasto">🏛️ Catasto</a>
+    </div>
+    <div class="tab-btns" id="sub-det-tabs">
+      <button class="tab-btn active" onclick="setSubDetTab('overview',this)">📋 Panoramica</button>
+      <button class="tab-btn" onclick="setSubDetTab('catasto',this)">🏛️ Catasto</button>
+      <button class="tab-btn" onclick="setSubDetTab('ape',this)">⚡ APE</button>
+      <button class="tab-btn" onclick="setSubDetTab('impianti',this)">🔧 Impianti</button>
+      <button class="tab-btn" onclick="setSubDetTab('inquilini',this)">👤 Inquilini</button>
+      <button class="tab-btn" onclick="setSubDetTab('certificazioni',this)">🏆 Certificazioni</button>
+      <button class="tab-btn" onclick="setSubDetTab('foto',this)">📷 Foto</button>
+      <button class="tab-btn" onclick="setSubDetTab('contratti',this)">📝 Contratti</button>
+      <button class="tab-btn" onclick="setSubDetTab('manutenzioni',this)">🔨 Manutenzioni</button>
+      <button class="tab-btn" onclick="setSubDetTab('interventi',this)">🛠️ Interventi</button>
+      <button class="tab-btn" onclick="setSubDetTab('economico',this)">💰 Economico</button>
+      <button class="tab-btn" onclick="setSubDetTab('timeline',this)">📜 Storico</button>
+    </div>
+    <div id="sub-det-content" style="min-height:300px;">
+      <div class="empty">Caricamento…</div>
+    </div>
+    
     </div>
 
     </div><!-- /app-main -->
@@ -2377,49 +2429,6 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
   </div>
 </div>
 
-<!-- MODAL DETTAGLIO SUB -->
-<div id="modal-sub-det" class="overlay">
-  <div class="modal modal-wide" style="max-width:1000px;">
-    <div id="sub-det-header" style="margin-bottom:12px;">
-      <div id="sub-det-banner"></div>
-      <!-- Filled by JS -->
-    </div>
-    <!-- BARRA AZIONI RAPIDE -->
-    <div id="sub-action-bar" style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px;background:#e8f0e6;border:1px solid rgba(107,142,107,.15);border-radius:10px;margin-bottom:14px;">
-      <button class="btn btn-primary btn-sm" onclick="subActionNuovoIntervento()" title="Nuovo intervento">➕ Intervento</button>
-      <button class="btn btn-sm" style="background:#ede9fe;color:#c19a6b;border:1px solid rgba(107,142,107,.3);" onclick="subActionNuovoDoc()" title="Aggiungi documento">📄 Documento</button>
-      <button class="btn btn-sm" style="background:#dcfce7;color:#059669;border:1px solid rgba(16,185,129,.3);" onclick="subActionPagamento()" title="Registra pagamento affitto">💳 Affitto</button>
-      <button class="btn btn-sm" style="background:#e0efef;color:var(--info);border:1px solid rgba(107,142,107,.3);" onclick="subActionCambioInquilino()" title="Cambia inquilino">👤 Inquilino</button>
-      <button class="btn btn-sm" style="background:#fee2e2;color:#fca5a5;border:1px solid rgba(239,68,68,.3);" onclick="subActionManutenzione()" title="Nuova manutenzione">🔨 Manutenzione</button>
-      <button class="btn btn-sm" style="background:#fef3c7;color:#b8860b;border:1px solid rgba(184,134,11,.3);" onclick="subActionNota()" title="Aggiungi nota timeline">📝 Nota</button>
-      <button class="btn btn-sm" style="background:#dcfce7;color:var(--green);border:1px solid rgba(16,185,129,.2);" onclick="subActionGeneraAnno()" title="Genera tutti i mesi dell'anno">📅 Genera anno affitti</button>
-      <button class="btn btn-sm btn-gray" onclick="subActionScissione()" title="Scissione SUB">🔀 Scissione</button>
-      <a href="https://www.agenziaentrate.gov.it" target="_blank" class="btn btn-sm btn-gray" title="Vai al Catasto">🏛️ Catasto</a>
-    </div>
-    <div class="tab-btns" id="sub-det-tabs">
-      <button class="tab-btn active" onclick="setSubDetTab('overview',this)">📋 Panoramica</button>
-      <button class="tab-btn" onclick="setSubDetTab('catasto',this)">🏛️ Catasto</button>
-      <button class="tab-btn" onclick="setSubDetTab('ape',this)">⚡ APE</button>
-      <button class="tab-btn" onclick="setSubDetTab('impianti',this)">🔧 Impianti</button>
-      <button class="tab-btn" onclick="setSubDetTab('inquilini',this)">👤 Inquilini</button>
-      <button class="tab-btn" onclick="setSubDetTab('certificazioni',this)">🏆 Certificazioni</button>
-      <button class="tab-btn" onclick="setSubDetTab('foto',this)">📷 Foto</button>
-      <button class="tab-btn" onclick="setSubDetTab('contratti',this)">📝 Contratti</button>
-      <button class="tab-btn" onclick="setSubDetTab('manutenzioni',this)">🔨 Manutenzioni</button>
-      <button class="tab-btn" onclick="setSubDetTab('interventi',this)">🛠️ Interventi</button>
-      <button class="tab-btn" onclick="setSubDetTab('economico',this)">💰 Economico</button>
-      <button class="tab-btn" onclick="setSubDetTab('timeline',this)">📜 Storico</button>
-    </div>
-    <div id="sub-det-content" style="min-height:300px;">
-      <div class="empty">Caricamento…</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeM('modal-sub-det')">Chiudi</button>
-      <button class="btn btn-edit" id="sub-det-edit-btn">✏️ Modifica</button>
-    </div>
-  </div>
-</div>
-
 <div id="toast"></div>
 
 
@@ -2529,4 +2538,5 @@ table{width:100%;border-collapse:collapse;background:var(--card);}
   </div>
 </div>
 
+</body>
 </html>

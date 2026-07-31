@@ -24,9 +24,19 @@ function renderSubGrid(subs) {
   }).join('');
 }
 
+// Mostra la scheda SUB come PAGINA (sezione piena), non come popup
+function _showSubPage(){
+  document.querySelectorAll('#app-main .section').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-subdet')?.classList.add('active');
+  document.getElementById('sb-subs')?.classList.add('active'); // il menu resta su SUB
+  const main=document.getElementById('app-main'); if(main) main.scrollTop=0;
+  window.scrollTo(0,0);
+}
+
 async function openSubDetail(id) {
   currentSubId=id; subDetTab='overview';
-  document.getElementById('modal-sub-det').classList.add('open');
+  _showSubPage();
   document.getElementById('sub-det-content').innerHTML='<div class="empty" style="padding:40px;">Caricamento scheda…</div>';
   document.querySelectorAll('#sub-det-tabs .tab-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
   const data=await api('/api/subs/'+id+'/detail');
@@ -50,7 +60,7 @@ async function openSubDetail(id) {
   if (bannerEl) bannerEl.innerHTML = _subStatoBanner(s);
   _disableSubButtons(s);
 
-  document.getElementById('sub-det-edit-btn').onclick=()=>{closeM('modal-sub-det');openAnaById('sub',id);};
+  document.getElementById('sub-det-edit-btn').onclick=()=>{openAnaById('sub',id);};
   renderSubDetTab('overview');
 }
 

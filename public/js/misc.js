@@ -686,7 +686,7 @@ async function renderSubDetTab(tab) {
       const mesi=(oggi.getFullYear()-inizio.getFullYear())*12+(oggi.getMonth()-inizio.getMonth());
       if(mesi>=12){const pct=s.tipo_contratto==='abitativo'?1.125:1.5;const aum=parseFloat(s.canone_annuo)*pct/100;istatAlert=`<div style="background:rgba(184,134,11,.1);border:1px solid rgba(184,134,11,.3);border-radius:8px;padding:12px 14px;font-size:12px;color:#fcd34d;margin-bottom:12px;">📈 <strong>ISTAT dovuto!</strong> Contratto del ${fmt(s.data_inizio_contratto)} (${mesi} mesi fa). Aumento stimato: +€ ${aum.toLocaleString('it-IT',{minimumFractionDigits:2})}/anno (${pct}% FOI). <button class="btn btn-sm" style="background:rgba(184,134,11,.2);color:#fcd34d;border:1px solid rgba(184,134,11,.4);margin-left:8px;" onclick="showSec('catasto',null)">Calcola ISTAT →</button></div>`;}
     }else if(!s.data_inizio_contratto||!s.canone_annuo){
-      istatAlert=`<div style="background:rgba(100,116,139,.08);border:1px solid rgba(100,116,139,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:12px;">ℹ️ Aggiungi <strong style="color:var(--text);">data inizio contratto</strong> e <strong style="color:var(--text);">canone annuo</strong> per il calcolo ISTAT automatico. <button class="btn btn-sm btn-gray" onclick="closeM('modal-sub-det');openAnaById('sub',currentSubId);" style="margin-left:8px;">Completa dati →</button></div>`;
+      istatAlert=`<div style="background:rgba(100,116,139,.08);border:1px solid rgba(100,116,139,.2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin-bottom:12px;">ℹ️ Aggiungi <strong style="color:var(--text);">data inizio contratto</strong> e <strong style="color:var(--text);">canone annuo</strong> per il calcolo ISTAT automatico. <button class="btn btn-sm btn-gray" onclick="openAnaById('sub',currentSubId);" style="margin-left:8px;">Completa dati →</button></div>`;
     }
     const grid=(fields)=>`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:9px;margin-bottom:4px;">${fields.filter(Boolean).join('')}</div>`;
     el.innerHTML=`${istatAlert}
@@ -803,7 +803,7 @@ async function renderSubDetTab(tab) {
     el.querySelectorAll('.sub-int-row').forEach(function(row) {
       row.addEventListener('mouseenter', function() { row.style.background = 'var(--primary-bg)'; });
       row.addEventListener('mouseleave', function() { row.style.background = ''; });
-      row.addEventListener('click', function() { closeM('modal-sub-det'); openDet(parseInt(row.dataset.id)); });
+      row.addEventListener('click', function() { openDet(parseInt(row.dataset.id)); });
     });
 
     // Delegated: toggle allegati panel
@@ -945,7 +945,7 @@ async function renderSubDetTab(tab) {
     const items=data.manutenzioni||[];
     const pc={urgente:'var(--red)',alta:'var(--orange)',normale:'var(--accent)',bassa:'var(--green)'};
     const pi={urgente:'🔴',alta:'🟠',normale:'🟡',bassa:'🟢'};
-    el.innerHTML=`<div class="flex-between" style="margin-bottom:12px;"><span style="font-size:13px;color:var(--muted);">${items.length} manutenzioni</span><button class="btn btn-primary btn-sm" onclick="closeM('modal-sub-det');openModalMan();">+ Nuova</button></div>
+    el.innerHTML=`<div class="flex-between" style="margin-bottom:12px;"><span style="font-size:13px;color:var(--muted);">${items.length} manutenzioni</span><button class="btn btn-primary btn-sm" onclick="openModalMan();">+ Nuova</button></div>
       ${items.length?items.map(m=>`<div class="int-card" style="border-left:3px solid ${pc[m.priorita]||'var(--border)'};margin-bottom:8px;"><div class="int-card-hdr">${pi[m.priorita]||'⚪'} <strong style="font-size:13px;color:#0f172a;">${esc(m.tipo)}</strong><span style="font-size:11px;padding:2px 8px;border-radius:5px;background:var(--surface2);color:var(--muted);">${m.stato||'—'}</span>${m.costo?`<span class="td-price" style="margin-left:auto;">€ ${parseFloat(m.costo).toLocaleString('it-IT')}</span>`:''}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${m.prossima_scadenza?'Prossima: '+fmt(m.prossima_scadenza)+' · ':''}${esc(m.ricorrenza||'Una tantum')}${m.fornitore_nome?' · '+esc(m.fornitore_nome):''}</div></div>`).join(''):'<div class="empty">Nessuna manutenzione.</div>'}`;
 
   }else if(tab==='costi'){
@@ -1116,7 +1116,7 @@ function renderTabInquilini(data) {
 
 function subActionNuovoIntervento() {
   const subId = currentSubId;
-  closeM('modal-sub-det');
+  
   openModalInt();
   setTimeout(() => {
     const sub = (DB.subs || []).find(x => x.id === subId);
@@ -1130,21 +1130,21 @@ function subActionNuovoIntervento() {
 
 function subActionNuovoDoc() { subAddDocPreset('documento'); }
 
-function subActionManutenzione() { closeM('modal-sub-det'); openModalMan(); setTimeout(()=>{ document.getElementById('man-sub').value=currentSubId; },100); }
+function subActionManutenzione() { openModalMan(); setTimeout(()=>{ document.getElementById('man-sub').value=currentSubId; },100); }
 
 function subActionNuovoTicket() {
-  closeM('modal-sub-det');
+  
   openModalTicket(currentSubId);
 }
 
 function subActionNuovaBolletta() {
-  closeM('modal-sub-det');
+  
   openModalBoll(currentSubId);
 }
 
 function subActionNuovoAffitto() {
   const subId = currentSubId;
-  closeM('modal-sub-det');
+  
   if (typeof openModalPagamento === 'function') {
     openModalPagamento();
     setTimeout(() => { const el = document.getElementById('pag-sub'); if (el) el.value = subId; }, 100);

@@ -142,7 +142,7 @@ function renderTbSubs() {
       '<td style="font-size:12px;font-family:monospace;">' + speseFmt + '</td>' +
       '<td>' +
         '<button class="btn btn-xs btn-gray" onclick="openSubDetail(' + s.id + ')" title="Scheda">📋</button>' +
-        (attivo ? ' <button class="btn btn-xs btn-gray" onclick="openAna(\'sub\',' + s.id + ')" title="Modifica">✏️</button>' : '') +
+        (attivo ? ' <button class="btn btn-xs btn-gray" onclick="openAnaById(\'sub\',' + s.id + ')" title="Modifica">✏️</button>' : '') +
       '</td>' +
     '</tr>';
   }).join(''));
@@ -155,7 +155,7 @@ function renderTbForn(){
 
 function renderTbInq(){
   const rows=DB.inquilini.length?DB.inquilini.map(i=>{const sub=DB.subs.find(s=>s.inquilino_id==i.id);return`<tr><td><input type="checkbox" class="sel-check inquilini-chk" data-id="${i.id}" onchange="genToggle('inquilini',${i.id},this)"></td><td class="td-bold">${esc(i.ragione_sociale)}</td><td class="td-mono" style="font-size:11px;">${esc(i.piva||i.cf||'—')}</td><td>${esc(i.citta||'—')}</td><td>${esc(i.tel||'—')}</td><td style="font-size:11px;">${esc(i.email||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit btn-sm" onclick="openAnaById('inquilino',${i.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="delAna('inquilini',${i.id})">✕</button></div></td></tr>`;}).join(''):'<tr><td colspan="7" class="empty">Nessun inquilino</td></tr>';
-  ['tb-inq','tb-inquilini'].forEach(tid=>{const tb=document.getElementById(tid);if(tb)tb.innerHTML=rows;});
+  const tb=document.getElementById('tb-inq');if(tb)tb.innerHTML=rows; // tb-inquilini appartiene alla sezione Clienti (loadClienti)
 }
 
 function renderTbSedi(){const tb=document.getElementById('tb-sedi');if(!DB.sedi.length){tb.innerHTML='<tr><td colspan="5" class="empty">Nessuna sede</td></tr>';return;}tb.innerHTML=DB.sedi.map(s=>`<tr><td class="td-bold">${esc(s.nome)}</td><td>${esc(s.indirizzo||'—')}</td><td>${esc(s.citta||'—')}</td><td class="td-muted">${esc(s.note||'—')}</td><td><div style="display:flex;gap:4px;"><button class="btn btn-edit" onclick="openAnaById('sede',${s.id})">✏️</button><button class="btn btn-danger" onclick="delAna('sedi',${s.id})">✕</button></div></td></tr>`).join('');}
@@ -177,20 +177,21 @@ function genToggle(type, id, chk) {
   const set = getSelSet(type);
   if (chk.checked) set.add(Number(id)); else set.delete(Number(id));
 
-  // Update counter
-  const cnt = document.getElementById(type + '-mass-cnt');
-  if (cnt) {
+  // Nell'HTML esistono ID duplicati (es. inquilini-mass-cnt sia in Anagrafiche
+  // che in Clienti): aggiorna TUTTE le occorrenze, non solo la prima
+  document.querySelectorAll('[id="' + type + '-mass-cnt"]').forEach(cnt => {
     cnt.textContent = set.size + ' sel.';
     cnt.style.display = set.size > 0 ? '' : 'none';
-  }
+  });
 
   // Show/hide Elimina button
   const delBtn = document.getElementById('btn-del-' + type);
   if (delBtn) delBtn.style.display = set.size > 0 ? '' : 'none';
 
   // Legacy: also toggle the old mass-bar if it exists and has content
-  const bar = document.getElementById(type + '-mass-bar');
-  if (bar && bar.children.length > 0) bar.classList.toggle('hidden', set.size === 0);
+  document.querySelectorAll('[id="' + type + '-mass-bar"]').forEach(bar => {
+    if (bar.children.length > 0) bar.classList.toggle('hidden', set.size === 0);
+  });
 }
 
 // ── SELECTION SETS — one per table ──
@@ -427,8 +428,8 @@ async function loadClienti(stato = 'attivo') {
       <td>${esc(i.email||'—')}</td>
       <td>${BADGE[i.stato_calcolato] || BADGE.ex}</td>
       <td>
-        <button class="btn btn-xs btn-gray" onclick="openAna('inquilino',${i.id})">✏️</button>
-        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id}, i.ragione_sociale||'')">🏠</button>
+        <button class="btn btn-xs btn-gray" onclick="openAnaById('inquilino',${i.id})">✏️</button>
+        <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id}, '${esc(i.ragione_sociale||'').replace(/'/g,'&#39;')}')">🏠</button>
         <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})">🗑</button>
       </td>
     </tr>`).join('');
@@ -568,11 +569,7 @@ function autoTitoloLead() {
 }
 
 
-// Placeholder per P17 — apre modal promemoria con entità lead pre-compilata
-function openNuovoPromemoriaLead(id, nome) {
-  // Implementato in P17-4
-  toast('📅 Promemoria in arrivo con P17!', 'info');
-}
+// (placeholder rimosso: la versione vera di openNuovoPromemoriaLead è in promemoria.js)
 
 // Aggiorna i badge contatori di tutti e 3 i tab in background
 async function _updateClienteTabCounts() {

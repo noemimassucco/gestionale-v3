@@ -66,41 +66,7 @@ function showSection(name){
   }
 }
 
-function filterNotifHome(tipo, btn) {
-  _notifFiltro = tipo;
-  document.querySelectorAll('#home-notifiche-wrap .tab-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
-  renderNotificheHome();
-}
-
-function renderNotificheHome() {
-  const items = _notifFiltro==='tutte' ? _allNotifiche : _allNotifiche.filter(n=>n.tipo===_notifFiltro);
-  if (!_allNotifiche.length) { document.getElementById('home-notifiche-wrap').classList.add('hidden'); return; }
-  document.getElementById('home-notifiche-wrap').classList.remove('hidden');
-  document.getElementById('home-notif-cnt').textContent = _allNotifiche.length;
-
-  const icons = {urgente:'⚠️',scadenza_doc:'📄',scadenza_man:'🔨',istat:'📈',incompleto:'⚠️'};
-  const colors = {urgente:'var(--red)',scadenza_doc:'var(--accent)',scadenza_man:'var(--orange)',istat:'#a3e635',incompleto:'var(--muted)'};
-  const labels = {urgente:'Urgente',scadenza_doc:'Scadenza documento',scadenza_man:'Scadenza manutenzione',istat:'ISTAT dovuto',incompleto:'Dati incompleti'};
-
-  document.getElementById('home-notif-list').innerHTML = !items.length
-    ? '<div class="empty">Nessuna notifica per questa categoria</div>'
-    : items.slice(0,12).map(n => {
-        const color = colors[n.tipo]||'var(--muted)';
-        const gg = n.giorni !== undefined ? parseInt(n.giorni) : null;
-        const ggLabel = gg !== null ? (gg<0?`Scaduto ${-gg}gg fa`:gg===0?'Oggi':`${gg}gg`) : '';
-        return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-left:3px solid ${color};border-radius:8px;margin-bottom:7px;${n.tipo==='istat'?'cursor:pointer;':''}${n.tipo==='incompleto'?'cursor:pointer;':''}" ${n.tipo==='istat'?'onclick="showSec(\'catasto\',null);goToApp(\'catasto\')"':''} ${n.tipo==='incompleto'?'onclick="goToApp(\'anagrafiche\')"':''}>
-          <span style="font-size:16px;padding-top:2px;">${icons[n.tipo]||'🔔'}</span>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:12px;font-weight:600;color:#0f172a;margin-bottom:2px;">${esc(n.titolo||n.descrizione||'Notifica')}</div>
-            <div style="font-size:11px;color:var(--muted);">${labels[n.tipo]||n.tipo}${n.sub?' · SUB '+esc(n.sub):''}${n.sede?' · '+esc(n.sede):''}${n.descrizione&&n.tipo!='incompleto'?' — '+esc(n.descrizione.slice(0,60)):''}</div>
-            ${n.tipo==='istat'?`<div style="font-size:11px;color:#a3e635;margin-top:2px;">Apri calcolatore ISTAT →</div>`:''}
-          </div>
-          ${ggLabel?`<span style="font-weight:700;font-size:11px;color:${color};white-space:nowrap;">${ggLabel}</span>`:''}
-        </div>`;
-      }).join('') + (_allNotifiche.length>12?`<div style="text-align:center;font-size:12px;color:var(--muted);padding:8px;">... e altre ${_allNotifiche.length-12} notifiche</div>`:'');
-}
-
+// (rimosse filterNotifHome/renderNotificheHome: riferivano elementi inesistenti)
 function showSubCtx(e, subId, codice) {
   e.stopPropagation();
   closeCtx();

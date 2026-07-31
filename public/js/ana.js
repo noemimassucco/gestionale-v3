@@ -144,6 +144,8 @@ async function saveAna(){
     else if (anaType==='inquilino') renderTbInq();
     else if (anaType==='sede') renderTbSedi();
     else if (anaType==='categoria') renderTbCat();
+    // Se la pagina della scheda SUB è aperta, aggiornala
+    if (document.getElementById('sec-subdet')?.classList.contains('active') && typeof subDetRefresh==='function') subDetRefresh();
   });
 }
 

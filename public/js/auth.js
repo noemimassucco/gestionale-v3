@@ -14,8 +14,7 @@ async function initApp() {
       currentUser = JSON.parse(savedUser);
       _showApp();
       await loadDD();
-      loadDashboard();
-      showSection('dashboard');
+      showSection('dashboard'); // showSection chiama già loadDashboard()
     } catch(e) {
       // Token scaduto o corrotto — torna al login
       _showLogin();

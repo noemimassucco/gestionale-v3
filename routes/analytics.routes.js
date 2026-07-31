@@ -23,11 +23,12 @@ router.get('/api/dashboard', authMiddleware, async (req, res) => {
         FROM interventi i LEFT JOIN subs s ON i.sub_id=s.id LEFT JOIN sedi sd ON s.sede_id=sd.id
         LEFT JOIN fornitori f ON i.fornitore_id=f.id
         ORDER BY COALESCE(i.data_intervento,i.created_at) DESC LIMIT 5`),
-      pool.query(`SELECT EXTRACT(MONTH FROM COALESCE(data_intervento,created_at))::int as mese,
+      pool.query(`SELECT EXTRACT(YEAR FROM COALESCE(data_intervento,created_at))::int as anno,
+        EXTRACT(MONTH FROM COALESCE(data_intervento,created_at))::int as mese,
         COALESCE(SUM(prezzo),0) as totale
         FROM interventi
         WHERE COALESCE(data_intervento,created_at) >= NOW() - INTERVAL '6 months'
-        GROUP BY mese ORDER BY mese`),
+        GROUP BY anno, mese ORDER BY anno, mese`),
     ]);
     res.json({
       totali: totali.rows[0],
@@ -39,6 +40,7 @@ router.get('/api/dashboard', authMiddleware, async (req, res) => {
 });
 
 router.get('/api/notifiche', authMiddleware, async (req, res) => {
+  try {
   const [urgenti, scadenzeDoc, scadenzeMan, istat, incompleti] = await Promise.all([
     pool.query(`SELECT i.id, i.descrizione, s.codice as sub, sd.nome as sede, i.updated_at as data, 'urgente' as tipo
       FROM interventi i LEFT JOIN subs s ON i.sub_id=s.id LEFT JOIN sedi sd ON i.sede_id=sd.id
@@ -72,6 +74,7 @@ router.get('/api/notifiche', authMiddleware, async (req, res) => {
     ...incompleti.rows.map(r=>({...r,priorita:'bassa'})),
   ];
   res.json(all);
+  } catch(e) { console.error('GET /api/notifiche:', e.message); res.status(500).json({ error: e.message }); }
 });
 
 router.get('/api/calendario', authMiddleware, async (req, res) => {

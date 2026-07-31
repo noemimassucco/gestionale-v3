@@ -38,8 +38,40 @@ async function loadDashboard(){
     alertText.textContent=`${nc} notifiche attive — contratti ISTAT, scadenze documenti, manutenzioni programmate`;
   }
 
-  // Notif badge
-  if(nc>0){['notif-badge-cnt','sb-notif-badge'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=nc;el.classList.remove('hidden');}});}
+  // Notif badge (mostra E nasconde)
+  ['notif-badge-cnt','sb-notif-badge'].forEach(id=>{const el=document.getElementById(id);if(el){el.textContent=nc;el.classList.toggle('hidden',nc===0);}});
+
+  // Occupazione (anello CSS)
+  const occEl=document.getElementById('dash-occupazione');
+  if(occEl){
+    const tot=(subs||[]).filter(s=>!s.stato_sub||s.stato_sub==='attivo');
+    const occ=tot.filter(s=>s.stato_occupazione==='occupato').length;
+    const lib=tot.length-occ;
+    const pct=tot.length?Math.round(occ/tot.length*100):0;
+    occEl.innerHTML=`
+      <div style="width:92px;height:92px;border-radius:50%;background:conic-gradient(var(--green) 0 ${pct}%,rgba(100,116,139,.18) ${pct}% 100%);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <span style="font-size:17px;font-weight:700;color:var(--green);">${pct}%</span>
+          <span style="font-size:8px;color:var(--muted);text-transform:uppercase;">occupato</span>
+        </div>
+      </div>
+      <div style="flex:1;font-size:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--green);display:inline-block;"></span> Occupati: <strong>${occ}</strong></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:9px;height:9px;border-radius:2px;background:rgba(100,116,139,.35);display:inline-block;"></span> Liberi: <strong>${lib}</strong></div>
+        ${lib>0?`<div style="font-size:10px;color:var(--muted);">${lib} SUB da mettere a reddito</div>`:''}
+      </div>`;
+  }
+
+  // SUB da attenzionare
+  const critEl=document.getElementById('dash-critici');
+  if(critEl){
+    const crit=(dash.subsCritici||[]).slice(0,5);
+    critEl.innerHTML=crit.length?crit.map(c=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onclick="openSubDetail(${c.id})">
+      <span>🟡</span>
+      <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:600;color:#0f172a;">${esc(c.codice)}</div><div style="font-size:10px;color:var(--muted);">${esc(c.sede||'—')}${c.inquilino?' · '+esc(c.inquilino):''}</div></div>
+      <span style="font-size:10px;font-weight:700;color:var(--orange);">${c.urgenze||0} urgenze</span>
+    </div>`).join(''):'<div style="color:var(--green);font-size:11px;">✅ Tutto sotto controllo</div>';
+  }
 
   // Scadenze 7gg
   const scadEl=document.getElementById('dash-scadenze');
@@ -77,7 +109,7 @@ async function loadDashboard(){
       <div style="width:7px;height:7px;border-radius:50%;background:${n.tipo==='urgente'?'var(--red)':n.tipo==='istat'?'#a3e635':'var(--orange)'};flex-shrink:0;"></div>
       <div style="flex:1;min-width:0;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;">${esc(n.titolo||n.tipo)}</div>
       ${n.giorni!==undefined?`<span style="font-size:9px;color:var(--muted);">${parseInt(n.giorni)<0?'Scaduto':parseInt(n.giorni)+'gg'}</span>`:''}
-    </div>`).join('')+'<div style="margin-top:6px;"><button class="btn btn-xs btn-gray" onclick="showSection(\"notifiche\")" style="width:100%;">Vedi tutte →</button></div>'
+    </div>`).join('')+'<div style="margin-top:6px;"><button class="btn btn-xs btn-gray" onclick="showSection(&quot;notifiche&quot;)" style="width:100%;">Vedi tutte →</button></div>'
     :'<div style="color:var(--green);font-size:11px;">✅ Nessuna notifica</div>';
   }
 
