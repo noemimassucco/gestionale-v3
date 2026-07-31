@@ -68,6 +68,24 @@ function startPromemoriaEmailCron() {
       if (process.env.SMTP_HOST && process.env.SMTP_USER) {
         await _sendEmails(byUser);
       }
+
+      // ── Scadenze documenti e manutenzioni nei prossimi 7 giorni → email allo staff ──
+      try {
+        const sc = await pool.query(`
+          SELECT 'Documento' AS tipo, d.nome AS titolo, d.scadenza, s.codice AS sub_codice
+            FROM documenti d LEFT JOIN subs s ON d.sub_id=s.id
+           WHERE d.scadenza BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+          UNION ALL
+          SELECT 'Manutenzione', m.tipo, m.prossima_scadenza, s.codice
+            FROM manutenzioni m LEFT JOIN subs s ON m.sub_id=s.id
+           WHERE m.prossima_scadenza BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
+             AND m.stato NOT IN ('annullata','completata')
+          ORDER BY 3`);
+        if (sc.rows.length && process.env.SMTP_HOST && process.env.SMTP_USER) {
+          const staff = await pool.query(`SELECT email,nome FROM users WHERE attivo=true AND ruolo IN ('admin','operatore') AND email IS NOT NULL`);
+          await _sendScadenzeEmail(sc.rows, staff.rows);
+        }
+      } catch(e) { console.error('[cron] Errore scan scadenze:', e.message); }
     } catch(e) {
       console.error('[cron] Errore scan promemoria:', e.message);
     }
@@ -106,6 +124,34 @@ async function _sendEmails(byUser) {
         </table>
         <p>Accedi al <a href="${process.env.APP_URL||'#'}">gestionale</a> per i dettagli.</p>`,
     }).catch(e => console.error('[cron] Email error:', e.message));
+  }
+}
+
+async function _sendScadenzeEmail(scadenze, utenti) {
+  let nodemailer;
+  try { nodemailer = require('nodemailer'); } catch { return; }
+  const transport = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  const rows = scadenze.map(r => {
+    const d = new Date(r.scadenza).toLocaleDateString('it-IT');
+    return `<tr><td>${d}</td><td>${r.tipo}</td><td><strong>${r.titolo||''}</strong></td><td>${r.sub_codice||''}</td></tr>`;
+  }).join('');
+  for (const u of utenti) {
+    await transport.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: u.email,
+      subject: `[Gestionale] ${scadenze.length} scadenze nei prossimi 7 giorni`,
+      html: `<p>Buongiorno ${u.nome||''},</p>
+        <p>Queste scadenze arrivano entro 7 giorni:</p>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">
+          <tr><th>Scadenza</th><th>Tipo</th><th>Cosa</th><th>SUB</th></tr>${rows}
+        </table>
+        <p>Accedi al <a href="${process.env.APP_URL||'#'}">gestionale</a> per i dettagli.</p>`,
+    }).catch(e => console.error('[cron] Email scadenze error:', e.message));
   }
 }
 

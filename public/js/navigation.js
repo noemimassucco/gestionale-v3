@@ -92,7 +92,7 @@ function showSection(name){
     loadAffitti();
   }
   else if(name==='riepilogo')renderRiep();
-  else if(name==='impostazioni'){loadUsers();renderMenuPrefs();}
+  else if(name==='impostazioni'){loadUsers();renderMenuPrefs();if(typeof loadEmailStatus==='function')loadEmailStatus();}
   else if(name==='fatturazione'){
     document.getElementById('fatt-f-anno').value=new Date().getFullYear();
     loadFatturazione();

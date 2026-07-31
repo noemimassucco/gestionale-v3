@@ -36,7 +36,7 @@ async function loadAffitti(){
       </div>
       ${p.data_pagamento?`<div style="font-size:11px;color:var(--muted);">Pagato il: ${fmt(p.data_pagamento)}</div>`:''}
       <div style="margin-top:6px;display:flex;gap:5px;">
-        ${p.stato!=='pagato'?`<button class="btn btn-success btn-sm" onclick="segnaAffittoPagato(${p.id})">✓ Pagato</button>`:''}
+        ${p.stato!=='pagato'?`<button class="btn btn-success btn-sm" onclick="segnaAffittoPagato(${p.id})">✓ Pagato</button><button class="btn btn-sm" style="background:var(--warning-bg);color:var(--warning);border:1px solid var(--border-2);" onclick="sollecitoAffitto(${p.id})" title="Invia email di sollecito all'inquilino">✉️ Sollecito</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="delAffitto(${p.id})">✕</button>
       </div>
     </div>`).join('');

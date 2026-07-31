@@ -1408,3 +1408,29 @@ function calcQuotaMillesimi(){
   if(!out)return;
   out.textContent=(mill&&tot)?('€ '+(tot*mill/1000).toLocaleString('it-IT',{minimumFractionDigits:2}))+' ('+mill+'‰)':'—';
 }
+
+
+// ═══ Email: sollecito affitto + test configurazione ═══
+async function sollecitoAffitto(pagamentoId){
+  if(!await appConfirm('Inviare una email di sollecito all\'inquilino per questo canone?',{danger:false,icon:'✉️',title:'Sollecito di pagamento',okText:'Invia email'}))return;
+  toast('Invio in corso…','warning');
+  const r=await api('/api/solleciti/affitto/'+pagamentoId,{method:'POST'});
+  if(!r||r.error){toast('❌ '+(r?.error||'Invio fallito'),'error');return;}
+  toast('✉️ Sollecito inviato a '+r.email+' ✓');
+}
+
+async function testEmail(){
+  toast('Invio email di prova…','warning');
+  const r=await api('/api/email/test',{method:'POST'});
+  if(!r||r.error){toast('❌ '+(r?.error||'Invio fallito'),'error');return;}
+  toast('✉️ Email di prova inviata! Controlla la casella ✓');
+}
+
+async function loadEmailStatus(){
+  const el=document.getElementById('email-status');
+  if(!el)return;
+  const r=await api('/api/email/status');
+  el.innerHTML=r?.configurato
+    ? '<span style="color:var(--success);font-weight:600;">✅ Email configurate e attive</span>'
+    : '<span style="color:var(--warning);font-weight:600;">⚠️ Email non configurate</span><div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6;">Su Render → Environment aggiungi:<br><code>SMTP_HOST</code> = smtp.gmail.com<br><code>SMTP_USER</code> = la tua Gmail<br><code>SMTP_PASS</code> = password per le app (myaccount.google.com/apppasswords)<br><code>SMTP_FROM</code> = la tua Gmail</div>';
+}

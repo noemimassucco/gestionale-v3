@@ -1010,6 +1010,12 @@ tr.row-click{transition:background .12s;}
           <button class="btn btn-success" style="margin-top:12px;" onclick="saveSettings()">✓ Salva</button>
         </div>
         <div class="card">
+          <div class="card-title">✉️ Email (solleciti e promemoria)</div>
+          <div id="email-status" style="font-size:12px;margin-bottom:10px;">Verifica…</div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Con le email attive: promemoria e scadenze in arrivo ogni mattina alle 7:00, e bottone "✉️ Sollecito" sugli affitti non pagati.</p>
+          <button class="btn btn-sm btn-gray" onclick="testEmail()">📨 Invia email di prova</button>
+        </div>
+        <div class="card">
           <div class="card-title">🔐 Cambia Password</div>
           <div class="form-grid" style="grid-template-columns:1fr;">
             <div class="field"><label>Password attuale</label><input type="password" id="pwd-old"></div>
