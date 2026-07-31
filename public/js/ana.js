@@ -11,10 +11,10 @@ function openAna(type,obj=null){
       <div style="grid-column:1/-1;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;padding-bottom:6px;">Dati generali</div>
       <div class="field"><label>Codice SUB *</label><input id="a-cod" placeholder="es. OB-01"></div>
       <div class="field"><label>Ex SUB / Derivato da</label><input id="a-ex" placeholder="codice precedente"></div>
-      <div class="field"><label>Sede *</label><select id="a-sede"><option value="">—</option>\${DB.sedi.map(s=>\`<option value="\${s.id}">\${s.nome}</option>\`).join('')}</select></div>
+      <div class="field"><label>Sede *</label><select id="a-sede"><option value="">—</option>${DB.sedi.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('')}</select></div>
       <div class="field"><label>Piano / Interno</label><input id="a-piano" placeholder="es. T, 1, 2, S1"></div>
       <div class="field"><label>Indirizzo completo</label><input id="a-ind" placeholder="Via Roma 12, 10043 Orbassano (TO)"></div>
-      <div class="field"><label>Inquilino attuale</label><select id="a-inq"><option value="">— Nessuno / Libero —</option>\${DB.inquilini.map(i=>\`<option value="\${i.id}">\${i.ragione_sociale}</option>\`).join('')}</select></div>
+      <div class="field"><label>Inquilino attuale</label><select id="a-inq"><option value="">— Nessuno / Libero —</option>${DB.inquilini.map(i=>`<option value="${i.id}">${i.ragione_sociale}</option>`).join('')}</select></div>
       <div class="field"><label>Stato occupazione</label>
         <select id="a-stato-occ">
           <option value="libero">Libero</option>
