@@ -87,7 +87,7 @@ async function renderRiepTab(tab) {
       const sedeTot = subs.reduce((s,x)=>s+(parseFloat(x.totale)||0),0);
       return `<div style="margin-bottom:20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(90deg,rgba(107,142,107,.2),rgba(107,142,107,.05));border:1px solid rgba(107,142,107,.3);border-radius:10px 10px 0 0;">
-          <span style="font-family:'Sora',sans-serif;font-size:16px;color:#0f172a;">📍 ${esc(sede)}</span>
+          <span style="font-family:'Fraunces',serif;font-size:16px;color:#0f172a;">📍 ${esc(sede)}</span>
           <span style="color:var(--accent);font-weight:700;">€ ${sedeTot.toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
         </div>
         <div style="border:1px solid rgba(107,142,107,.2);border-top:none;border-radius:0 0 10px 10px;padding:10px;">
@@ -95,7 +95,7 @@ async function renderRiepTab(tab) {
             <div class="card" style="margin-bottom:8px;cursor:pointer;" onclick="document.getElementById('ff-sub').value='${d.sub_id}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">
               <div class="flex-between" style="margin-bottom:8px;">
                 <div class="flex">
-                  <span style="font-family:'Sora',sans-serif;font-size:15px;color:#0f172a;font-weight:700;">SUB ${esc(d.sub||'N/D')}</span>
+                  <span style="font-family:'Fraunces',serif;font-size:15px;color:#0f172a;font-weight:700;">SUB ${esc(d.sub||'N/D')}</span>
                   ${d.ex_sub?`<span class="ex-sub">ex ${esc(d.ex_sub)}</span>`:''}
                   ${d.inquilino?`<span style="color:var(--muted);font-size:11px;">👤 ${esc(d.inquilino)}</span>`:''}
                   ${!d.num_interventi?`<span style="font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 7px;">Nessun intervento</span>`:''}
@@ -142,7 +142,7 @@ async function renderRiepTab(tab) {
       return `<div class="card" style="margin-bottom:12px;">
         <div class="flex-between" style="margin-bottom:12px;">
           <div class="flex">
-            <span style="font-family:'Sora',sans-serif;font-size:20px;color:#0f172a;font-weight:700;">${a.anno}</span>
+            <span style="font-family:'Fraunces',serif;font-size:20px;color:#0f172a;font-weight:700;">${a.anno}</span>
             <span style="color:var(--muted);font-size:12px;">${a.num_interventi} interventi · ${a.num_subs} SUB · ${a.num_fornitori} fornitori</span>
           </div>
           <span style="font-size:22px;font-weight:700;color:var(--accent);">€ ${parseFloat(a.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</span>
@@ -182,7 +182,7 @@ async function renderRiepTab(tab) {
     if (!data?.length) { el.innerHTML='<div class="empty">Nessuna sede trovata.</div>'; return; }
     el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">` +
       data.map(s=>`<div class="card">
-        <div style="font-family:'Sora',sans-serif;font-size:18px;color:#0f172a;margin-bottom:12px;">📍 ${esc(s.sede||'—')}</div>
+        <div style="font-family:'Fraunces',serif;font-size:18px;color:#0f172a;margin-bottom:12px;">📍 ${esc(s.sede||'—')}</div>
         <div style="font-size:26px;font-weight:700;color:var(--accent);margin-bottom:8px;">€ ${parseFloat(s.totale).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
           <div style="text-align:center;background:var(--surface2);border-radius:7px;padding:8px;"><div style="font-size:18px;font-weight:700;">${s.num_interventi}</div><div style="font-size:9px;color:var(--muted);">Interventi</div></div>
