@@ -202,15 +202,22 @@ function toggleSubMenu(){
 }
 
 async function subMenuGo(tab){
-  if(!currentSubId){
+  // Dentro una scheda SUB → cartella di QUEL SUB. Altrimenti → vista globale su tutti i SUB.
+  const inSub = currentSubId && document.getElementById('sec-subdet')?.classList.contains('active');
+  if(inSub){
+    setSubDetTab(tab,_subTabBtn(tab));
+  } else if(['manutenzioni','interventi','bollette'].includes(tab)){
+    showSection(tab); // esistono già come sezioni globali
+  } else if(tab==='economico'){
+    showSection('riepilogo');
+  } else if(tab==='overview'){
     showSection('subs');
-    toast('Apri prima un SUB: le cartelle si riferiscono al SUB aperto','warning');
-    return;
+  } else if(tab==='timeline'){
+    showSection('subs');
+    toast('Lo storico è per singolo SUB: aprine uno dalla lista','warning');
+  } else {
+    renderFascicoloGlobale(tab); // catasto, ape, impianti, certificazioni, foto, contratti
   }
-  if(!document.getElementById('sec-subdet')?.classList.contains('active')){
-    await openSubDetail(currentSubId);
-  }
-  setSubDetTab(tab,_subTabBtn(tab));
   if(sidebarOpen)toggleSidebar();
 }
 

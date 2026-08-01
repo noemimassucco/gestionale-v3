@@ -61,7 +61,7 @@ router.post('/api/ocr', authMiddleware, upload.single('file'), async (req, res) 
   const file = req.file;
   if (!file) return res.status(400).json({ error: 'Nessun file' });
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(400).json({ error: 'ANTHROPIC_API_KEY non configurata nelle variabili Railway' });
+  if (!apiKey) return res.status(400).json({ error: 'ANTHROPIC_API_KEY non configurata: aggiungila su Render → Environment' });
   const mimeMap = { 'image/jpeg':'image/jpeg','image/png':'image/png','image/gif':'image/gif','image/webp':'image/webp','application/pdf':'application/pdf' };
   const mediaType = mimeMap[file.mimetype] || 'image/jpeg';
   const b64 = file.buffer.toString('base64');
@@ -74,7 +74,7 @@ router.post('/api/ocr', authMiddleware, upload.single('file'), async (req, res) 
         role: 'user',
         content: [
           { type: mediaType==='application/pdf'?'document':'image', source: { type:'base64', media_type:mediaType, data:b64 } },
-          { type: 'text', text: 'Estrai da questa fattura/documento i seguenti dati in formato JSON puro (senza markdown): {"fornitore":"","num_fattura":"","data_fattura":"YYYY-MM-DD","importo":0,"descrizione":""}. Se un dato manca usa null.' }
+          { type: 'text', text: 'Analizza questo documento (fattura, bolletta, contratto, APE, polizza, visura, verbale…) ed estrai in JSON puro senza markdown: {"tipo_documento":"uno tra: fattura|bolletta|contratto|ape|visura|planimetria|certificazione|polizza|verbale|preventivo|condominiale|altro","fornitore":"","num_fattura":"","data_fattura":"YYYY-MM-DD","scadenza":"YYYY-MM-DD (scadenza pagamento o validità, se presente)","importo":0,"descrizione":"breve descrizione utile come titolo"}. Se un dato manca usa null.' }
         ]
       }]
     });

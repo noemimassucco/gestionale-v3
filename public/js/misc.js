@@ -1339,7 +1339,7 @@ function openModalPagamento(){
 
 function quickChat(msg){const input=document.getElementById('chat-input-page');if(input){input.value=msg;sendChatPage();}}
 
-function docFileSelected(input){docFileInput=input.files[0];if(docFileInput)document.getElementById('doc-file-zone').textContent=`✓ ${docFileInput.name} (${Math.round(docFileInput.size/1024)} KB)`;}
+function docFileSelected(input){docFileInput=input.files[0];if(docFileInput)document.getElementById('doc-file-zone').textContent=`✓ ${docFileInput.name} (${Math.round(docFileInput.size/1024)} KB)`;if(typeof _docAiRowRefresh==='function')_docAiRowRefresh();}
 
 async function openTimeline(subId,subCodice){
   timelineSubId=subId;
@@ -1448,4 +1448,107 @@ async function loadEmailStatus(){
   el.innerHTML=r?.configurato
     ? '<span style="color:var(--success);font-weight:600;">✅ Email configurate e attive</span>'
     : '<span style="color:var(--warning);font-weight:600;">⚠️ Email non configurate</span><div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.6;">Su Render → Environment aggiungi:<br><code>SMTP_HOST</code> = smtp.gmail.com<br><code>SMTP_USER</code> = la tua Gmail<br><code>SMTP_PASS</code> = password per le app (myaccount.google.com/apppasswords)<br><code>SMTP_FROM</code> = la tua Gmail</div>';
+}
+
+
+// ═══════ FASCICOLO GLOBALE: viste su TUTTI i SUB ═══════
+let _fascDocsCache=null;
+async function _fascDocs(){
+  if(_fascDocsCache) return _fascDocsCache;
+  _fascDocsCache = await api('/api/documenti') || [];
+  setTimeout(()=>{_fascDocsCache=null;},60000); // cache 1 minuto
+  return _fascDocsCache;
+}
+
+function _showFascicolo(titolo,sottotitolo,html){
+  document.querySelectorAll('#app-main .section').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sec-fascicolo')?.classList.add('active');
+  document.getElementById('sb-subs')?.classList.add('active');
+  document.getElementById('fascicolo-content').innerHTML=`
+    <div class="flex-between mb-16">
+      <div><h2 class="page-title">${titolo}</h2><p class="page-sub">${sottotitolo}</p></div>
+      <button class="btn btn-gray btn-sm" onclick="showSection('subs')">← SUB</button>
+    </div>`+html;
+}
+
+async function fascGoSub(subId, tab){
+  await openSubDetail(subId);
+  setSubDetTab(tab,_subTabBtn(tab));
+}
+
+async function renderFascicoloGlobale(tab){
+  const subs=(DB.subs||[]).filter(x=>!x.stato_sub||x.stato_sub==='attivo');
+  const docs=await _fascDocs();
+  const byTipo=p=>docs.filter(d=>(d.tipo||'').startsWith(p));
+  const wrap=h=>`<div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>${h}</table></div></div>`;
+
+  if(tab==='catasto'){
+    const manca=subs.filter(x=>!x.foglio&&!x.particella).length;
+    _showFascicolo('Catasto — tutti i SUB', manca?`${manca} SUB senza dati catastali`:'Dati catastali completi', wrap(`
+      <thead><tr><th>SUB</th><th>Sede</th><th>Foglio</th><th>Part.</th><th>Sub.</th><th>Cat.</th><th>Rendita</th><th>mq comm.</th><th>Millesimi</th></tr></thead>
+      <tbody>${subs.map(x=>`<tr class="row-click" onclick="fascGoSub(${x.id},'catasto')">
+        <td class="td-bold">${esc(x.codice)}</td><td>${esc(x.sede_nome||'—')}</td>
+        <td>${esc(x.foglio||'—')}</td><td>${esc(x.particella||'—')}</td><td>${esc(x.subalterno||'—')}</td>
+        <td>${esc(x.categoria_cat||'—')}</td>
+        <td style="font-family:monospace;">${x.rendita?'€ '+parseFloat(x.rendita).toLocaleString('it-IT'):'—'}</td>
+        <td>${x.mq_commerciali?parseFloat(x.mq_commerciali).toFixed(0)+' mq':'—'}</td>
+        <td>${x.millesimi?parseFloat(x.millesimi)+'‰':'—'}</td>
+      </tr>`).join('')||'<tr><td colspan="9" class="empty">Nessun SUB</td></tr>'}</tbody>`));
+
+  }else if(tab==='ape'){
+    const apeBySub={}; byTipo('ape').forEach(d=>{if(d.sub_id&&!apeBySub[d.sub_id])apeBySub[d.sub_id]=d;});
+    const senza=subs.filter(x=>!apeBySub[x.id]).length;
+    _showFascicolo('APE — tutti i SUB', senza?`${senza} SUB senza attestato`:'Tutti i SUB hanno l\'APE', wrap(`
+      <thead><tr><th>SUB</th><th>Sede</th><th>Classe</th><th>Attestato</th><th>Scadenza</th></tr></thead>
+      <tbody>${subs.map(x=>{const a=apeBySub[x.id];return`<tr class="row-click" onclick="fascGoSub(${x.id},'ape')">
+        <td class="td-bold">${esc(x.codice)}</td><td>${esc(x.sede_nome||'—')}</td>
+        <td style="font-weight:700;">${esc(x.classe_energetica||'—')}</td>
+        <td style="color:${a?'var(--success)':'var(--danger)'};font-weight:600;">${a?'presente':'mancante'}</td>
+        <td>${a?.scadenza?fmt(a.scadenza):'—'}</td>
+      </tr>`;}).join('')||'<tr><td colspan="5" class="empty">Nessun SUB</td></tr>'}</tbody>`));
+
+  }else if(tab==='impianti'){
+    const K=Object.keys(SUB_IMPIANTI);
+    _showFascicolo('Impianti — tutti i SUB','Numero di documenti per impianto; clicca una riga per aprire', wrap(`
+      <thead><tr><th>SUB</th>${K.map(k=>`<th>${SUB_IMPIANTI[k].nome.replace('Impianto ','')}</th>`).join('')}</tr></thead>
+      <tbody>${subs.map(x=>{
+        const cnt=K.map(k=>docs.filter(d=>d.sub_id==x.id&&(d.tipo||'').startsWith('imp_'+k)).length);
+        return`<tr class="row-click" onclick="fascGoSub(${x.id},'impianti')">
+          <td class="td-bold">${esc(x.codice)}</td>
+          ${cnt.map(n=>`<td style="color:${n?'var(--success)':'var(--muted-2)'};font-weight:${n?700:400};">${n||'—'}</td>`).join('')}
+        </tr>`;}).join('')||'<tr><td colspan="7" class="empty">Nessun SUB</td></tr>'}</tbody>`));
+
+  }else if(tab==='certificazioni'){
+    const cert=docs.filter(d=>['certificazione','agibilita','collaudo','polizza','certif'].some(p=>(d.tipo||'').startsWith(p)));
+    _showFascicolo('Certificazioni e polizze — tutte', cert.length+' documenti', wrap(`
+      <thead><tr><th>Documento</th><th>Tipo</th><th>SUB</th><th>Data</th><th>Scadenza</th></tr></thead>
+      <tbody>${cert.map(d=>`<tr class="row-click" onclick="${d.sub_id?`fascGoSub(${d.sub_id},'certificazioni')`:`showSection('documenti')`}">
+        <td class="td-bold">${esc(d.nome||'—')}</td><td>${esc((d.tipo||'').replace(/_/g,' '))}</td>
+        <td>${esc(d.sub_codice||'—')}</td><td>${d.data_documento?fmt(d.data_documento):'—'}</td>
+        <td style="color:${d.scadenza&&new Date(d.scadenza)<new Date()?'var(--danger)':'var(--text)'};">${d.scadenza?fmt(d.scadenza):'—'}</td>
+      </tr>`).join('')||'<tr><td colspan="5" class="empty">Nessuna certificazione caricata</td></tr>'}</tbody>`));
+
+  }else if(tab==='foto'){
+    const foto=byTipo('foto');
+    const isImg=u=>u&&(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(u)||/\/image\/upload\//.test(u)||/\/api\/documenti\/\d+\/file/.test(u));
+    _showFascicolo('Foto — tutti i SUB', foto.length+' foto', foto.length?`
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;">
+        ${foto.map(f=>`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--card);cursor:pointer;" onclick="${f.sub_id?`fascGoSub(${f.sub_id},'foto')`:''}">
+          ${isImg(f.url)?`<img src="${esc(fileUrl(f.url))}" style="width:100%;height:110px;object-fit:cover;display:block;" loading="lazy">`:`<div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:30px;filter:grayscale(.6);">🖼️</div>`}
+          <div style="padding:6px 10px;font-size:11px;display:flex;justify-content:space-between;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.nome||'Foto')}</span><strong>${esc(f.sub_codice||'')}</strong></div>
+        </div>`).join('')}
+      </div>`:'<div class="empty">Nessuna foto caricata.</div>');
+
+  }else if(tab==='contratti'){
+    const contr=docs.filter(d=>(d.tipo||'')==='contratto');
+    _showFascicolo('Contratti — tutti i SUB', contr.length+' documenti contrattuali', wrap(`
+      <thead><tr><th>Contratto</th><th>SUB</th><th>Data</th><th>Scadenza</th><th>Importo</th></tr></thead>
+      <tbody>${contr.map(d=>`<tr class="row-click" onclick="${d.sub_id?`fascGoSub(${d.sub_id},'contratti')`:`showSection('documenti')`}">
+        <td class="td-bold">${esc(d.nome||'—')}</td><td>${esc(d.sub_codice||'—')}</td>
+        <td>${d.data_documento?fmt(d.data_documento):'—'}</td>
+        <td style="color:${d.scadenza&&new Date(d.scadenza)<new Date()?'var(--danger)':'var(--text)'};">${d.scadenza?fmt(d.scadenza):'—'}</td>
+        <td style="font-family:monospace;">${d.importo?'€ '+parseFloat(d.importo).toLocaleString('it-IT'):'—'}</td>
+      </tr>`).join('')||'<tr><td colspan="5" class="empty">Nessun contratto caricato</td></tr>'}</tbody>`));
+  }
 }

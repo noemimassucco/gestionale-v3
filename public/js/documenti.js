@@ -49,6 +49,44 @@ function openModalDoc(){
   document.getElementById('modal-doc').classList.add('open');
 }
 
+// Mostra la riga AI quando viene scelto un file leggibile
+function _docAiRowRefresh(){
+  const row=document.getElementById('doc-ai-row');
+  if(!row)return;
+  const ok=docFileInput&&/pdf|image/.test(docFileInput.type||'');
+  row.style.display=ok?'flex':'none';
+  const st=document.getElementById('doc-ai-status'); if(st)st.textContent='';
+}
+
+// Legge il documento con l'AI e precompila i campi (tu poi confermi)
+async function docOCR(){
+  if(!docFileInput){toast('Allega prima un file','error');return;}
+  const st=document.getElementById('doc-ai-status');
+  if(st){st.textContent='Lettura in corso… (qualche secondo)';st.style.color='var(--muted)';}
+  const fd=new FormData(); fd.append('file',docFileInput);
+  const r=await apiUp('/api/ocr',fd);
+  const d=r?.dati;
+  if(!d){ if(st){st.textContent='❌ '+(r?.error||'Lettura fallita');st.style.color='var(--danger)';} return; }
+  const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
+  // tipo: usa il valore se esiste tra le opzioni
+  if(d.tipo_documento){
+    const sel=document.getElementById('doc-tipo');
+    if(sel&&[...sel.options].some(o=>o.value===d.tipo_documento)) sel.value=d.tipo_documento;
+  }
+  set('doc-nome', d.descrizione || (d.tipo_documento?d.tipo_documento+(d.fornitore?' — '+d.fornitore:''):null));
+  set('doc-data', d.data_fattura);
+  set('doc-scad', d.scadenza);
+  if(d.importo){const el=document.getElementById('doc-imp');if(el)el.value=parseFloat(String(d.importo).replace(',','.'))||'';}
+  set('doc-desc', [d.fornitore?'Fornitore: '+d.fornitore:null, d.num_fattura?'N. '+d.num_fattura:null].filter(Boolean).join(' · '));
+  // fornitore: prova a matchare in anagrafica
+  if(d.fornitore){
+    const sel=document.getElementById('doc-forn');
+    const m=(DB.fornitori||[]).find(f=>(f.ragione_sociale||'').toLowerCase().includes(String(d.fornitore).toLowerCase().slice(0,8)));
+    if(sel&&m)sel.value=m.id;
+  }
+  if(st){st.textContent='✅ Campi compilati — controlla e salva';st.style.color='var(--success)';}
+}
+
 async function saveDoc(){
   const v=id=>document.getElementById(id)?.value||'';
   if(!v('doc-nome')){toast('Inserisci il nome del documento','error');return;}
