@@ -458,11 +458,15 @@ function _subDocs(prefix){
 function _subDocRow(d){
   const today=new Date(); today.setHours(0,0,0,0);
   const scad=d.scadenza?new Date(d.scadenza):null;
+  const gg=scad?Math.round((scad-today)/86400000):null;
+  // Chip stile mockup: Valido / In scadenza / Scaduto
   const scadBadge = scad
-    ? (scad<today
-        ? `<span style="background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;">Scaduto ${fmt(d.scadenza)}</span>`
-        : `<span style="background:var(--warning-bg);color:var(--warning);border-radius:4px;padding:1px 6px;font-size:10px;">Scade ${fmt(d.scadenza)}</span>`)
-    : '';
+    ? (gg<0
+        ? `<span style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);border-radius:10px;padding:1px 9px;font-size:10px;font-weight:700;">Scaduto</span>`
+        : gg<=30
+          ? `<span style="background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning);border-radius:10px;padding:1px 9px;font-size:10px;font-weight:700;">In scadenza · ${gg}g</span>`
+          : `<span style="background:var(--success-bg);color:var(--success);border:1px solid var(--success);border-radius:10px;padding:1px 9px;font-size:10px;font-weight:700;">Valido</span>`)
+    : `<span style="background:var(--bg2);color:var(--muted);border-radius:10px;padding:1px 9px;font-size:10px;font-weight:600;">Valido</span>`;
   return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;background:var(--surface2);">
     <div style="flex:1;min-width:0;">
       <div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(d.nome||'Documento')}</div>
@@ -1551,4 +1555,33 @@ async function renderFascicoloGlobale(tab){
         <td style="font-family:monospace;">${d.importo?'€ '+parseFloat(d.importo).toLocaleString('it-IT'):'—'}</td>
       </tr>`).join('')||'<tr><td colspan="5" class="empty">Nessun contratto caricato</td></tr>'}</tbody>`));
   }
+}
+
+
+// ═══ Drag & drop sulle zone di caricamento dei modali ═══
+(function(){
+  [['doc-file-zone','doc-file',(inp)=>docFileSelected(inp)],['boll-file-zone','boll-file',(inp)=>bollFileSelected(inp)]].forEach(([zoneId,inputId,cb])=>{
+    const zone=document.getElementById(zoneId);
+    if(!zone||typeof zone.addEventListener!=='function')return;
+    ;['dragover','dragenter'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.style.borderColor='var(--primary)';}));
+    ;['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.style.borderColor='';}));
+    zone.addEventListener('drop',e=>{
+      const f=e.dataTransfer?.files?.[0];
+      if(!f)return;
+      const inp=document.getElementById(inputId);
+      const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;
+      try{cb(inp);}catch(err){}
+    });
+  });
+})();
+
+
+// ═══ Backup manuale ═══
+async function backupAdesso(){
+  const st=document.getElementById('backup-status');
+  if(st){st.textContent='Backup in corso…';}
+  const r=await api('/api/backup/adesso',{method:'POST'});
+  if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'fallito');st.style.color='var(--danger)';}return;}
+  if(st){st.textContent='✅ '+r.righe+' righe salvate su Cloudinary';st.style.color='var(--success)';}
+  toast('💾 Backup completato ✓');
 }

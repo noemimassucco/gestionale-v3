@@ -43,7 +43,14 @@ async function openSubDetail(id) {
   if(!data?.sub){document.getElementById('sub-det-content').innerHTML='<div class="empty">Errore caricamento</div>';return;}
   currentSubData=data;
   const s=data.sub;
+  // Foto dell'immobile (la prima caricata nella cartella Foto)
+  const _fotoDoc=(data.documenti||[]).find(x=>(x.tipo||'').startsWith('foto')&&x.url);
+  const _isImgUrl=u=>u&&(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(u)||/\/image\/upload\//.test(u)||/\/api\/documenti\/\d+\/file/.test(u));
   document.getElementById('sub-det-header').innerHTML=`
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);margin-bottom:8px;">Patrimonio / ${esc(s.sede_nome||'')} / <span style="color:var(--primary);font-weight:700;">${esc(s.codice)}</span></div>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      ${(_fotoDoc&&_isImgUrl(_fotoDoc.url))?`<img src="${esc(fileUrl(_fotoDoc.url))}" style="width:72px;height:56px;object-fit:cover;border-radius:9px;border:1px solid var(--border);" loading="lazy">`:''}
+      <div style="flex:1;min-width:0;">
     <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
       <span style="font-family:'Sora',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.3px;color:var(--text-strong);">${esc(s.codice)}</span>
       <span style="font-size:12px;color:var(--muted);">${esc(s.sede_nome||'')}${s.piano?' · '+esc(s.piano):''}${s.indirizzo_completo?' · '+esc(s.indirizzo_completo):''}</span>
@@ -53,6 +60,8 @@ async function openSubDetail(id) {
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);">Conduttore</div><div style="font-size:13px;font-weight:600;color:var(--text);">${esc(s.inquilino_nome||'Libero')}</div></div>
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);">Canone/anno</div><div style="font-size:13px;font-weight:600;font-family:monospace;color:var(--text);">${s.canone_annuo?'€ '+parseFloat(s.canone_annuo).toLocaleString('it-IT'):'—'}</div></div>
         <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);">Spese totali</div><div style="font-size:13px;font-weight:600;font-family:monospace;color:var(--accent);">€ ${parseFloat(s.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0})}</div></div>
+      </div>
+    </div>
       </div>
     </div>`;
 

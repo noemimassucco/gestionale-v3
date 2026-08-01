@@ -12,6 +12,16 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// POST /api/backup/adesso — backup immediato su Cloudinary (admin)
+router.post('/api/backup/adesso', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { eseguiBackup } = require('../cron/backup.cron');
+    const r = await eseguiBackup();
+    if (!r.ok) return res.status(400).json({ error: r.motivo || 'Backup non riuscito' });
+    res.json(r);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ═══════════════════════════════════════════════════════════
 // GET /api/export — Excel con interventi + subs
 // ═══════════════════════════════════════════════════════════

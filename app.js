@@ -35,6 +35,7 @@ app.use('/', require('./routes/clienti.routes'));
 app.use('/', require('./routes/promemoria.routes'));
 app.use('/', require('./routes/team.routes'));
 app.use('/', require('./routes/solleciti.routes'));
+app.use('/', require('./routes/smartzip.routes'));
 
 // ── 404 API ──
 app.use('/api', (req, res) => {
@@ -46,6 +47,10 @@ try {
   const { startPromemoriaEmailCron } = require('./cron/promemoria.cron');
   startPromemoriaEmailCron();
 } catch(e) { console.warn('[app] Cron non avviato:', e.message); }
+try {
+  const { startBackupCron } = require('./cron/backup.cron');
+  startBackupCron();
+} catch(e) { console.warn('[app] Cron backup non avviato:', e.message); }
 
 // ── SPA FALLBACK ──
 app.get('*', (req, res) => {

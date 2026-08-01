@@ -364,6 +364,32 @@ async function smartUpload(input){
   const st=document.getElementById('smart-status');
   const zone=document.getElementById('smart-zone');
   const res=document.getElementById('smart-result');
+
+  // ── ZIP: estrazione e archiviazione multipla lato server ──
+  if(/\.zip$/i.test(_smartFile.name)){
+    if(zone)zone.innerHTML='<div style="font-size:13px;font-weight:600;">📦 '+esc(_smartFile.name)+' ('+Math.round(_smartFile.size/1024)+' KB)</div>';
+    if(res)res.style.display='none';
+    if(st){st.textContent='🤖 Estraggo lo ZIP e leggo ogni documento… (può volerci un minuto)';st.style.color='var(--muted)';}
+    const fd=new FormData();fd.append('file',_smartFile);
+    const r=await apiUp('/api/smart-zip',fd);
+    if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'Elaborazione fallita');st.style.color='var(--danger)';}return;}
+    if(st)st.textContent='';
+    res.innerHTML='<div style="background:var(--success-bg);border:1px solid var(--border-2);border-radius:9px;padding:12px 14px;margin-bottom:10px;font-size:13px;font-weight:700;">📦 '+r.salvati+' documenti su '+r.totale+' archiviati automaticamente</div>'
+      +'<div class="table-wrap"><table><thead><tr><th>File</th><th>Riconosciuto</th><th>SUB</th><th>Importo</th><th>Scadenza</th><th>Esito</th></tr></thead><tbody>'
+      +r.risultati.map(x=>'<tr>'
+        +'<td style="font-size:11px;">'+esc(x.file)+'</td>'
+        +'<td>'+esc(x.tipo||'—')+'</td>'
+        +'<td>'+(x.sub?'<strong>'+esc(x.sub)+'</strong>'+(x.via?' <span style="font-size:10px;color:var(--success);">('+x.via+')</span>':''):'—')+'</td>'
+        +'<td style="font-family:monospace;">'+(x.importo?'€ '+x.importo:'—')+'</td>'
+        +'<td>'+(x.scadenza||'—')+'</td>'
+        +'<td style="font-weight:600;color:'+(x.salvato?'var(--success)':'var(--danger)')+';">'+(x.salvato?'✓ archiviato':esc(x.errore||'errore'))+'</td>'
+        +'</tr>').join('')
+      +'</tbody></table></div>'
+      +'<div style="margin-top:10px;"><button class="btn btn-gray btn-sm" onclick="smartReset()">Carica un altro</button></div>';
+    res.style.display='';
+    if(typeof loadDD==='function')loadDD();
+    return;
+  }
   if(zone)zone.innerHTML='<div style="font-size:13px;font-weight:600;">✓ '+esc(_smartFile.name)+' ('+Math.round(_smartFile.size/1024)+' KB)</div>';
   if(res)res.style.display='none';
   if(st){st.textContent='🤖 Lettura in corso… (qualche secondo)';st.style.color='var(--muted)';}
@@ -446,3 +472,19 @@ async function smartSalva(come){
   if(st){st.textContent='';}
   smartReset();
 }
+
+
+// ═══ Drag & drop sulla zona di riconoscimento ═══
+(function(){
+  const zone=document.getElementById('smart-zone');
+  if(!zone||typeof zone.addEventListener!=='function')return;
+  ;['dragover','dragenter'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.style.borderColor='var(--primary)';zone.style.background='var(--primary-bg)';}));
+  ;['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.style.borderColor='';zone.style.background='';}));
+  zone.addEventListener('drop',e=>{
+    const f=e.dataTransfer?.files?.[0];
+    if(!f)return;
+    const inp=document.getElementById('smart-file');
+    const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;
+    smartUpload(inp);
+  });
+})();
