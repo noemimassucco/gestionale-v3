@@ -68,7 +68,7 @@ router.post('/api/ocr', authMiddleware, upload.single('file'), async (req, res) 
   try {
     const https = require('https');
     const payload = JSON.stringify({
-      model: 'claude-haiku-4-5',
+      model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5',
       max_tokens: 1024,
       messages: [{
         role: 'user',
