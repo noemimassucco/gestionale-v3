@@ -704,7 +704,7 @@ body{background:var(--bg);}
 /* ═══════════ SIDEBAR MINI (solo icone) ═══════════ */
 .sb-collapse-btn{position:absolute;top:16px;right:10px;width:26px;height:26px;border:1px solid rgba(255,255,255,.25);border-radius:7px;background:transparent;color:#d8cfbc;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .15s;z-index:5;}
 .sb-collapse-btn:hover{background:rgba(255,255,255,.12);color:#fff;}
-.sidebar{position:relative;}
+@media(min-width:769px){.sidebar{position:relative;}} /* solo desktop: su mobile deve restare fixed (off-canvas) */
 .sidebar.mini{width:62px;}
 .sidebar.mini .sb-lbl,.sidebar.mini .sb-group-title,.sidebar.mini .sb-submenu,.sidebar.mini .sb-chev-btn,.sidebar.mini .sb-logo>div:last-child,.sidebar.mini .sb-item .badge{display:none!important;}
 .sidebar.mini .sb-item{justify-content:center;padding:10px 0;}

@@ -144,12 +144,15 @@ router.get('/api/notifiche', authMiddleware, async (req, res) => {
       FROM manutenzioni m LEFT JOIN subs s ON m.sub_id=s.id LEFT JOIN sedi sd ON m.sede_id=sd.id
       WHERE m.prossima_scadenza IS NOT NULL AND m.prossima_scadenza >= CURRENT_DATE AND m.prossima_scadenza <= CURRENT_DATE + INTERVAL '90 days'
       AND m.stato != 'annullata' ORDER BY m.prossima_scadenza`),
-    pool.query(`SELECT s.id, s.codice as titolo, sd.nome as sede, s.data_inizio_contratto as data, 'istat' as tipo,
+    pool.query(`SELECT s.id, s.codice as titolo, sd.nome as sede, 'istat' as tipo,
       s.canone_annuo, s.tipo_contratto,
-      ROUND((EXTRACT(EPOCH FROM AGE(NOW(),s.data_inizio_contratto))/2592000)::numeric) as mesi
+      COALESCE(s.istat_data_prossima_revisione, (COALESCE(s.istat_data_ultima_revisione, s.data_inizio_contratto) + INTERVAL '12 months')::date) as data,
+      (COALESCE(s.istat_data_prossima_revisione, (COALESCE(s.istat_data_ultima_revisione, s.data_inizio_contratto) + INTERVAL '12 months')::date) - CURRENT_DATE) as giorni
       FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id
-      WHERE s.data_inizio_contratto IS NOT NULL AND s.canone_annuo IS NOT NULL
-        AND AGE(NOW(),s.data_inizio_contratto) >= INTERVAL '12 months'`),
+      WHERE s.canone_annuo IS NOT NULL
+        AND (s.istat_data_prossima_revisione IS NOT NULL OR s.data_inizio_contratto IS NOT NULL)
+        AND COALESCE(s.istat_data_prossima_revisione, (COALESCE(s.istat_data_ultima_revisione, s.data_inizio_contratto) + INTERVAL '12 months')::date) <= CURRENT_DATE + INTERVAL '60 days'
+      ORDER BY data`),
     pool.query(`SELECT s.id, s.codice as titolo, sd.nome as sede, s.created_at as data, 'incompleto' as tipo,
       CASE WHEN s.inquilino_id IS NULL THEN 'Manca inquilino' WHEN s.foglio IS NULL THEN 'Dati catastali incompleti' ELSE 'Canone non inserito' END as descrizione
       FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id
@@ -159,7 +162,12 @@ router.get('/api/notifiche', authMiddleware, async (req, res) => {
     ...urgenti.rows.map(r=>({...r,priorita:'alta'})),
     ...scadenzeDoc.rows.map(r=>({...r,priorita:parseInt(r.giorni)<14?'alta':parseInt(r.giorni)<30?'media':'bassa'})),
     ...scadenzeMan.rows.map(r=>({...r,priorita:r.priorita||'normale'})),
-    ...istat.rows.map(r=>({...r,priorita:'media',descrizione:`Contratto da ${r.mesi} mesi — canone € ${parseFloat(r.canone_annuo).toLocaleString('it-IT')}/anno`})),
+    ...istat.rows.map(r=>{
+      const gg=parseInt(r.giorni);
+      return {...r, priorita: gg<0?'alta':gg<=30?'media':'bassa',
+        titolo:'Adeguamento ISTAT: '+r.titolo,
+        descrizione: (gg<0?`Scaduto da ${-gg} giorni`:gg===0?'Scade oggi':`Tra ${gg} giorni`)+` — canone € ${parseFloat(r.canone_annuo).toLocaleString('it-IT')}/anno`};
+    }),
     ...incompleti.rows.map(r=>({...r,priorita:'bassa'})),
   ];
   res.json(all);
@@ -191,10 +199,12 @@ router.get('/api/calendario', authMiddleware, async (req, res) => {
         FROM bollette b LEFT JOIN subs s ON b.sub_id=s.id LEFT JOIN sedi sd ON s.sede_id=sd.id
         WHERE b.scadenza IS NOT NULL AND b.stato='da_pagare' ${wScad} ORDER BY b.scadenza`, dateParams),
       pool.query(`SELECT 'contratto_istat' AS tipo,'📈' AS icon,'ISTAT: '||s.codice AS titolo,
-        (s.data_inizio_contratto + INTERVAL '12 months')::DATE AS scadenza,s.codice AS sub,sd.nome AS sede
+        COALESCE(s.istat_data_prossima_revisione,(COALESCE(s.istat_data_ultima_revisione,s.data_inizio_contratto) + INTERVAL '12 months')::date) AS scadenza,
+        s.codice AS sub,sd.nome AS sede
         FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id
-        WHERE s.data_inizio_contratto IS NOT NULL AND s.canone_annuo IS NOT NULL
-          AND (s.data_inizio_contratto + INTERVAL '12 months') >= CURRENT_DATE`),
+        WHERE s.canone_annuo IS NOT NULL
+          AND (s.istat_data_prossima_revisione IS NOT NULL OR s.data_inizio_contratto IS NOT NULL)
+          AND COALESCE(s.istat_data_prossima_revisione,(COALESCE(s.istat_data_ultima_revisione,s.data_inizio_contratto) + INTERVAL '12 months')::date) >= CURRENT_DATE`),
       pool.query(`SELECT 'promemoria' AS tipo,
           CASE p.tipo_azione WHEN 'chiamata' THEN '📞' WHEN 'email' THEN '✉️'
             WHEN 'visita' THEN '🏠' WHEN 'appuntamento' THEN '📋' ELSE '📅' END AS icon,

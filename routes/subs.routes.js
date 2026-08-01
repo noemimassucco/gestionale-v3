@@ -532,4 +532,35 @@ router.put('/api/subs/:id/istat', authMiddleware, async (req, res) => {
   res.json(r.rows[0]);
 });
 
+// Applica l'adeguamento ISTAT: aggiorna il canone, registra la revisione e programma la prossima
+router.post('/api/subs/:id/istat/applica', authMiddleware, async (req, res) => {
+  try {
+    const pct = parseFloat(req.body.percentuale);
+    if (isNaN(pct)) return res.status(400).json({ error: 'Percentuale ISTAT obbligatoria (es. 1.8)' });
+    const cur = await pool.query('SELECT id, codice, canone_annuo, istat_periodicita FROM subs WHERE id=$1', [req.params.id]);
+    if (!cur.rows.length) return res.status(404).json({ error: 'SUB non trovato' });
+    const s = cur.rows[0];
+    const vecchio = parseFloat(s.canone_annuo);
+    if (!vecchio) return res.status(400).json({ error: 'Canone annuo non impostato: inseriscilo prima nell\'anagrafica del SUB' });
+    const nuovo = Math.round(vecchio * (1 + pct / 100) * 100) / 100;
+    const mesi = { '6_mesi': 6, '12_mesi': 12, '24_mesi': 24 }[s.istat_periodicita] || 12;
+    const r = await pool.query(
+      `UPDATE subs SET canone_annuo=$1, istat_percentuale=$2,
+        istat_data_ultima_revisione=CURRENT_DATE,
+        istat_data_prossima_revisione=(CURRENT_DATE + ($3 || ' months')::interval)::date
+       WHERE id=$4 RETURNING *`,
+      [nuovo, pct, String(mesi), req.params.id]);
+    try {
+      await pool.query(
+        `INSERT INTO sub_storia (sub_id, tipo, titolo, descrizione, dati_vecchi, dati_nuovi, created_by)
+         VALUES ($1,'adeguamento_istat',$2,$3,$4,$5,$6)`,
+        [s.id, 'Adeguamento ISTAT +' + pct + '%',
+         'Canone annuo da € ' + vecchio.toLocaleString('it-IT') + ' a € ' + nuovo.toLocaleString('it-IT'),
+         JSON.stringify({ canone_annuo: vecchio }), JSON.stringify({ canone_annuo: nuovo, percentuale: pct }),
+         req.user.id]);
+    } catch(e2) { console.warn('[istat] storia non salvata:', e2.message); }
+    res.json({ ok: true, sub: r.rows[0], canone_vecchio: vecchio, canone_nuovo: nuovo });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 module.exports = router;

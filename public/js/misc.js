@@ -802,6 +802,7 @@ async function renderSubDetTab(tab) {
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Costi</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','economico')">📅 Scadenze</button>
     </div>`+renderTabEconomico(data)
+    +_subIstatCard(s)
     +`<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;background:var(--card-alt);">
       <div class="flex-between" style="margin-bottom:8px;flex-wrap:wrap;gap:8px;">
         <div style="font-size:12px;font-weight:700;">📐 Millesimi di proprietà</div>
@@ -1484,6 +1485,73 @@ function addChatMsg(html,role,id=null,isHtml=false){
   if(isHtml)div.innerHTML=html;else div.textContent=html;
   msgs.appendChild(div);
   msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ═══ Adeguamento ISTAT (tab Economico) ═══
+function _subIstatProssima(s){
+  // Data della prossima revisione: quella configurata, oppure ultima revisione/inizio contratto + 12 mesi
+  if(s.istat_data_prossima_revisione)return new Date(s.istat_data_prossima_revisione);
+  const base=s.istat_data_ultima_revisione||s.data_inizio_contratto;
+  if(!base)return null;
+  const d=new Date(base);d.setMonth(d.getMonth()+12);
+  return d;
+}
+
+function _subIstatCard(s){
+  const canone=parseFloat(s.canone_annuo)||0;
+  const prossima=_subIstatProssima(s);
+  let stato='';
+  if(!canone){
+    stato=`<span style="font-size:12px;color:var(--muted);">Imposta il canone annuo nell'anagrafica per attivare il promemoria ISTAT.</span>`;
+  }else if(!prossima){
+    stato=`<span style="font-size:12px;color:var(--muted);">Nessuna data: imposta la data di inizio contratto o configura l'ISTAT.</span>`;
+  }else{
+    const gg=Math.ceil((prossima-new Date())/86400000);
+    const dataStr=prossima.toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'});
+    const pill=(bg,col,txt)=>`<span style="background:${bg};color:${col};border-radius:20px;padding:3px 12px;font-size:11.5px;font-weight:700;white-space:nowrap;">${txt}</span>`;
+    if(gg<0)stato=pill('var(--danger)','#fff','⚠ Scaduto da '+(-gg)+' giorni')+` <span style="font-size:12px;color:var(--muted);">era previsto il ${dataStr}</span>`;
+    else if(gg<=60)stato=pill('#f5e6c8','#8a6d1a','⏳ Tra '+gg+' giorni')+` <span style="font-size:12px;color:var(--muted);">il ${dataStr}</span>`;
+    else stato=pill('#dcefe2','var(--success)','✓ Tra '+gg+' giorni')+` <span style="font-size:12px;color:var(--muted);">il ${dataStr}</span>`;
+  }
+  const ultima=s.istat_data_ultima_revisione?new Date(s.istat_data_ultima_revisione).toLocaleDateString('it-IT'):null;
+  return `<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;background:var(--card-alt);">
+    <div class="flex-between" style="margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:12px;font-weight:700;">📈 Adeguamento ISTAT del canone</div>
+      <button class="btn btn-xs btn-gray" onclick="openIstatCfg(${s.id})">⚙ Configura</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">${stato}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      Canone attuale: <strong style="color:var(--text-strong);">€ ${canone?canone.toLocaleString('it-IT'):'—'}/anno</strong>
+      ${canone?` (€ ${(canone/12).toLocaleString('it-IT',{maximumFractionDigits:0})}/mese)`:''}
+      ${ultima?` · Ultima revisione: ${ultima}${s.istat_percentuale?' (+'+s.istat_percentuale+'%)':''}`:''}
+    </div>
+    ${canone?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;">
+      <span>Indice ISTAT</span>
+      <input id="sub-istat-pct" type="number" step="0.1" placeholder="es. 1.8" style="width:80px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="_subIstatPreview(${canone})">
+      <span>% → nuovo canone: <strong id="sub-istat-preview" style="color:var(--accent);font-family:monospace;">—</strong></span>
+      <button class="btn btn-xs btn-primary" onclick="subIstatApplica()">✓ Applica adeguamento</button>
+    </div>`:''}
+  </div>`;
+}
+
+function _subIstatPreview(canone){
+  const pct=parseFloat(document.getElementById('sub-istat-pct')?.value);
+  const el=document.getElementById('sub-istat-preview');
+  if(!el)return;
+  el.textContent=isNaN(pct)?'—':'€ '+(Math.round(canone*(1+pct/100)*100)/100).toLocaleString('it-IT')+'/anno';
+}
+
+async function subIstatApplica(){
+  const pct=parseFloat(document.getElementById('sub-istat-pct')?.value);
+  if(isNaN(pct)){toast('Inserisci la percentuale ISTAT (es. 1.8)','error');return;}
+  const canone=parseFloat(currentSubData?.sub?.canone_annuo)||0;
+  const nuovo=Math.round(canone*(1+pct/100)*100)/100;
+  if(!await appConfirm(`Applicare l'adeguamento ISTAT del ${pct}%?\n\nCanone: € ${canone.toLocaleString('it-IT')} → € ${nuovo.toLocaleString('it-IT')} /anno.\n\nLa prossima revisione verrà riprogrammata automaticamente.`,{icon:'📈',title:'Adeguamento ISTAT',okText:'Applica'}))return;
+  const r=await api('/api/subs/'+currentSubId+'/istat/applica',{method:'POST',body:JSON.stringify({percentuale:pct})});
+  if(!r||r.error){toast('❌ '+(r?.error||'Operazione fallita'),'error');return;}
+  toast(`📈 Canone aggiornato: € ${r.canone_nuovo.toLocaleString('it-IT')}/anno ✓`);
+  if(currentSubData?.sub)Object.assign(currentSubData.sub,r.sub);
+  renderSubDetTab('economico');
 }
 
 // ═══ Millesimi (tab Economico) ═══
