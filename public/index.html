@@ -79,7 +79,7 @@
 body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans','Inter',sans-serif;height:100vh;overflow:hidden;}
 
 /* ── LAYOUT ── */
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,var(--primary-bg),var(--bg2));position:relative;}
+#login-screen{display:flex;align-items:flex-start;justify-content:center;height:100vh;overflow-y:auto;background:var(--bg2);position:relative;-webkit-overflow-scrolling:touch;}
 #app-wrapper{display:none;height:100vh;flex-direction:column;}
 #app-wrapper.active{display:flex;}
 
@@ -115,7 +115,7 @@ body{background:var(--bg);color:var(--text);font-family:'Plus Jakarta Sans','Int
 .sb-logo{color:var(--text-strong)!important;padding:14px 16px;font-family:'Sora',sans-serif;font-size:15px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;color:var(--primary-dark);font-weight:700;}
 
 /* ── MAIN CONTENT ── */
-.app-main{flex:1;overflow-y:auto;padding:24px;background:#eef2f8;}
+.app-main{flex:1;overflow-y:auto;padding:24px;background:var(--bg);}
 .app-main::-webkit-scrollbar{width:4px;}
 .app-main::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 
@@ -299,7 +299,7 @@ tr:hover td{background:rgba(107,142,107,.04);}
 }
 
 /* ── Login page responsive ── */
-@media(max-width:720px){.login-grid{grid-template-columns:1fr!important;}.login-grid>div:first-child{padding:24px 16px 0!important;}.login-grid>div:last-child{padding:16px!important;}}
+@media(max-width:720px){.login-grid{grid-template-columns:1fr!important;min-height:auto!important;}.login-grid>div:first-child{padding:34px 28px!important;gap:22px;}.login-grid>div:first-child h1{font-size:24px!important;}.login-grid>div:last-child{padding:34px 24px!important;min-height:60vh;}}
 
 /* ── CONTEXT MENU (⋮) ── */
 .ctx-menu{position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px;min-width:190px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.5);}
@@ -577,6 +577,42 @@ tr.row-click:hover td{background:var(--primary-bg);}
 /* Emoji nei titoli di sezione: attenuate */
 .page-title,.modal-title{filter:none;}
 
+
+/* ═══════════ MOBILE LOGIN + MENU + PULSANTI INTERATTIVI ═══════════ */
+
+/* Login su mobile: form PRIMA del pannello brand, tutto scorrevole */
+@media(max-width:720px){
+  .login-grid>div:last-child{order:-1;min-height:auto!important;padding:40px 24px 28px!important;}
+  .login-grid>div:first-child{order:1;}
+}
+
+/* Hamburger ben visibile e comodo col pollice */
+.hamburger-btn{border:1px solid var(--border-2)!important;background:var(--card)!important;border-radius:8px!important;min-width:40px;min-height:38px;font-size:19px!important;color:var(--text)!important;}
+@media(max-width:768px){
+  .app-topbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;}
+  .app-topbar::-webkit-scrollbar{display:none;}
+}
+
+/* Pulsanti interattivi: rilievo al passaggio, pressione fisica al tocco */
+.btn{transition:transform .13s ease, box-shadow .13s ease, background .13s, border-color .13s;}
+.btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(25,32,28,.16);}
+.btn:active{transform:translateY(1px) scale(.98);box-shadow:0 1px 3px rgba(25,32,28,.12);}
+.btn-primary:hover{background:var(--primary-dark);box-shadow:0 5px 14px rgba(36,56,50,.35);}
+.btn-success:hover{box-shadow:0 5px 14px rgba(62,107,82,.35);}
+.btn-danger:hover{box-shadow:0 5px 14px rgba(142,67,67,.3);}
+.sb-item{transition:background .13s,color .13s,transform .13s;}
+.sb-item:active{transform:scale(.985);}
+.tab-btn:active{transform:scale(.97);}
+.home-kpi-card{transition:transform .15s ease, box-shadow .15s ease;}
+.home-kpi-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(25,32,28,.12);}
+.home-kpi-card:active{transform:translateY(0) scale(.99);}
+tr.row-click:active td{background:var(--primary-bg);}
+#btn-login:active{transform:scale(.98);}
+#fab-quicknote:active{transform:scale(.94);}
+.notif-item{transition:background .12s,transform .12s;}
+.notif-item:hover{background:var(--card-alt);}
+.notif-item:active{transform:scale(.995);}
+
 /* Toast coerente col tema */
 #toast{box-shadow:var(--shadow-lg);}
 
@@ -602,90 +638,68 @@ tr.row-click:hover td{background:var(--primary-bg);}
 
 <!-- LOGIN -->
 <div id="login-screen">
-  <!-- Background mesh -->
-  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 50%,rgba(107,142,107,.18) 0%,transparent 60%),radial-gradient(ellipse 60% 60% at 80% 20%,rgba(193,154,107,.12) 0%,transparent 55%),radial-gradient(ellipse 50% 50% at 70% 80%,rgba(107,142,107,.1) 0%,transparent 55%);pointer-events:none;"></div>
-  <!-- Grid -->
-  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(30,45,74,.2) 1px,transparent 1px),linear-gradient(90deg,rgba(30,45,74,.2) 1px,transparent 1px);background-size:50px 50px;pointer-events:none;opacity:.5;"></div>
 
-  <div style="position:relative;z-index:1;width:100%;max-width:1000px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:center;min-height:100vh;" class="login-grid">
+  <div class="login-grid" style="position:relative;z-index:1;width:100%;max-width:960px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;min-height:100vh;align-items:stretch;">
 
-    <!-- LEFT: Brand -->
-    <div style="padding:40px 48px;display:flex;flex-direction:column;justify-content:center;">
-      <div style="display:inline-flex;align-items:center;gap:14px;margin-bottom:40px;">
-        <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 8px 24px rgba(107,142,107,.4);">🏢</div>
-        <div>
-          <div style="font-family:'Sora',sans-serif;font-size:22px;font-weight:700;color:#0f172a;">Gestionale Immobili</div>
-          <div style="font-size:11px;color:var(--accent);letter-spacing:3px;text-transform:uppercase;font-weight:600;">Piattaforma professionale</div>
+    <!-- SINISTRA: pannello brand, verde profondo -->
+    <div style="background:linear-gradient(160deg,var(--primary-dark) 0%,var(--primary) 100%);display:flex;flex-direction:column;justify-content:space-between;padding:56px 52px;color:#fff;">
+      <div>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:46px;height:46px;border:1.5px solid rgba(255,255,255,.35);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Sora',sans-serif;font-weight:700;font-size:17px;letter-spacing:1px;">GI</div>
+          <div>
+            <div id="login-title" style="font-family:'Sora',sans-serif;font-size:18px;font-weight:700;letter-spacing:-.2px;">Gestionale Immobili</div>
+            <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;opacity:.55;margin-top:2px;">Property Management</div>
+          </div>
         </div>
       </div>
 
-      <h1 style="font-family:'Sora',sans-serif;font-size:42px;font-weight:700;line-height:1.1;color:#0f172a;margin-bottom:18px;">
-        La memoria storica<br>dei tuoi <span style="color:var(--accent);">immobili</span>
-      </h1>
-      <p style="font-size:15px;color:var(--muted);line-height:1.75;margin-bottom:36px;max-width:360px;font-weight:300;">
-        SUB, interventi, manutenzioni, documenti e analisi economica in un unico sistema professionale.
-      </p>
+      <div>
+        <h1 style="font-family:'Sora',sans-serif;font-size:34px;font-weight:700;line-height:1.15;letter-spacing:-.5px;margin-bottom:18px;">La memoria storica<br>del tuo patrimonio.</h1>
+        <p style="font-size:14px;line-height:1.7;opacity:.75;max-width:340px;">Unità immobiliari, contratti, scadenze, interventi e analisi economica — in un unico sistema.</p>
+      </div>
 
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
-          <span style="width:28px;height:28px;background:#dcfce7;border-radius:7px;display:flex;align-items:center;justify-content:center;">🏢</span>
-          <span>SUB come centro operativo</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
-          <span style="width:28px;height:28px;background:#fef3c7;border-radius:7px;display:flex;align-items:center;justify-content:center;">💰</span>
-          <span>Analisi economica e redditività</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
-          <span style="width:28px;height:28px;background:#e0efef;border-radius:7px;display:flex;align-items:center;justify-content:center;">🏛️</span>
-          <span>Integrato con Catasto e ISTAT</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);">
-          <span style="width:28px;height:28px;background:#ede9fe;border-radius:7px;display:flex;align-items:center;justify-content:center;">🤖</span>
-          <span>Chat AI intelligente integrata</span>
-        </div>
+      <div style="display:flex;gap:28px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;opacity:.55;">
+        <span>Fascicolo digitale</span>
+        <span>Scadenzario</span>
+        <span>Redditività</span>
       </div>
     </div>
 
-    <!-- RIGHT: Login form -->
-    <div style="padding:40px 48px;">
-      <div style="background:rgba(17,24,39,.85);border:1px solid rgba(193,154,107,.15);border-radius:20px;padding:40px;backdrop-filter:blur(20px);box-shadow:0 24px 80px rgba(0,0,0,.5);">
-        <div style="margin-bottom:32px;">
-          <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:3px;font-weight:600;margin-bottom:8px;">Accesso sicuro</div>
-          <div style="font-family:'Sora',sans-serif;font-size:24px;font-weight:700;color:#0f172a;">Benvenuto</div>
-          <div style="font-size:13px;color:var(--muted);margin-top:4px;">Inserisci le tue credenziali per accedere</div>
+    <!-- DESTRA: form di accesso -->
+    <div style="background:var(--card);display:flex;align-items:center;justify-content:center;padding:56px 52px;">
+      <div style="width:100%;max-width:340px;">
+        <div style="margin-bottom:36px;">
+          <div style="font-family:'Sora',sans-serif;font-size:22px;font-weight:700;color:var(--text-strong);letter-spacing:-.3px;">Accedi</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:6px;">Inserisci le credenziali del tuo account</div>
         </div>
 
         <div style="margin-bottom:18px;">
-          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:7px;display:block;">Email</label>
-          <input type="email" id="login-email" placeholder="nome@azienda.it" onkeydown="if(event.key==='Enter')doLogin()"
-            style="width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px 16px;color:#1f2937;font-size:14px;outline:none;transition:border-color .2s;font-family:inherit;"
-            onfocus="this.style.borderColor='rgba(107,142,107,.6)'" onblur="this.style.borderColor='#e2e8f0'">
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.8px;font-weight:700;margin-bottom:8px;display:block;">Email</label>
+          <input type="email" id="login-email" placeholder="nome@azienda.it" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"
+            style="width:100%;background:var(--card);border:1px solid var(--border-2);border-radius:8px;padding:13px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s;font-family:inherit;"
+            onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-2)'">
         </div>
 
-        <div style="margin-bottom:24px;">
-          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:7px;display:block;">Password</label>
-          <input type="password" id="login-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"
-            style="width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:13px 16px;color:#1f2937;font-size:14px;outline:none;transition:border-color .2s;font-family:inherit;"
-            onfocus="this.style.borderColor='rgba(107,142,107,.6)'" onblur="this.style.borderColor='#e2e8f0'">
+        <div style="margin-bottom:26px;">
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.8px;font-weight:700;margin-bottom:8px;display:block;">Password</label>
+          <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"
+            style="width:100%;background:var(--card);border:1px solid var(--border-2);border-radius:8px;padding:13px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s;font-family:inherit;"
+            onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-2)'">
         </div>
 
-        <div id="login-err" class="login-err" style="margin-bottom:16px;">❌ Email o password errati</div>
+        <div id="login-err" class="login-err" style="margin-bottom:16px;">Email o password errati</div>
 
-        <button id="btn-login" onclick="doLogin()" style="width:100%;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#ffffff;padding:14px;border-radius:10px;font-size:15px;font-weight:700;border:none;cursor:pointer;font-family:inherit;transition:all .2s;letter-spacing:.5px;"
-          onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 8px 24px rgba(107,142,107,.4)'"
-          onmouseout="this.style.transform='';this.style.boxShadow=''">
-          Accedi al gestionale →
+        <button id="btn-login" onclick="doLogin()" style="width:100%;background:var(--primary);color:#fff;padding:14px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;transition:background .15s;letter-spacing:.3px;"
+          onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
+          Accedi
         </button>
 
-
+        <div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted-2);text-align:center;">Accesso riservato · connessione protetta</div>
       </div>
     </div>
 
   </div>
-
-  
 </div>
-
 
 <!-- APP WRAPPER -->
 <div id="app-wrapper">
@@ -2712,32 +2726,32 @@ tr.row-click:hover td{background:var(--primary-bg);}
 
 
   <!-- ── JS MODULES (load order matters) ── -->
-  <script src="js/globals.js?v=8"></script>
-  <script src="js/core.js?v=8"></script>
-  <script src="js/auth.js?v=8"></script>
-  <script src="js/navigation.js?v=8"></script>
-  <script src="js/promemoria.js?v=8"></script>
-  <script src="js/teamchat.js?v=8"></script>
-  <script src="js/data.js?v=8"></script>
-  <script src="js/lead_ui.js?v=8"></script>
-  <script src="js/ana.js?v=8"></script>
-  <script src="js/subs.js?v=8"></script>
-  <script src="js/interventi.js?v=8"></script>
-  <script src="js/documenti.js?v=8"></script>
-  <script src="js/manutenzioni.js?v=8"></script>
-  <script src="js/bollette.js?v=8"></script>
-  <script src="js/ticket.js?v=8"></script>
-  <script src="js/fatturazione.js?v=8"></script>
-  <script src="js/import.js?v=8"></script>
-  <script src="js/notifications.js?v=8"></script>
-  <script src="js/dashboard.js?v=8"></script>
-  <script src="js/chat.js?v=8"></script>
-  <script src="js/calendar.js?v=8"></script>
-  <script src="js/analytics.js?v=8"></script>
-  <script src="js/misc.js?v=8"></script>
+  <script src="js/globals.js?v=9"></script>
+  <script src="js/core.js?v=9"></script>
+  <script src="js/auth.js?v=9"></script>
+  <script src="js/navigation.js?v=9"></script>
+  <script src="js/promemoria.js?v=9"></script>
+  <script src="js/teamchat.js?v=9"></script>
+  <script src="js/data.js?v=9"></script>
+  <script src="js/lead_ui.js?v=9"></script>
+  <script src="js/ana.js?v=9"></script>
+  <script src="js/subs.js?v=9"></script>
+  <script src="js/interventi.js?v=9"></script>
+  <script src="js/documenti.js?v=9"></script>
+  <script src="js/manutenzioni.js?v=9"></script>
+  <script src="js/bollette.js?v=9"></script>
+  <script src="js/ticket.js?v=9"></script>
+  <script src="js/fatturazione.js?v=9"></script>
+  <script src="js/import.js?v=9"></script>
+  <script src="js/notifications.js?v=9"></script>
+  <script src="js/dashboard.js?v=9"></script>
+  <script src="js/chat.js?v=9"></script>
+  <script src="js/calendar.js?v=9"></script>
+  <script src="js/analytics.js?v=9"></script>
+  <script src="js/misc.js?v=9"></script>
   <!-- app.js — init entry point (loaded last) -->
-  <script src="js/riaccatastamento.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/riaccatastamento.js?v=9"></script>
+  <script src="js/app.js?v=9"></script>
 
 <!-- MODAL RIACCATASTAMENTO -->
 <div id="modal-riacc" class="overlay">
