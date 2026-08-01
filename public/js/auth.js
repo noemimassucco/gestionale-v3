@@ -34,6 +34,7 @@ function _showLogin() {
 
 function _showApp() {
   startPromemoriaPolling();
+  if (typeof startMenzioniPolling === 'function') startMenzioniPolling();
   const ls = document.getElementById('login-screen');
   const aw = document.getElementById('app-wrapper');
   if (ls) ls.style.display = 'none';
@@ -95,8 +96,45 @@ async function doLogin() {
   }
 }
 
+// ── PASSWORD DIMENTICATA ──
+function toggleForgotBox() {
+  const box = document.getElementById('forgot-box');
+  if (!box) return;
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  if (box.style.display === 'block') {
+    const fe = document.getElementById('forgot-email');
+    const le = document.getElementById('login-email');
+    if (fe) { if (le?.value && !fe.value) fe.value = le.value; fe.focus(); }
+  }
+}
+
+async function sendForgot() {
+  const fe  = document.getElementById('forgot-email');
+  const msg = document.getElementById('forgot-msg');
+  const btn = document.getElementById('forgot-btn');
+  const email = (fe?.value || '').trim();
+  if (!email) { if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--danger)'; msg.textContent = 'Inserisci la tua email'; } return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const r = await fetch('/api/auth/forgot', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (msg) {
+      msg.style.display = 'block';
+      if (r.ok) { msg.style.color = 'var(--success)'; msg.textContent = '✓ ' + (d.msg || 'Controlla la tua casella email'); }
+      else { msg.style.color = 'var(--danger)'; msg.textContent = d.error || 'Operazione non riuscita'; }
+    }
+  } catch(e) {
+    if (msg) { msg.style.display = 'block'; msg.style.color = 'var(--danger)'; msg.textContent = 'Server non raggiungibile'; }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Invia'; }
+}
+
 function doLogout() {
   if(typeof _promIntervalId!=='undefined'&&_promIntervalId){clearInterval(_promIntervalId);_promIntervalId=null;}
+  if(typeof _tcMenzPollId!=='undefined'&&_tcMenzPollId){clearInterval(_tcMenzPollId);_tcMenzPollId=null;}
   sessionStorage.clear();
   token = '';
   currentUser = null;

@@ -34,19 +34,65 @@ router.post('/api/auth/change-password', authMiddleware, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── PASSWORD DIMENTICATA: invia una password temporanea via email ──
+router.post('/api/auth/forgot', async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: 'Inserisci la tua email' });
+  try {
+    const { smtpConfigured, sendMail } = require('../utils/mailer');
+    if (!smtpConfigured())
+      return res.status(400).json({ error: 'Recupero via email non attivo: chiedi all\'amministratore di reimpostare la password' });
+    const r = await pool.query('SELECT id, nome FROM users WHERE LOWER(email)=$1 AND attivo=true', [email]);
+    // Risposta identica anche se l'utente non esiste (non riveliamo gli account)
+    if (r.rows.length) {
+      const tmp = 'Gest-' + Math.random().toString(36).slice(2, 8) + Math.floor(Math.random() * 90 + 10);
+      const hash = await bcrypt.hash(tmp, 10);
+      await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, r.rows[0].id]);
+      const mr = await sendMail({
+        to: email,
+        subject: '🔑 Password temporanea — Gestionale Immobili',
+        html: `<p>Ciao ${r.rows[0].nome || ''},</p><p>la tua nuova password temporanea è:</p><p style="font-size:20px;font-weight:700;font-family:monospace;background:#f7f3ea;padding:10px 16px;border-radius:8px;display:inline-block;">${tmp}</p><p>Accedi e cambiala subito da <b>Impostazioni → Cambia password</b>.</p>`,
+      });
+      if (mr.error) return res.status(500).json({ error: 'Invio email fallito: ' + mr.error });
+    }
+    res.json({ ok: true, msg: 'Se l\'email è registrata, riceverai una password temporanea' });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/api/users', authMiddleware, async (req, res) => {
   const r = await pool.query('SELECT id,email,nome,ruolo,attivo,ultimo_accesso,created_at FROM users ORDER BY nome');
   res.json(r.rows);
 });
 
 router.post('/api/users', authMiddleware, async (req, res) => {
+  if ((req.user.ruolo || '') !== 'admin')
+    return res.status(403).json({ error: 'Solo un admin può creare utenti' });
   const { email, password, nome, ruolo } = req.body;
+  if (!email || !password || !nome) return res.status(400).json({ error: 'Nome, email e password obbligatori' });
+  if (String(password).length < 6) return res.status(400).json({ error: 'Password troppo corta (min 6 caratteri)' });
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const r = await pool.query(
+      'INSERT INTO users (email,password_hash,nome,ruolo) VALUES ($1,$2,$3,$4) RETURNING id,email,nome,ruolo',
+      [String(email).trim().toLowerCase(), hash, nome, ruolo || 'operatore']
+    );
+    res.json(r.rows[0]);
+  } catch(e) {
+    if (e.code === '23505') return res.status(400).json({ error: 'Esiste già un utente con questa email' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Reset password di un utente (solo admin) — utile finché l'email non è configurata
+router.post('/api/users/:id/password', authMiddleware, async (req, res) => {
+  if ((req.user.ruolo || '') !== 'admin')
+    return res.status(403).json({ error: 'Solo un admin può reimpostare le password' });
+  const { password } = req.body;
+  if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password troppo corta (min 6 caratteri)' });
   const hash = await bcrypt.hash(password, 10);
-  const r = await pool.query(
-    'INSERT INTO users (email,password_hash,nome,ruolo) VALUES ($1,$2,$3,$4) RETURNING id,email,nome,ruolo',
-    [email, hash, nome, ruolo || 'operatore']
-  );
-  res.json(r.rows[0]);
+  const r = await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2 RETURNING id', [hash, req.params.id]);
+  if (!r.rows.length) return res.status(404).json({ error: 'Utente non trovato' });
+  res.json({ ok: true });
 });
 
 router.put('/api/users/:id', authMiddleware, async (req, res) => {

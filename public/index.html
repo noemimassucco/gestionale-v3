@@ -499,6 +499,8 @@ tr.row-click:hover td{background:var(--accent-bg);}
 
 /* FAB nota rapida: pulsazione leggera al passaggio */
 #fab-quicknote{transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;}
+/* …ma nascosta finché non sei dentro l'app (sul login non serve) */
+body:not(:has(#app-wrapper.active)) #fab-quicknote{display:none!important;}
 #fab-quicknote:hover{transform:translateY(-3px) scale(1.08);box-shadow:0 10px 26px rgba(107,142,107,.55);}
 #fab-quicknote:active{transform:scale(.96);}
 
@@ -850,6 +852,20 @@ input,select,textarea{border-radius:8px;}
           <input type="password" id="login-pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"
             style="width:100%;background:var(--card);border:1px solid var(--border-2);border-radius:8px;padding:13px 14px;color:var(--text);font-size:14px;outline:none;transition:border-color .15s;font-family:inherit;"
             onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-2)'">
+          <div style="text-align:right;margin-top:8px;">
+            <a href="#" onclick="toggleForgotBox();return false;" style="font-size:12px;color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted-2);">Password dimenticata?</a>
+          </div>
+          <div id="forgot-box" style="display:none;margin-top:12px;background:var(--bg2,#f2ede2);border:1px solid var(--border);border-radius:8px;padding:12px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Ti inviamo una password temporanea via email.</div>
+            <div style="display:flex;gap:8px;">
+              <input type="email" id="forgot-email" placeholder="la-tua@email.it"
+                style="flex:1;background:var(--card);border:1px solid var(--border-2);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;font-family:inherit;min-width:0;"
+                onkeydown="if(event.key==='Enter')sendForgot()">
+              <button onclick="sendForgot()" id="forgot-btn"
+                style="background:var(--primary);color:#fff;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit;white-space:nowrap;">Invia</button>
+            </div>
+            <div id="forgot-msg" style="font-size:12px;margin-top:8px;display:none;"></div>
+          </div>
         </div>
 
         <div id="login-err" class="login-err" style="margin-bottom:16px;">Email o password errati</div>
@@ -957,7 +973,7 @@ input,select,textarea{border-radius:8px;}
       <div class="sb-divider"></div>
       <div class="sb-group">
         <button class="sb-item" id="sb-notifiche" onclick="showSection('notifiche')"><span class="sb-ico">🔔</span><span class="sb-lbl">Notifiche</span><span id="sb-notif-badge" class="badge hidden">0</span></button>
-        <button class="sb-item" id="sb-teamchat" onclick="showSection('teamchat')"><span class="sb-ico">💬</span><span class="sb-lbl">Chat Team</span></button>
+        <button class="sb-item" id="sb-teamchat" onclick="showSection('teamchat')"><span class="sb-ico">💬</span><span class="sb-lbl">Chat Team</span><span id="sb-teamchat-badge" class="badge hidden">0</span></button>
         <button class="sb-item" id="sb-chat" onclick="showSection('chat')"><span class="sb-ico">🤖</span><span class="sb-lbl">Chat AI</span></button>
         <button class="sb-item" id="sb-calendario" onclick="showSection('calendario')"><span class="sb-ico">📅</span><span class="sb-lbl">Calendario</span></button>
       </div>
@@ -2005,7 +2021,7 @@ input,select,textarea{border-radius:8px;}
           <div class="empty">Caricamento…</div>
         </div>
         <div style="display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);background:var(--card);border-radius:0 0 10px 10px;">
-          <input id="teamchat-input" placeholder="Scrivi un messaggio al team…" autocomplete="off" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter')tcSend()">
+          <input id="teamchat-input" placeholder="Scrivi al team… usa @nome per notificare qualcuno" autocomplete="off" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:11px 14px;color:var(--text);font-size:13px;outline:none;" onkeydown="if(event.key==='Enter'&&document.getElementById('tc-mention-box')?.style.display!=='block')tcSend()">
           <button class="btn btn-primary" onclick="tcSend()">Invia ➤</button>
         </div>
       </div>
@@ -3045,34 +3061,34 @@ input,select,textarea{border-radius:8px;}
 
 
   <!-- ── JS MODULES (load order matters) ── -->
-  <script src="js/globals.js?v=9"></script>
-  <script src="js/core.js?v=9"></script>
-  <script src="js/auth.js?v=9"></script>
-  <script src="js/navigation.js?v=9"></script>
-  <script src="js/promemoria.js?v=9"></script>
-  <script src="js/teamchat.js?v=9"></script>
-  <script src="js/data.js?v=9"></script>
-  <script src="js/lead_ui.js?v=9"></script>
-  <script src="js/ana.js?v=9"></script>
-  <script src="js/subs.js?v=9"></script>
-  <script src="js/interventi.js?v=9"></script>
-  <script src="js/documenti.js?v=9"></script>
-  <script src="js/manutenzioni.js?v=9"></script>
-  <script src="js/bollette.js?v=9"></script>
-  <script src="js/ticket.js?v=9"></script>
-  <script src="js/fatturazione.js?v=9"></script>
-  <script src="js/import.js?v=9"></script>
-  <script src="js/notifications.js?v=9"></script>
-  <script src="js/dashboard.js?v=9"></script>
-  <script src="js/chat.js?v=9"></script>
-  <script src="js/calendar.js?v=9"></script>
-  <script src="js/analytics.js?v=9"></script>
-  <script src="js/finanze.js?v=9"></script>
-  <script src="js/misc.js?v=9"></script>
-  <script src="js/cmdk.js?v=9"></script>
+  <script src="js/globals.js?v=10"></script>
+  <script src="js/core.js?v=10"></script>
+  <script src="js/auth.js?v=10"></script>
+  <script src="js/navigation.js?v=10"></script>
+  <script src="js/promemoria.js?v=10"></script>
+  <script src="js/teamchat.js?v=10"></script>
+  <script src="js/data.js?v=10"></script>
+  <script src="js/lead_ui.js?v=10"></script>
+  <script src="js/ana.js?v=10"></script>
+  <script src="js/subs.js?v=10"></script>
+  <script src="js/interventi.js?v=10"></script>
+  <script src="js/documenti.js?v=10"></script>
+  <script src="js/manutenzioni.js?v=10"></script>
+  <script src="js/bollette.js?v=10"></script>
+  <script src="js/ticket.js?v=10"></script>
+  <script src="js/fatturazione.js?v=10"></script>
+  <script src="js/import.js?v=10"></script>
+  <script src="js/notifications.js?v=10"></script>
+  <script src="js/dashboard.js?v=10"></script>
+  <script src="js/chat.js?v=10"></script>
+  <script src="js/calendar.js?v=10"></script>
+  <script src="js/analytics.js?v=10"></script>
+  <script src="js/finanze.js?v=10"></script>
+  <script src="js/misc.js?v=10"></script>
+  <script src="js/cmdk.js?v=10"></script>
   <!-- app.js — init entry point (loaded last) -->
-  <script src="js/riaccatastamento.js?v=9"></script>
-  <script src="js/app.js?v=9"></script>
+  <script src="js/riaccatastamento.js?v=10"></script>
+  <script src="js/app.js?v=10"></script>
 
 <!-- MODAL RIACCATASTAMENTO -->
 <div id="modal-riacc" class="overlay">

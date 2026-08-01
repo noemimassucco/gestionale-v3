@@ -257,7 +257,71 @@ async function saveSettings(){const v=id=>document.getElementById(id)?.value||''
 
 async function changePwd(){const v=id=>document.getElementById(id)?.value||'';const o=v('pwd-old'),n1=v('pwd-new'),n2=v('pwd-c');if(n1!==n2){toast('Le password non coincidono','error');return;}if(n1.length<4){toast('Minimo 4 caratteri','error');return;}const r=await api('/api/auth/change-password',{method:'POST',body:JSON.stringify({oldPassword:o,newPassword:n1})});if(r?.ok){['pwd-old','pwd-new','pwd-c'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});toast('Password aggiornata ✓');}else toast('Password attuale errata','error');}
 
-function openModalUser(){document.getElementById('modal-user').classList.add('open');}
+function openModalUser(){['u-nome','u-email','u-pwd'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('modal-user').classList.add('open');}
+
+// ── GESTIONE UTENTI (Impostazioni) ──
+async function loadUsers(){
+  const el=document.getElementById('users-list');
+  if(!el)return;
+  const users=await api('/api/users');
+  if(!Array.isArray(users)){el.innerHTML='<p style="font-size:12px;color:var(--muted);">Impossibile caricare gli utenti.</p>';return;}
+  const isAdmin=(currentUser?.ruolo||'')==='admin';
+  el.innerHTML=users.map(u=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);${u.attivo===false?'opacity:.5;':''}">
+      <span style="width:30px;height:30px;border-radius:50%;background:var(--terra-bg,#f7e5dc);color:var(--terra-dark,#a03f1e);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">${esc((u.nome||u.email||'?').slice(0,1).toUpperCase())}</span>
+      <div style="min-width:0;flex:1;">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.nome||'—')} ${u.id===currentUser?.id?'<span style="font-size:10px;color:var(--muted);">(tu)</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.email)} · ${u.ruolo==='admin'?'👑 Admin':'Operatore'}${u.attivo===false?' · disattivato':''}</div>
+      </div>
+      ${isAdmin&&u.id!==currentUser?.id?`
+        <button class="btn btn-sm btn-gray" title="Reimposta password" onclick="userResetPwdBox(${u.id})">🔑</button>
+        <button class="btn btn-sm btn-gray" title="${u.attivo===false?'Riattiva':'Disattiva'}" onclick="userToggleAttivo(${u.id},${u.attivo===false})">${u.attivo===false?'▶':'⏸'}</button>`:''}
+    </div>
+    <div id="user-pwd-box-${u.id}" style="display:none;padding:8px 0 10px 40px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="password" id="user-pwd-inp-${u.id}" placeholder="Nuova password (min 6)" class="input" style="flex:1;max-width:220px;">
+        <button class="btn btn-sm btn-success" onclick="userResetPwd(${u.id})">✓ Imposta</button>
+      </div>
+    </div>`).join('');
+}
+
+async function saveUser(){
+  const v=id=>document.getElementById(id)?.value?.trim()||'';
+  const nome=v('u-nome'),email=v('u-email'),password=document.getElementById('u-pwd')?.value||'',ruolo=v('u-ruolo')||'operatore';
+  if(!nome||!email||!password){toast('Nome, email e password obbligatori','error');return;}
+  if(password.length<6){toast('Password troppo corta (min 6 caratteri)','error');return;}
+  const r=await api('/api/users',{method:'POST',body:JSON.stringify({nome,email,password,ruolo})});
+  if(!r||r.error){toast('❌ '+(r?.error||'Creazione fallita'),'error');return;}
+  closeM('modal-user');
+  toast('👤 Utente '+nome+' creato ✓');
+  loadUsers();
+}
+
+async function userToggleAttivo(id,riattiva){
+  if(!riattiva&&!await appConfirm('Disattivare questo utente? Non potrà più accedere.',{icon:'⏸',title:'Disattiva utente',okText:'Disattiva'}))return;
+  const users=await api('/api/users');
+  const u=(users||[]).find(x=>x.id===id);
+  if(!u)return;
+  const r=await api('/api/users/'+id,{method:'PUT',body:JSON.stringify({nome:u.nome,ruolo:u.ruolo,attivo:riattiva})});
+  if(!r||r.error){toast('❌ '+(r?.error||'Operazione fallita'),'error');return;}
+  toast(riattiva?'Utente riattivato ✓':'Utente disattivato ✓');
+  loadUsers();
+}
+
+function userResetPwdBox(id){
+  const box=document.getElementById('user-pwd-box-'+id);
+  if(box)box.style.display=box.style.display==='none'?'block':'none';
+}
+
+async function userResetPwd(id){
+  const inp=document.getElementById('user-pwd-inp-'+id);
+  const pwd=inp?.value||'';
+  if(pwd.length<6){toast('Password troppo corta (min 6 caratteri)','error');return;}
+  const r=await api('/api/users/'+id+'/password',{method:'POST',body:JSON.stringify({password:pwd})});
+  if(!r||r.error){toast('❌ '+(r?.error||'Reset fallito'),'error');return;}
+  toast('🔑 Password reimpostata ✓ Comunicala all\'utente');
+  userResetPwdBox(id);
+}
 
 function showSec(name,btn){
   document.querySelectorAll('#app-main .section').forEach(s=>s.classList.remove('active'));
