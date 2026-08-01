@@ -14,6 +14,8 @@ function _cmdkBuild(q){
     ['⚡','Nuova bolletta',()=>{openModalBoll?openModalBoll():showSection('bollette');}],
     ['📄','Nuovo documento',()=>{subAddDocPreset('documento');}],
     ['📝','Nota rapida',()=>{openQuickNote();}],
+    ['✉️','Scrivi email con AI',()=>{openAiMail();}],
+    ['📐','Millesimi condominiali',()=>{renderMillesimiGlobale();}],
     ['🤖','Riconoscimento automatico documento',()=>{showSection('import');}],
     ['💳','Registra pagamento affitto',()=>{subActionNuovoAffitto();}],
     ['🔨','Nuova manutenzione',()=>{showSection('manutenzioni');if(typeof openModalMan==='function')openModalMan();}],

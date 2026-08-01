@@ -203,6 +203,7 @@ function toggleSubMenu(){
 
 async function subMenuGo(tab){
   // Dentro una scheda SUB → cartella di QUEL SUB. Altrimenti → vista globale su tutti i SUB.
+  if(tab==='millesimi'){ renderMillesimiGlobale(); if(sidebarOpen)toggleSidebar(); return; }
   const inSub = currentSubId && document.getElementById('sec-subdet')?.classList.contains('active');
   if(inSub){
     setSubDetTab(tab,_subTabBtn(tab));

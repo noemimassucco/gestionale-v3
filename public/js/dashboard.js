@@ -20,19 +20,30 @@ async function loadDashboard(){
   const notifNonLette=(notifiche||[]).filter(n=>!_read.has(_uid(n)));
   const nc=notifNonLette.filter(n=>n.tipo!=='incompleto').length;
   const kpis=[
-    {l:'SUB Gestiti',v:dash.totali?.num_subs||0,c:'var(--info)',i:'🏢',bg:'#e0efef',s:'subs'},
-    {l:'Interventi',v:dash.totali?.num_interventi||0,c:'var(--text)',i:'📋',bg:'#ede9df',s:'interventi'},
-    {l:'Spese totali',v:'€ '+parseFloat(dash.totali?.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}),c:'var(--accent)',i:'💰',bg:'#faf0d4',s:'riepilogo'},
-    {l:'Manutenzioni',v:dash.totali?.manutenzioni_aperte||0,c:'var(--orange)',i:'🔨',bg:'#f5e4de',s:'manutenzioni'},
-    {l:'Documenti',v:dash.totali?.num_documenti||0,c:'var(--muted)',i:'📄',bg:'#e8e6f0',s:'documenti'},
-    {l:'Notifiche',v:nc,c:nc>0?'var(--red)':'var(--green)',i:'🔔',bg:nc>0?'#f5dede':'#e3efde',s:'notifiche'},
+    {l:'SUB gestiti',v:dash.totali?.num_subs||0,c:'var(--text-strong)',s:'subs'},
+    {l:'Interventi',v:dash.totali?.num_interventi||0,c:'var(--text-strong)',s:'interventi'},
+    {l:'Spese totali',v:'€ '+parseFloat(dash.totali?.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}),c:'var(--accent)',s:'riepilogo'},
+    {l:'Manutenzioni',v:dash.totali?.manutenzioni_aperte||0,c:'var(--text-strong)',s:'manutenzioni'},
+    {l:'Documenti',v:dash.totali?.num_documenti||0,c:'var(--text-strong)',s:'documenti'},
+    {l:'Notifiche',v:nc,c:nc>0?'var(--danger)':'var(--success)',s:'notifiche'},
   ];
   const kpiEl=document.getElementById('dash-kpi');
-  if(kpiEl)kpiEl.innerHTML=kpis.map(k=>`<div class="home-kpi-card" onclick="showSection('${k.s}')" style="cursor:pointer;">
-    <div style="width:34px;height:34px;border-radius:9px;background:${k.bg};display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:7px;box-shadow:0 1px 3px rgba(60,70,50,.08);">${k.i}</div>
-    <div class="stat-label">${k.l}</div>
-    <div style="font-size:20px;font-weight:700;color:${k.c};font-family:monospace;">${k.v}</div>
-  </div>`).join('');
+  if(kpiEl)kpiEl.innerHTML='<div style="display:flex;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 0;box-shadow:var(--shadow-sm);">'
+    +kpis.map((k,i)=>`<div onclick="showSection('${k.s}')" style="cursor:pointer;flex:1;min-width:130px;padding:14px 20px;${i>0?'border-left:1px solid var(--border);':''}">
+      <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;margin-bottom:6px;">${k.l}</div>
+      <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:${k.c};line-height:1;">${k.v}</div>
+    </div>`).join('')+'</div>';
+
+  // Saluto con nome e data
+  const gr=document.getElementById('dash-greeting');
+  if(gr){
+    const h=new Date().getHours();
+    const saluto=h<12?'Buongiorno':h<18?'Buon pomeriggio':'Buonasera';
+    const nome=(currentUser?.nome||'').split(' ')[0];
+    gr.textContent=saluto+(nome?', '+nome:'');
+  }
+  const dt=document.getElementById('dash-date');
+  if(dt)dt.textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
   // Alert
   const alertBanner=document.getElementById('dash-alert-banner');

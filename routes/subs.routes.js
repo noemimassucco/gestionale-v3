@@ -14,7 +14,8 @@ router.get('/api/subs', authMiddleware, async (req, res) => {
       COALESCE(agg.num_interventi, 0)  AS num_interventi,
       COALESCE(agg.totale_spese, 0)    AS totale_spese,
       COALESCE(man.manutenzioni_aperte, 0) AS manutenzioni_aperte,
-      COALESCE(doc.num_documenti, 0)   AS num_documenti
+      COALESCE(doc.num_documenti, 0)   AS num_documenti,
+      ft.foto_url
     FROM subs s
     LEFT JOIN sedi      sd  ON s.sede_id             = sd.id
     LEFT JOIN inquilini i   ON s.inquilino_id        = i.id
@@ -33,6 +34,11 @@ router.get('/api/subs', authMiddleware, async (req, res) => {
       SELECT sub_id, COUNT(*) AS num_documenti
       FROM documenti GROUP BY sub_id
     ) doc ON doc.sub_id = s.id
+    LEFT JOIN LATERAL (
+      SELECT url AS foto_url FROM documenti
+      WHERE sub_id = s.id AND tipo LIKE 'foto%' AND url IS NOT NULL
+      ORDER BY created_at DESC LIMIT 1
+    ) ft ON true
     ORDER BY sd.nome, s.codice
   `;
 
@@ -96,6 +102,23 @@ router.post('/api/subs', authMiddleware, async (req, res) => {
        f.data_inizio_contratto||null,f.note_catastali||null,f.note||null]);
     await pool.query('INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
       [r.rows[0].id,'creazione','SUB creato',`Nuovo SUB ${f.codice}`,req.user.id]);
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/api/subs/:id/impianti', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT impianto, dati FROM sub_impianti WHERE sub_id=$1', [req.params.id]);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+router.put('/api/subs/:id/impianti/:key', authMiddleware, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `INSERT INTO sub_impianti (sub_id, impianto, dati) VALUES ($1,$2,$3)
+       ON CONFLICT (sub_id, impianto) DO UPDATE SET dati=$3, updated_at=NOW() RETURNING impianto, dati`,
+      [req.params.id, req.params.key, JSON.stringify(req.body.dati || {})]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

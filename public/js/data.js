@@ -678,8 +678,11 @@ function renderSubsCards(){
         const attivo=!s.stato_sub||s.stato_sub==='attivo';
         const occ=s.stato_occupazione==='occupato';
         const canone=s.canone_annuo?('€ '+(parseFloat(s.canone_annuo)/12).toLocaleString('it-IT',{maximumFractionDigits:0})+'/mese'):null;
+        const isImg=u=>u&&(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(u)||/\/image\/upload\//.test(u)||/\/api\/documenti\/\d+\/file/.test(u));
+        const foto=isImg(s.foto_url)?'<div style="margin:-15px -16px 11px;height:104px;overflow:hidden;"><img src="'+esc(fileUrl(s.foto_url))+'" style="width:100%;height:100%;object-fit:cover;" loading="lazy"></div>':'';
         return '<div class="sub-card"'+(attivo?'':' style="opacity:.65;"')+' onclick="openSubDetail('+s.id+')">'
-          +'<div class="banda" style="background:'+col+';"></div>'
+          +(foto?'':'<div class="banda" style="background:'+col+';"></div>')
+          +foto
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
             +'<div class="codice">'+subLabelHtml(s)+'</div>'
             +'<span class="'+(occ?'pill-occupato':'pill-libero')+'">'+(occ?'Occupato':'Libero')+'</span>'

@@ -548,15 +548,18 @@ async function renderSubDetTab(tab) {
   const s=data.sub;
   const el=document.getElementById('sub-det-content');
 
-  // ── Cartella di un singolo impianto (con sottocartelle) ──
+  // ── Cartella di un singolo impianto: scheda tecnica + sottocartelle allegati ──
   if(tab&&tab.startsWith('impianto:')){
     const key=tab.split(':')[1], cfg=SUB_IMPIANTI[key];
     if(!cfg){renderSubDetTab('impianti');return;}
+    await _caricaImpiantiDati();
     el.innerHTML=`
       <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;">
         <button class="btn btn-xs btn-gray" onclick="setSubDetTab('impianti',_subTabBtn('impianti'))">← Impianti</button>
         <span style="font-size:15px;font-weight:700;">${cfg.icona} ${cfg.nome}</span>
       </div>
+      ${_impSchedaHtml(key)}
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:700;margin:16px 0 8px;">Allegati</div>
       ${Object.entries(cfg.sotto).map(([sk,label])=>
         _subDocFolder(label,'imp_'+key+'_'+sk,'Nessun documento in questa sottocartella.')
       ).join('')}`;
@@ -661,15 +664,24 @@ async function renderSubDetTab(tab) {
       ${_subDocFolder('⚡ Attestati APE','ape','Carica qui gli attestati di prestazione energetica.')}`;
 
   }else if(tab==='impianti'){
+    await _caricaImpiantiDati();
     el.innerHTML=`
-      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Clicca su un impianto per aprire le sue sottocartelle (DiCo, libretti, verifiche…).</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Clicca su un impianto: dentro trovi la scheda tecnica compilabile e gli allegati (DiCo, libretti, verifiche…).</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;">
         ${Object.entries(SUB_IMPIANTI).map(([key,cfg])=>{
-          const n=_subDocs('imp_'+key).length;
-          return `<div onclick="subDetGoImpianto('${key}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='rgba(107,142,107,.5)'" onmouseout="this.style.borderColor='var(--border)'">
-            <div style="font-size:26px;margin-bottom:6px;">${cfg.icona}</div>
-            <div style="font-size:13px;font-weight:700;">${cfg.nome}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:4px;">${n} documenti · ${Object.keys(cfg.sotto).length} sottocartelle</div>
+          const docs=_subDocs('imp_'+key);
+          const dati=(currentSubData._impianti||{})[key];
+          const sunto=_impRiassunto(key,dati);
+          return `<div onclick="subDetGoImpianto('${key}')" style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--primary-2)';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:7px;">
+              <span style="font-size:20px;filter:grayscale(.5);">${cfg.icona}</span>
+              <span style="font-size:13.5px;font-weight:700;">${cfg.nome}</span>
+            </div>
+            ${sunto?`<div style="font-size:12px;color:var(--text);margin-bottom:7px;">${esc(sunto)}</div>`:`<div style="font-size:11.5px;color:var(--muted-2);margin-bottom:7px;font-style:italic;">Scheda tecnica da compilare</div>`}
+            <div style="display:flex;gap:8px;font-size:10.5px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border);">
+              <span>${docs.length} allegati</span>
+              ${docs.slice(0,2).map(d=>`<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">📄 ${esc(d.nome||'')}</span>`).join('')}
+            </div>
           </div>`;
         }).join('')}
       </div>`;
@@ -1584,4 +1596,217 @@ async function backupAdesso(){
   if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'fallito');st.style.color='var(--danger)';}return;}
   if(st){st.textContent='✅ '+r.righe+' righe salvate su Cloudinary';st.style.color='var(--success)';}
   toast('💾 Backup completato ✓');
+}
+
+
+// ═══════ SCHEDE TECNICHE IMPIANTI (con suggerimenti) ═══════
+const IMPIANTI_CAMPI = {
+  termico: [
+    { k:'tipo_generatore', l:'Tipo generatore', sugg:['Caldaia a condensazione','Caldaia tradizionale','Pompa di calore','Teleriscaldamento','Sistema ibrido'] },
+    { k:'alimentazione', l:'Alimentazione', sugg:['Metano','GPL','Elettrico','Gasolio','Pellet'] },
+    { k:'marca_modello', l:'Marca e modello', sugg:['Vaillant','Baxi','Immergas','Ariston','Viessmann','Bosch'] },
+    { k:'potenza_kw', l:'Potenza (kW)', sugg:['24','28','32','35'] },
+    { k:'anno_installazione', l:'Anno installazione', sugg:[] },
+    { k:'ultimo_controllo_fumi', l:'Ultimo controllo fumi', tipo:'date' },
+    { k:'prossimo_controllo_fumi', l:'Prossimo controllo fumi', tipo:'date' },
+  ],
+  elettrico: [
+    { k:'tipo_impianto', l:'Tipo impianto', sugg:['Civile monofase 3 kW','Monofase 6 kW','Trifase 10 kW','Trifase oltre 10 kW','Industriale'] },
+    { k:'pod', l:'POD', sugg:[] },
+    { k:'potenza_kw', l:'Potenza contatore (kW)', sugg:['3','4,5','6','10','15'] },
+    { k:'anno_impianto', l:'Anno impianto', sugg:[] },
+    { k:'conformita', l:'Conformità', sugg:['DiCo presente','Conforme DM 37/08','Da verificare','Non conforme'] },
+    { k:'note', l:'Note', sugg:[] },
+  ],
+  idraulico: [
+    { k:'tipo', l:'Tipo', sugg:['Autonomo','Centralizzato'] },
+    { k:'scaldacqua', l:'Scaldacqua', sugg:['A gas','Elettrico','Pompa di calore','Centralizzato'] },
+    { k:'anno', l:'Anno', sugg:[] },
+    { k:'note', l:'Note', sugg:[] },
+  ],
+  clima: [
+    { k:'n_split', l:'N. split', sugg:['1','2','3','4'] },
+    { k:'gas', l:'Gas refrigerante', sugg:['R32','R410A','R290'] },
+    { k:'kg_gas', l:'Kg gas', sugg:[] },
+    { k:'fgas_scadenza', l:'Scadenza controllo F-GAS', tipo:'date' },
+    { k:'note', l:'Note', sugg:[] },
+  ],
+  ascensore: [
+    { k:'matricola', l:'Matricola', sugg:[] },
+    { k:'ditta_manutenzione', l:'Ditta manutenzione', sugg:[] },
+    { k:'ultima_verifica', l:'Ultima verifica biennale', tipo:'date' },
+    { k:'prossima_verifica', l:'Prossima verifica', tipo:'date' },
+  ],
+  antincendio: [
+    { k:'n_estintori', l:'N. estintori', sugg:['1','2','3','4','6'] },
+    { k:'scadenza_cpi', l:'Scadenza CPI/SCIA', tipo:'date' },
+    { k:'ditta', l:'Ditta antincendio', sugg:[] },
+    { k:'note', l:'Note', sugg:[] },
+  ],
+};
+
+async function _caricaImpiantiDati(force){
+  if(!currentSubData) return {};
+  if(!currentSubData._impianti || force){
+    const rows = await api('/api/subs/'+currentSubId+'/impianti') || [];
+    currentSubData._impianti = {};
+    rows.forEach(r=>{ currentSubData._impianti[r.impianto] = r.dati || {}; });
+  }
+  return currentSubData._impianti;
+}
+
+function _impRiassunto(key, dati){
+  if(!dati) return '';
+  const d=dati;
+  if(key==='termico')   return [d.tipo_generatore,d.alimentazione,d.potenza_kw?d.potenza_kw+' kW':null].filter(Boolean).join(' · ');
+  if(key==='elettrico') return [d.tipo_impianto,d.conformita].filter(Boolean).join(' · ');
+  if(key==='idraulico') return [d.tipo,d.scaldacqua].filter(Boolean).join(' · ');
+  if(key==='clima')     return [d.n_split?d.n_split+' split':null,d.gas].filter(Boolean).join(' · ');
+  if(key==='ascensore') return [d.matricola?'Matr. '+d.matricola:null,d.ditta_manutenzione].filter(Boolean).join(' · ');
+  if(key==='antincendio') return [d.n_estintori?d.n_estintori+' estintori':null,d.scadenza_cpi?'CPI '+fmt(d.scadenza_cpi):null].filter(Boolean).join(' · ');
+  return '';
+}
+
+function _impSchedaHtml(key){
+  const campi=IMPIANTI_CAMPI[key]||[];
+  const dati=(currentSubData?._impianti||{})[key]||{};
+  return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;background:var(--card-alt);">
+    <div class="flex-between" style="margin-bottom:10px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);font-weight:700;">Scheda tecnica</div>
+      <button class="btn btn-xs btn-primary" onclick="salvaImpianto('${key}')">Salva scheda</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+      ${campi.map(c=>{
+        const val=esc(dati[c.k]||'');
+        if(c.tipo==='date') return `<div class="field"><label>${c.l}</label><input type="date" id="imp-${key}-${c.k}" value="${val}"></div>`;
+        const dl=c.sugg&&c.sugg.length?`list="dl-${key}-${c.k}"`:'';
+        const dlHtml=c.sugg&&c.sugg.length?`<datalist id="dl-${key}-${c.k}">${c.sugg.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`:'';
+        return `<div class="field"><label>${c.l}</label><input id="imp-${key}-${c.k}" value="${val}" ${dl} placeholder="${c.sugg&&c.sugg[0]?'es. '+esc(c.sugg[0]):''}">${dlHtml}</div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+async function salvaImpianto(key){
+  const campi=IMPIANTI_CAMPI[key]||[];
+  const dati={};
+  campi.forEach(c=>{ const el=document.getElementById('imp-'+key+'-'+c.k); if(el&&el.value) dati[c.k]=el.value; });
+  const r=await api('/api/subs/'+currentSubId+'/impianti/'+key,{method:'PUT',body:JSON.stringify({dati})});
+  if(!r||r.error){toast('Errore: '+(r?.error||'salvataggio fallito'),'error');return;}
+  if(currentSubData){ currentSubData._impianti=currentSubData._impianti||{}; currentSubData._impianti[key]=dati; }
+  toast('🔧 Scheda impianto salvata ✓');
+}
+
+// ═══════ MILLESIMI CONDOMINIALI: vista globale per sede ═══════
+async function renderMillesimiGlobale(){
+  const subs=(DB.subs||[]).filter(x=>!x.stato_sub||x.stato_sub==='attivo');
+  const gruppi={};
+  subs.forEach(s=>{const k=s.sede_nome||'Senza sede';(gruppi[k]=gruppi[k]||[]).push(s);});
+  const html=Object.entries(gruppi).map(([sede,list],gi)=>{
+    const tot=list.reduce((a,s)=>a+(parseFloat(s.millesimi)||0),0);
+    const ok=Math.abs(tot-1000)<0.01;
+    return `<div class="card" style="margin-bottom:16px;">
+      <div class="flex-between" style="margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+        <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:600;">${esc(sede)}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;color:var(--muted);">Spesa da ripartire €</span>
+          <input id="mill-spesa-${gi}" type="number" step="0.01" placeholder="0.00" oninput="millRicalcola(${gi})" style="width:120px;padding:7px 10px;border:1px solid var(--border-2);border-radius:7px;font-size:12px;">
+        </div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>SUB</th><th>Millesimi ‰</th><th>Quota spesa</th></tr></thead>
+        <tbody>
+          ${list.map(s=>`<tr>
+            <td class="td-bold" style="cursor:pointer;" onclick="openSubDetail(${s.id})">${subLabelHtml(s)}</td>
+            <td><input type="number" step="0.01" value="${s.millesimi||''}" data-gi="${gi}" data-sid="${s.id}" class="mill-inp-${gi}" onchange="millSalva(${s.id},this.value,${gi})" style="width:95px;padding:6px 9px;border:1px solid var(--border-2);border-radius:7px;font-size:12px;"></td>
+            <td class="mill-quota-${gi}" data-sid="${s.id}" style="font-family:monospace;color:var(--accent);">—</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot><tr style="border-top:2px solid var(--border-2);">
+          <td style="font-weight:700;">Totale sede</td>
+          <td id="mill-tot-${gi}" style="font-weight:700;color:${ok?'var(--success)':'var(--warning)'};">${tot.toFixed(2)} ‰ ${ok?'✓':'(su 1000)'}</td>
+          <td id="mill-tot-quota-${gi}" style="font-family:monospace;font-weight:700;">—</td>
+        </tr></tfoot>
+      </table></div>
+    </div>`;
+  }).join('')||'<div class="empty">Nessun SUB.</div>';
+  _showFascicolo('Millesimi condominiali','Imposta i millesimi per unità e ripartisci le spese per sede', html);
+}
+
+async function millSalva(subId,val,gi){
+  const r=await api('/api/subs/'+subId+'/millesimi',{method:'PUT',body:JSON.stringify({millesimi:val||null})});
+  if(!r||r.error){toast('Errore salvataggio millesimi','error');return;}
+  const s=(DB.subs||[]).find(x=>x.id==subId); if(s)s.millesimi=val;
+  // aggiorna totale
+  const inps=[...document.querySelectorAll('.mill-inp-'+gi)];
+  const tot=inps.reduce((a,i)=>a+(parseFloat(i.value)||0),0);
+  const totEl=document.getElementById('mill-tot-'+gi);
+  const ok=Math.abs(tot-1000)<0.01;
+  if(totEl){totEl.textContent=tot.toFixed(2)+' ‰ '+(ok?'✓':'(su 1000)');totEl.style.color=ok?'var(--success)':'var(--warning)';}
+  millRicalcola(gi);
+  toast('📐 Salvato ✓');
+}
+
+function millRicalcola(gi){
+  const spesa=parseFloat(document.getElementById('mill-spesa-'+gi)?.value||0);
+  const inps=[...document.querySelectorAll('.mill-inp-'+gi)];
+  let totQ=0;
+  inps.forEach(inp=>{
+    const q=spesa&&inp.value?spesa*parseFloat(inp.value)/1000:0;
+    totQ+=q;
+    const cell=document.querySelector('.mill-quota-'+gi+'[data-sid="'+inp.dataset.sid+'"]');
+    if(cell)cell.textContent=q?'€ '+q.toLocaleString('it-IT',{minimumFractionDigits:2}):'—';
+  });
+  const t=document.getElementById('mill-tot-quota-'+gi);
+  if(t)t.textContent=totQ?'€ '+totQ.toLocaleString('it-IT',{minimumFractionDigits:2}):'—';
+}
+
+// ═══════ EMAIL CON AI ═══════
+function openAiMail(prefillTo){
+  const dl=document.getElementById('am-contatti');
+  if(dl)dl.innerHTML=[...(DB.inquilini||[]),...(DB.fornitori||[])].filter(x=>x.email)
+    .map(x=>`<option value="${esc(x.email)}">${esc(x.ragione_sociale)}</option>`).join('');
+  const to=document.getElementById('am-to'); if(to)to.value=prefillTo||'';
+  const bz=document.getElementById('am-bozza'); if(bz)bz.value='';
+  document.getElementById('am-result').style.display='none';
+  document.getElementById('am-copia').style.display='none';
+  document.getElementById('am-invia').style.display='none';
+  document.getElementById('am-status').textContent='';
+  const m=document.getElementById('modal-aimail');
+  m.style.zIndex=3000;
+  m.classList.add('open');
+  setTimeout(()=>bz?.focus(),150);
+}
+
+async function aiMailGenera(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('am-bozza').trim()){toast('Scrivi prima la bozza','error');return;}
+  const st=document.getElementById('am-status');
+  if(st){st.textContent='✨ Scrittura in corso…';st.style.color='var(--muted)';}
+  const r=await api('/api/ai/email',{method:'POST',body:JSON.stringify({
+    bozza:v('am-bozza'), tono:v('am-tono'), destinatario:v('am-to')||null,
+    contesto: currentSubData?.sub ? ('Riguarda l\'unità immobiliare '+subLabel(currentSubData.sub)+(currentSubData.sub.indirizzo_completo?', '+currentSubData.sub.indirizzo_completo:'')) : null,
+  })});
+  if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'Generazione fallita');st.style.color='var(--danger)';}return;}
+  document.getElementById('am-oggetto').value=r.oggetto||'';
+  document.getElementById('am-testo').value=r.testo||'';
+  document.getElementById('am-result').style.display='';
+  document.getElementById('am-copia').style.display='';
+  document.getElementById('am-invia').style.display='';
+  if(st){st.textContent='✅ Rileggi, ritocca e invia';st.style.color='var(--success)';}
+}
+
+function aiMailCopia(){
+  const t='Oggetto: '+document.getElementById('am-oggetto').value+'\n\n'+document.getElementById('am-testo').value;
+  navigator.clipboard.writeText(t).then(()=>toast('📋 Copiata negli appunti ✓'));
+}
+
+async function aiMailInvia(){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('am-to')){toast('Inserisci il destinatario','error');return;}
+  if(!await appConfirm('Inviare questa email a '+v('am-to')+'?',{danger:false,icon:'✉️',title:'Invio email',okText:'Invia'}))return;
+  const r=await api('/api/ai/email/invia',{method:'POST',body:JSON.stringify({to:v('am-to'),oggetto:v('am-oggetto'),testo:v('am-testo')})});
+  if(!r||r.error){toast('❌ '+(r?.error||'Invio fallito'),'error');return;}
+  closeM('modal-aimail');
+  toast('✉️ Email inviata a '+v('am-to')+' ✓');
 }

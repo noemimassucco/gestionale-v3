@@ -4,8 +4,19 @@
 
 // TODO: openEditDoc
 
+let _docStatoFiltro='tutti';
+
+function setDocStatoFiltro(f){_docStatoFiltro=f;loadDocs();}
+
+function _docStato(d){
+  if(!d.scadenza)return{k:'validi',chip:'<span style="background:var(--bg2);color:var(--muted);border-radius:10px;padding:2px 10px;font-size:10px;font-weight:700;">—</span>'};
+  const gg=Math.floor((new Date(d.scadenza)-new Date())/86400000);
+  if(gg<0)return{k:'scaduti',chip:'<span style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger);border-radius:10px;padding:2px 10px;font-size:10px;font-weight:700;">Scaduto</span>'};
+  if(gg<=30)return{k:'in_scadenza',chip:'<span style="background:var(--warning-bg);color:var(--warning);border:1px solid var(--warning);border-radius:10px;padding:2px 10px;font-size:10px;font-weight:700;">In scadenza · '+gg+'g</span>'};
+  return{k:'validi',chip:'<span style="background:var(--success-bg);color:var(--success);border:1px solid var(--success);border-radius:10px;padding:2px 10px;font-size:10px;font-weight:700;">Valido</span>'};
+}
+
 async function loadDocs(){
-  if (_cache.documenti) { const _e=document.getElementById("doc-lbl"); if(_e)_e.textContent=_cache.documenti.length+" documenti"; }
   const p=new URLSearchParams();
   const v=id=>document.getElementById(id)?.value||'';
   if(v('df-tipo'))p.set('tipo',v('df-tipo'));
@@ -15,15 +26,44 @@ async function loadDocs(){
   const docs=await api('/api/documenti?'+p);
   if (docs) _cache.documenti = docs;
   if(!docs)return;
-  document.getElementById('docs-lbl').textContent=`${docs.length} documenti trovati`;
+
+  // Chips di stato (come il mockup: Tutti · Validi · In scadenza · Scaduti)
+  const conta={tutti:docs.length,validi:0,in_scadenza:0,scaduti:0};
+  docs.forEach(d=>{conta[_docStato(d).k]++;});
+  const chips=document.getElementById('doc-chips');
+  if(chips)chips.innerHTML=[['tutti','Tutti'],['validi','Validi'],['in_scadenza','In scadenza'],['scaduti','Scaduti']].map(([k,l])=>
+    `<button onclick="setDocStatoFiltro('${k}')" style="border:1px solid ${_docStatoFiltro===k?'var(--primary)':'var(--border-2)'};background:${_docStatoFiltro===k?'var(--primary)':'var(--card)'};color:${_docStatoFiltro===k?'#fff':'var(--muted)'};border-radius:16px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">${l} <span style="opacity:.7;">${conta[k]}</span></button>`
+  ).join('');
+
+  const filtered=_docStatoFiltro==='tutti'?docs:docs.filter(d=>_docStato(d).k===_docStatoFiltro);
+  document.getElementById('docs-lbl').textContent=`${filtered.length} documenti`;
   const el=document.getElementById('docs-list');
-  if(!docs.length){el.innerHTML='<div class="empty">Nessun documento. Carica fatture, contratti, preventivi e altro.</div>';return;}
-  el.innerHTML=docs.map(d=>{
-    const icon=DOC_ICONS[d.tipo]||'📂';
-    const scadGiorni=d.scadenza?Math.floor((new Date(d.scadenza)-new Date())/(1000*60*60*24)):null;
-    const scadHtml=scadGiorni!==null?`<span class="doc-scad" style="background:${scadGiorni<30?'rgba(239,68,68,.2)':scadGiorni<90?'rgba(184,134,11,.2)':'rgba(16,185,129,.2)'};color:${scadGiorni<30?'var(--danger)':scadGiorni<90?'var(--warning)':'var(--success)'};">${scadGiorni===0?'Scade oggi':scadGiorni<0?`Scaduto ${-scadGiorni}gg fa`:`${scadGiorni}gg`}</span>`:'';
-    return`<div class="doc-card" style="cursor:pointer;" onclick="docVaiAllaSezione(${d.id})" title="Apri la cartella di questo documento"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(d.nome)}</div><div class="doc-meta">${d.sub_codice?'SUB '+esc(d.sub_codice)+' · ':''}${d.sede_nome?esc(d.sede_nome)+' · ':''}${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · <strong style="color:var(--accent);">€ '+parseFloat(d.importo).toLocaleString('it-IT')+'</strong>':''}</div>${d.descrizione?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(d.descrizione.slice(0,80))}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">${scadHtml}${d.url?`<a href="${fileUrl(d.url)}" target="_blank" class="btn btn-edit btn-sm" onclick="event.stopPropagation()">👁 Apri</a>`:''}<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delDoc(${d.id})">✕</button></div></div>`;
-  }).join('');
+  if(!filtered.length){el.innerHTML='<div class="empty">Nessun documento qui. Trascina un file nella card 🤖 di Import, o usa + Nuovo Documento.</div>';return;}
+
+  // Tabella stile mockup
+  el.innerHTML=`<div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
+    <thead><tr><th style="width:34px;"></th><th>Documento</th><th>Categoria</th><th>SUB</th><th>Scadenza</th><th>Stato</th><th style="width:90px;">Azioni</th></tr></thead>
+    <tbody>${filtered.map(d=>{
+      const st=_docStato(d);
+      const icon=DOC_ICONS[d.tipo]||'📄';
+      return `<tr class="row-click" onclick="docVaiAllaSezione(${d.id})" title="Apri la cartella di questo documento">
+        <td onclick="event.stopPropagation()"><input type="checkbox" class="sel-check documenti-chk" data-id="${d.id}" onchange="genToggle('documenti',${d.id},this)"></td>
+        <td><div style="display:flex;align-items:center;gap:10px;">
+          <span style="width:30px;height:30px;border-radius:8px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:14px;filter:grayscale(.4);">${icon}</span>
+          <div style="min-width:0;"><div style="font-weight:600;color:var(--text-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">${esc(d.nome)}</div>
+          <div style="font-size:10.5px;color:var(--muted);">${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · € '+parseFloat(d.importo).toLocaleString('it-IT'):''}</div></div>
+        </div></td>
+        <td style="font-size:11.5px;color:var(--muted);text-transform:capitalize;">${esc((d.tipo||'').replace(/_/g,' '))}</td>
+        <td style="font-size:12px;">${esc(d.sub_codice||'—')}</td>
+        <td style="font-size:12px;">${d.scadenza?fmt(d.scadenza):'—'}</td>
+        <td>${st.chip}</td>
+        <td onclick="event.stopPropagation()">
+          ${d.url?`<a href="${fileUrl(d.url)}" target="_blank" class="btn btn-xs btn-gray" title="Apri">👁</a>`:''}
+          <button class="btn btn-xs btn-gray" onclick="delDoc(${d.id})" title="Elimina">✕</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div></div>`;
   loadScadenze();
 }
 
