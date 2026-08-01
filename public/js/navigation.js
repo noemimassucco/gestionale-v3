@@ -189,3 +189,47 @@ function manutenzioniSelAll() { tableSelAll('manutenzioni'); }
 function ticketSelAll() { tableSelAll('ticket'); }
 // Applica le preferenze del menu all'avvio (gli script sono in fondo al body, il DOM c'è già)
 try { applyMenuPrefs(); } catch(e) {}
+
+
+// ═══════ TENDINE: gruppi richiudibili + sottomenu SUB ═══════
+function toggleSubMenu(){
+  const sm=document.getElementById('sb-subs-sub');
+  const ch=document.querySelector('#sb-subs .sb-chev-btn');
+  if(!sm)return;
+  const open=sm.style.display==='none';
+  sm.style.display=open?'':'none';
+  if(ch)ch.classList.toggle('open',open);
+}
+
+async function subMenuGo(tab){
+  if(!currentSubId){
+    showSection('subs');
+    toast('Apri prima un SUB: le cartelle si riferiscono al SUB aperto','warning');
+    return;
+  }
+  if(!document.getElementById('sec-subdet')?.classList.contains('active')){
+    await openSubDetail(currentSubId);
+  }
+  setSubDetTab(tab,_subTabBtn(tab));
+  if(sidebarOpen)toggleSidebar();
+}
+
+function initSidebarGroups(){
+  const collapsed=JSON.parse(localStorage.getItem('menu_groups_collapsed')||'[]');
+  document.querySelectorAll('.sb-group').forEach((g,idx)=>{
+    const t=g.querySelector('.sb-group-title');
+    if(!t)return;
+    g.dataset.gid='g'+idx;
+    if(!t.querySelector('.sb-gchev')) t.innerHTML='<span class="sb-gchev">▾</span>'+t.innerHTML;
+    t.onclick=()=>{
+      g.classList.toggle('collapsed');
+      const c=JSON.parse(localStorage.getItem('menu_groups_collapsed')||'[]');
+      const i=c.indexOf(g.dataset.gid);
+      if(g.classList.contains('collapsed')&&i<0)c.push(g.dataset.gid);
+      if(!g.classList.contains('collapsed')&&i>=0)c.splice(i,1);
+      localStorage.setItem('menu_groups_collapsed',JSON.stringify(c));
+    };
+    if(collapsed.includes('g'+idx))g.classList.add('collapsed');
+  });
+}
+try { initSidebarGroups(); } catch(e) {}

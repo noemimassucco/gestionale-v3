@@ -30,14 +30,14 @@ router.get('/api/documenti', authMiddleware, async (req, res) => {
 
 router.post('/api/documenti', authMiddleware, upload.single('file'), async (req, res) => {
   const { sub_id, sede_id, fornitore_id, tipo, nome, data_documento, scadenza, importo, descrizione, note } = req.body;
-  let url = null, cloudinary_id = null;
+  let url = null, cloudinary_id = null, salvaInDb = false;
   if (req.file) {
     if (process.env.CLOUDINARY_CLOUD_NAME) {
       const b64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
       const result = await cloudinary.uploader.upload(b64, { folder: 'gestionale-documenti', resource_type: 'auto' });
       url = result.secure_url; cloudinary_id = result.public_id;
     } else {
-      url = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+      salvaInDb = true; // file conservato nel database (tabella documenti_files)
     }
   }
   const nomeFile = nome || req.file?.originalname || 'Documento';
@@ -49,11 +49,38 @@ router.post('/api/documenti', authMiddleware, upload.single('file'), async (req,
     'INSERT INTO documenti (sub_id,sede_id,fornitore_id,tipo,nome,url,cloudinary_id,data_documento,scadenza,importo,descrizione,note,tags,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *',
     [sub_id||null,sede_id||null,fornitore_id||null,tipo||'documento',nomeFile,url,cloudinary_id,data_documento||null,scadenza||null,importo||null,descrizione||null,note||null,tags,req.user.id]
   );
+  if (salvaInDb && req.file) {
+    await pool.query('INSERT INTO documenti_files (documento_id,mime,size,data) VALUES ($1,$2,$3,$4)',
+      [r.rows[0].id, req.file.mimetype, req.file.size, req.file.buffer]);
+    const fileUrl = '/api/documenti/' + r.rows[0].id + '/file';
+    await pool.query('UPDATE documenti SET url=$1 WHERE id=$2', [fileUrl, r.rows[0].id]);
+    r.rows[0].url = fileUrl;
+  }
   if (sub_id) {
     await pool.query('INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
       [sub_id,'documento',`Nuovo documento: ${nomeFile}`,`Tipo: ${tipo||'documento'}`,req.user.id]);
   }
   res.json(r.rows[0]);
+});
+
+// Serve il file salvato nel database. Il token può arrivare in query (?token=)
+// perché i link <a href> non possono mandare header.
+router.get('/api/documenti/:id/file', async (req, res) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    const { JWT_SECRET } = require('../middleware/auth');
+    const tok = (req.headers.authorization||'').replace('Bearer ','') || req.query.token || '';
+    try { jwt.verify(tok, JWT_SECRET); } catch { return res.status(401).json({ error: 'Non autorizzato' }); }
+    const r = await pool.query(
+      `SELECT f.mime, f.data, d.nome FROM documenti_files f JOIN documenti d ON d.id=f.documento_id WHERE f.documento_id=$1`,
+      [req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'File non trovato' });
+    const row = r.rows[0];
+    res.setHeader('Content-Type', row.mime || 'application/octet-stream');
+    res.setHeader('Content-Disposition', 'inline; filename="' + encodeURIComponent(row.nome||'documento') + '"');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(row.data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.delete('/api/documenti/:id', authMiddleware, async (req, res) => {

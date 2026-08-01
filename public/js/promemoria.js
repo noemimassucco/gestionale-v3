@@ -128,9 +128,11 @@ async function loadPromemoriaAttivi() {
   // Aggiorna badge campanella
   const badge = document.getElementById('badge-promemoria');
   if (badge) {
-    if (data.length > 0) {
+    // Rosso solo per promemoria di OGGI o SCADUTI (prima contava tutti i prossimi 7 giorni → sempre acceso)
+    const urgenti = (data||[]).filter(p => p.urgenza === 'oggi' || p.urgenza === 'scaduto');
+    if (urgenti.length > 0) {
       badge.style.display = 'flex';
-      badge.textContent = data.length > 9 ? '9+' : data.length;
+      badge.textContent = urgenti.length > 9 ? '9+' : urgenti.length;
     } else {
       badge.style.display = 'none';
     }

@@ -62,6 +62,14 @@ async function openSubDetail(id) {
   _disableSubButtons(s);
 
   document.getElementById('sub-det-edit-btn').onclick=()=>{openAnaById('sub',id);};
+
+  // Aggiorna il sottomenu laterale con il SUB aperto
+  const _smc=document.getElementById('sb-subs-sub-code');
+  if(_smc)_smc.textContent='▸ '+ (s.codice||'SUB');
+  const _sm=document.getElementById('sb-subs-sub');
+  const _ch=document.querySelector('#sb-subs .sb-chev-btn');
+  if(_sm&&_sm.style.display==='none'){_sm.style.display='';if(_ch)_ch.classList.add('open');}
+
   renderSubDetTab('overview');
 }
 

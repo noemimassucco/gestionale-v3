@@ -473,7 +473,7 @@ function _subDocRow(d){
         ${scadBadge}
       </div>
     </div>
-    ${d.url?`<a href="${esc(d.url)}" target="_blank" class="btn btn-xs btn-gray" title="Apri">👁</a>`:'<span style="font-size:10px;color:var(--muted);" title="Nessun file allegato">solo dati</span>'}
+    ${d.url?`<a href="${esc(fileUrl(d.url))}" target="_blank" class="btn btn-xs btn-gray" title="Apri">👁</a>`:'<span style="font-size:10px;color:var(--muted);" title="Nessun file allegato">solo dati</span>'}
     <button class="btn btn-xs btn-gray" onclick="subDelDoc(${d.id})" title="Elimina">✕</button>
   </div>`;
 }
@@ -680,7 +680,7 @@ async function renderSubDetTab(tab) {
 
   }else if(tab==='foto'){
     const foto=_subDocs('foto');
-    const isImg=u=>u&&(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(u)||/\/image\/upload\//.test(u));
+    const isImg=u=>u&&(/\.(jpe?g|png|gif|webp|avif)(\?|$)/i.test(u)||/\/image\/upload\//.test(u)||/\/api\/documenti\/\d+\/file/.test(u));
     el.innerHTML=`
       <div class="flex-between" style="margin-bottom:12px;">
         <span style="font-size:13px;color:var(--muted);">${foto.length} foto</span>
@@ -688,7 +688,7 @@ async function renderSubDetTab(tab) {
       </div>
       ${foto.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
         ${foto.map(f=>`<div style="border:1px solid var(--border);border-radius:9px;overflow:hidden;background:var(--surface2);">
-          ${isImg(f.url)?`<a href="${esc(f.url)}" target="_blank"><img src="${esc(f.url)}" style="width:100%;height:120px;object-fit:cover;display:block;" loading="lazy"></a>`:`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:34px;">🖼️</div>`}
+          ${isImg(f.url)?`<a href="${esc(fileUrl(f.url))}" target="_blank"><img src="${esc(fileUrl(f.url))}" style="width:100%;height:120px;object-fit:cover;display:block;" loading="lazy"></a>`:`<div style="height:120px;display:flex;align-items:center;justify-content:center;font-size:34px;">🖼️</div>`}
           <div style="padding:7px 10px;display:flex;justify-content:space-between;align-items:center;gap:6px;">
             <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(f.nome||'Foto')}</span>
             <button class="btn btn-xs btn-gray" onclick="subDelDoc(${f.id})">✕</button>

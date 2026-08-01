@@ -58,6 +58,9 @@ async function apiUp(url, fd) {
   }
 }
 
+// Link a un file: se è servito dal gestionale aggiunge il token di accesso
+function fileUrl(u){ if(!u) return u; return u.startsWith('/api/') ? u + (u.includes('?')?'&':'?') + 'token=' + encodeURIComponent(token||'') : u; }
+
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 function fmt(d) {
