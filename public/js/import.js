@@ -337,3 +337,112 @@ async function importJSON(input) {
   };
   reader.readAsText(file);
 }
+
+// ═══════ SMART UPLOAD: riconosce il documento e lo archivia nel posto giusto ═══════
+let _smartFile=null,_smartDati=null;
+
+function _smartMatchSub(d){
+  const subs=DB.subs||[];
+  // 1) codice scritto sul documento (anche a mano)
+  if(d.sub_codice){
+    const c=String(d.sub_codice).toUpperCase().replace(/\s+/g,'');
+    const m=subs.find(x=>(x.codice||'').toUpperCase().replace(/\s+/g,'')===c);
+    if(m)return{sub:m,via:'codice scritto sul documento'};
+  }
+  // 2) indirizzo di fornitura
+  if(d.indirizzo_fornitura){
+    const ind=String(d.indirizzo_fornitura).toLowerCase();
+    const m=subs.find(x=>x.indirizzo_completo&&ind.includes(String(x.indirizzo_completo).toLowerCase().split(',')[0].trim().slice(0,12)));
+    if(m)return{sub:m,via:'indirizzo di fornitura'};
+  }
+  return null;
+}
+
+async function smartUpload(input){
+  _smartFile=input.files[0];
+  if(!_smartFile)return;
+  const st=document.getElementById('smart-status');
+  const zone=document.getElementById('smart-zone');
+  const res=document.getElementById('smart-result');
+  if(zone)zone.innerHTML='<div style="font-size:13px;font-weight:600;">✓ '+esc(_smartFile.name)+' ('+Math.round(_smartFile.size/1024)+' KB)</div>';
+  if(res)res.style.display='none';
+  if(st){st.textContent='🤖 Lettura in corso… (qualche secondo)';st.style.color='var(--muted)';}
+  const fd=new FormData();fd.append('file',_smartFile);
+  const r=await apiUp('/api/ocr',fd);
+  const d=r?.dati;
+  if(!d||!Object.keys(d).some(k=>d[k])){
+    if(st){st.textContent='❌ '+(r?.error||'Lettura fallita: PDF protetto o illeggibile — prova con una foto del documento');st.style.color='var(--danger)';}
+    return;
+  }
+  _smartDati=d;
+  if(st)st.textContent='';
+  const match=_smartMatchSub(d);
+  const isBolletta=d.tipo_documento==='bolletta';
+  const TIPI={fattura:'🧾 Fattura',bolletta:'⚡ Bolletta',contratto:'📄 Contratto',ape:'⚡ APE',visura:'📑 Visura',planimetria:'📐 Planimetria',certificazione:'🏆 Certificazione',polizza:'🛡️ Polizza',verbale:'📋 Verbale',preventivo:'💼 Preventivo',condominiale:'🏢 Condominiale',altro:'📂 Documento'};
+  const riga=(l,v)=>v?'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px;"><span style="color:var(--muted);">'+l+'</span><span style="font-weight:600;">'+esc(String(v))+'</span></div>':'';
+  res.innerHTML=
+    '<div style="background:var(--primary-bg);border:1px solid var(--primary-2);border-radius:9px;padding:12px 14px;margin-bottom:10px;font-size:13px;font-weight:700;">Riconosciuto: '+(TIPI[d.tipo_documento]||'📂 Documento')+(d.categoria_bolletta?' — '+esc(d.categoria_bolletta):'')+'</div>'
+    +riga('Fornitore',d.fornitore)
+    +riga('Numero',d.num_fattura)
+    +riga('Data',d.data_fattura)
+    +riga('Periodo',(d.periodo_dal&&d.periodo_al)?d.periodo_dal+' → '+d.periodo_al:null)
+    +riga('Scadenza',d.scadenza)
+    +riga('Importo',d.importo?'€ '+d.importo:null)
+    +riga('Descrizione',d.descrizione)
+    +'<div style="display:flex;align-items:center;gap:9px;margin:12px 0;flex-wrap:wrap;">'
+    +'<span style="font-size:12px;color:var(--muted);">SUB:</span>'
+    +'<select id="smart-sub" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">'
+    +'<option value="">— Nessuno —</option>'
+    +(DB.subs||[]).map(x=>'<option value="'+x.id+'"'+((match&&match.sub.id===x.id)?' selected':'')+'>'+esc(x.codice)+'</option>').join('')
+    +'</select>'
+    +(match?'<span style="font-size:11px;color:var(--success);font-weight:600;">✓ agganciato dal '+match.via+'</span>':'<span style="font-size:11px;color:var(--muted);">nessun SUB riconosciuto — scegli tu</span>')
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +(isBolletta?'<button class="btn btn-success btn-sm" onclick="smartSalva(\'bolletta\')">✓ Salva come bolletta</button>':'')
+    +'<button class="btn '+(isBolletta?'btn-gray':'btn-success')+' btn-sm" onclick="smartSalva(\'documento\')">✓ Salva come documento</button>'
+    +'<button class="btn btn-gray btn-sm" onclick="smartReset()">Annulla</button>'
+    +'</div>';
+  res.style.display='';
+}
+
+function smartReset(){
+  _smartFile=null;_smartDati=null;
+  document.getElementById('smart-result').style.display='none';
+  document.getElementById('smart-file').value='';
+  document.getElementById('smart-zone').innerHTML='<div style="font-size:24px;margin-bottom:5px;">📥</div><div style="font-size:13px;font-weight:600;">Seleziona PDF o foto del documento</div>';
+  document.getElementById('smart-status').textContent='';
+}
+
+async function smartSalva(come){
+  const d=_smartDati; if(!d||!_smartFile)return;
+  const subId=document.getElementById('smart-sub')?.value||'';
+  const st=document.getElementById('smart-status');
+  if(st){st.textContent='Salvataggio…';st.style.color='var(--muted)';}
+  const fd=new FormData();
+  fd.append('file',_smartFile);
+  if(subId)fd.append('sub_id',subId);
+  let r;
+  if(come==='bolletta'){
+    fd.append('tipo',d.categoria_bolletta||'altro');
+    if(d.fornitore)fd.append('fornitore_nome',d.fornitore);
+    if(d.num_fattura)fd.append('numero',d.num_fattura);
+    if(d.importo)fd.append('importo',parseFloat(String(d.importo).replace(',','.'))||'');
+    if(d.periodo_dal)fd.append('periodo_dal',d.periodo_dal);
+    if(d.periodo_al)fd.append('periodo_al',d.periodo_al);
+    if(d.scadenza)fd.append('scadenza',d.scadenza);
+    fd.append('stato','da_pagare');
+    r=await apiUp('/api/bollette',fd);
+  }else{
+    fd.append('tipo',(d.tipo_documento&&d.tipo_documento!=='bolletta')?d.tipo_documento:'documento');
+    fd.append('nome',d.descrizione||((d.tipo_documento||'Documento')+(d.fornitore?' — '+d.fornitore:'')));
+    if(d.data_fattura)fd.append('data_documento',d.data_fattura);
+    if(d.scadenza)fd.append('scadenza',d.scadenza);
+    if(d.importo)fd.append('importo',parseFloat(String(d.importo).replace(',','.'))||'');
+    if(d.fornitore)fd.append('descrizione','Fornitore: '+d.fornitore+(d.num_fattura?' · N. '+d.num_fattura:''));
+    r=await apiUp('/api/documenti',fd);
+  }
+  if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'Salvataggio fallito');st.style.color='var(--danger)';}return;}
+  toast('✅ Archiviato'+(subId?' nel SUB giusto':'')+' ✓');
+  if(st){st.textContent='';}
+  smartReset();
+}

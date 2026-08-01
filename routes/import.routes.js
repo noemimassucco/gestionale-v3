@@ -74,7 +74,7 @@ router.post('/api/ocr', authMiddleware, upload.single('file'), async (req, res) 
         role: 'user',
         content: [
           { type: mediaType==='application/pdf'?'document':'image', source: { type:'base64', media_type:mediaType, data:b64 } },
-          { type: 'text', text: 'Analizza questo documento (fattura, bolletta, contratto, APE, polizza, visura, verbale…) ed estrai in JSON puro senza markdown: {"tipo_documento":"uno tra: fattura|bolletta|contratto|ape|visura|planimetria|certificazione|polizza|verbale|preventivo|condominiale|altro","categoria_bolletta":"se è una bolletta, uno tra: luce|gas|acqua|internet|rifiuti|condominio|altro, altrimenti null","fornitore":"","num_fattura":"","data_fattura":"YYYY-MM-DD","periodo_dal":"YYYY-MM-DD se indicato un periodo di fornitura","periodo_al":"YYYY-MM-DD","scadenza":"YYYY-MM-DD (scadenza pagamento o validità, se presente)","importo":0,"descrizione":"breve descrizione utile come titolo"}. Se un dato manca usa null.' }
+          { type: 'text', text: 'Analizza questo documento (fattura, bolletta, contratto, APE, polizza, visura, verbale…) ed estrai in JSON puro senza markdown: {"tipo_documento":"uno tra: fattura|bolletta|contratto|ape|visura|planimetria|certificazione|polizza|verbale|preventivo|condominiale|altro","categoria_bolletta":"se è una bolletta, uno tra: luce|gas|acqua|internet|rifiuti|condominio|altro, altrimenti null","fornitore":"","num_fattura":"","data_fattura":"YYYY-MM-DD","periodo_dal":"YYYY-MM-DD se indicato un periodo di fornitura","periodo_al":"YYYY-MM-DD","scadenza":"YYYY-MM-DD (scadenza pagamento o validità, se presente)","importo":0,"descrizione":"breve descrizione utile come titolo","sub_codice":"se sul documento e scritto (anche A MANO, a penna o matita) un codice unita immobiliare tipo ORB-001, MON-2, COL-001, riportalo esattamente","indirizzo_fornitura":"via e citta di fornitura, se presenti"}. Se un dato manca usa null.' }
         ]
       }]
     });
@@ -86,6 +86,10 @@ router.post('/api/ocr', authMiddleware, upload.single('file'), async (req, res) 
       r.on('error', reject); r.write(payload); r.end();
     });
     const parsed = JSON.parse(result);
+    if (parsed.error) {
+      console.error('OCR - errore API Anthropic:', JSON.stringify(parsed.error));
+      return res.status(400).json({ error: 'AI: ' + (parsed.error.message || parsed.error.type || 'richiesta rifiutata') });
+    }
     const text = parsed.content?.[0]?.text || '{}';
     const clean = text.replace(/```json|```/g,'').trim();
     res.json({ dati: JSON.parse(clean) });

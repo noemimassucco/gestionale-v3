@@ -110,7 +110,7 @@ async function bollOCR(){
   const fd=new FormData();fd.append('file',f);
   const r=await apiUp('/api/ocr',fd);
   const d=r?.dati;
-  if(!d){if(st){st.textContent='❌ '+(r?.error||'Lettura fallita');st.style.color='var(--danger)';}return;}
+  if(!d||!Object.keys(d).some(k=>d[k])){if(st){st.textContent='❌ '+(r?.error||'Lettura fallita: PDF protetto o illeggibile — prova con una foto');st.style.color='var(--danger)';}return;}
   const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
   if(d.categoria_bolletta){const sel=document.getElementById('boll-tipo');if(sel&&[...sel.options].some(o=>o.value===d.categoria_bolletta))sel.value=d.categoria_bolletta;}
   set('boll-forn',d.fornitore);

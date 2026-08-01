@@ -66,7 +66,7 @@ async function docOCR(){
   const fd=new FormData(); fd.append('file',docFileInput);
   const r=await apiUp('/api/ocr',fd);
   const d=r?.dati;
-  if(!d){ if(st){st.textContent='❌ '+(r?.error||'Lettura fallita');st.style.color='var(--danger)';} return; }
+  if(!d||!Object.keys(d).some(k=>d[k])){ if(st){st.textContent='❌ '+(r?.error||'Lettura fallita: PDF protetto o illeggibile — prova con una foto');st.style.color='var(--danger)';} return; }
   const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
   // tipo: usa il valore se esiste tra le opzioni
   if(d.tipo_documento){
