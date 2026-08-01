@@ -796,10 +796,14 @@ async function renderSubDetTab(tab) {
       ${(s.data_inizio_contratto||s.canone_annuo)?grid([s.data_inizio_contratto?card('Data inizio',fmt(s.data_inizio_contratto)):null,s.canone_annuo?card('Canone annuo','€ '+parseFloat(s.canone_annuo).toLocaleString('it-IT',{minimumFractionDigits:2}),true):null,s.canone_annuo?card('Canone mensile','€ '+(parseFloat(s.canone_annuo)/12).toLocaleString('it-IT',{minimumFractionDigits:2})):null,s.tipo_contratto?card('Tipo',esc(s.tipo_contratto)):null,s.durata_contratto_anni?card('Durata',s.durata_contratto_anni+' anni'):null]):''}
       ${s.note?sec('Note')+'<div style="font-size:13px;color:var(--muted);background:var(--surface2);border-radius:8px;padding:12px 14px;">'+esc(s.note)+'</div>':''}`;
 
+  }else if(tab==='affitti'){
+    el.innerHTML=renderTabPagamenti(data);
   }else if(tab==='economico'){
+    if(!currentSubData._bollette)currentSubData._bollette=await api('/api/bollette?sub_id='+currentSubId)||[];
     el.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+      <button class="btn btn-xs btn-gray" onclick="subDetSubview('affitti','economico')">💶 Affitti</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('bollette','economico')">⚡ Bollette</button>
-      <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Costi</button>
+      <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Uscite</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','economico')">📅 Scadenze</button>
     </div>`+renderTabEconomico(data)
     +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px;align-items:start;margin-top:16px;">`
@@ -1178,54 +1182,109 @@ async function addNotaSub() {
   toast('Nota aggiunta ✓');
 }
 
+// ── ECONOMICO: panoramica GENERALE del SUB (entrate + uscite + sospesi) ──
 function renderTabEconomico(data) {
   const ec = data.economico || {};
   const pagamenti = data.pagamenti || [];
-  const mesi = ['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
-  const statoColors = {pagato:'var(--green)',atteso:'var(--muted)',ritardo:'var(--orange)',insoluto:'var(--red)'};
-  const statoIcons = {pagato:'✅',atteso:'⏳',ritardo:'⚠️',insoluto:'🔴'};
-  const profColor = ec.profittoNetto >= 0 ? 'var(--green)' : 'var(--red)';
-
-  // Raggruppa pagamenti per anno
-  const pagPerAnno = {};
-  pagamenti.forEach(p => { if(!pagPerAnno[p.anno]) pagPerAnno[p.anno]=[];  pagPerAnno[p.anno].push(p); });
-  const anni = Object.keys(pagPerAnno).sort((a,b)=>b-a);
-
+  const bollette = (typeof currentSubData!=='undefined'&&currentSubData?._bollette)||[];
   const annoCorr = new Date().getFullYear();
+  const eur0 = n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
+  const annoDi = d=>d?new Date(d).getFullYear():null;
+
   const canoneMese = data.sub?.canone_annuo ? parseFloat(data.sub.canone_annuo)/12 : 0;
   const insoluti = pagamenti.filter(p=>p.stato==='insoluto'||p.stato==='ritardo');
   const insTot = insoluti.reduce((a,p)=>a+(parseFloat(p.importo)||0),0);
-  const incAnno = ec.entratePerAnno?.[annoCorr]||0;
-  const eur0 = n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
-  if(typeof window!=='undefined'&&window._subEcoAnno===undefined)window._subEcoAnno=null;
+  const entAnno = ec.entratePerAnno?.[annoCorr]||0;
+
+  // Uscite dell'anno corrente: interventi + manutenzioni + bollette pagate
+  const usciteAnno =
+    (data.interventi||[]).filter(i=>i.prezzo&&annoDi(i.data_fattura||i.data_intervento||i.created_at)===annoCorr).reduce((a,i)=>a+parseFloat(i.prezzo),0)
+    +(data.manutenzioni||[]).filter(m=>m.costo&&annoDi(m.data_eseguita||m.data_programmata)===annoCorr).reduce((a,m)=>a+parseFloat(m.costo),0)
+    +bollette.filter(b=>b.stato==='pagato'&&b.importo&&annoDi(b.data_pagamento||b.scadenza)===annoCorr).reduce((a,b)=>a+parseFloat(b.importo),0);
+  const nettoAnno = entAnno - usciteAnno;
+  const bollDaPag = bollette.filter(b=>b.stato!=='pagato'&&b.importo);
+  const bollDaPagTot = bollDaPag.reduce((a,b)=>a+parseFloat(b.importo),0);
+
+  // Ultimi movimenti (entrate + uscite mescolate, più recenti prima)
+  const movimenti = [
+    ...pagamenti.filter(p=>p.stato==='pagato').map(p=>({dt:p.data_pagamento||new Date(p.anno,(p.mese||1)-1,1).toISOString(),ico:'💶',lbl:'Canone '+['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'][p.mese]+' '+p.anno,imp:parseFloat(p.importo)||0,segno:1})),
+    ...(data.interventi||[]).filter(i=>i.prezzo).map(i=>({dt:i.data_fattura||i.data_intervento||i.created_at,ico:'🔧',lbl:'Intervento'+(i.fornitore_nome?' · '+i.fornitore_nome:''),imp:parseFloat(i.prezzo)||0,segno:-1})),
+    ...(data.manutenzioni||[]).filter(m=>m.costo).map(m=>({dt:m.data_eseguita||m.data_programmata,ico:'🔨',lbl:'Manutenzione · '+(m.tipo||''),imp:parseFloat(m.costo)||0,segno:-1})),
+    ...bollette.filter(b=>b.stato==='pagato'&&b.importo).map(b=>({dt:b.data_pagamento||b.scadenza,ico:'⚡',lbl:'Bolletta '+(b.tipo||''),imp:parseFloat(b.importo)||0,segno:-1})),
+  ].filter(m=>m.dt).sort((a,b)=>new Date(b.dt)-new Date(a.dt)).slice(0,8);
 
   return `
-    <!-- Sintesi -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;">
+    <!-- Quadro generale -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">
       <div class="card" style="padding:13px 15px;margin:0;">
-        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Canone / mese</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--text-strong);">${canoneMese?eur0(canoneMese):'—'}</div>
-        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${canoneMese?eur0(parseFloat(data.sub.canone_annuo))+'/anno':'imposta il canone in anagrafica'}</div>
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Entrate ${annoCorr}</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--success);">${eur0(entAnno)}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${canoneMese?'canone '+eur0(canoneMese)+'/mese':'canone non impostato'}</div>
       </div>
       <div class="card" style="padding:13px 15px;margin:0;">
-        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Incassato ${annoCorr}</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--success);">${eur0(incAnno)}</div>
-        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${pagamenti.filter(p=>p.stato==='pagato'&&p.anno===annoCorr).length} mensilità</div>
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Uscite ${annoCorr}</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--terra,#c2542e);">${eur0(usciteAnno)}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">interventi + manutenzioni + bollette</div>
+      </div>
+      <div class="card" style="padding:13px 15px;margin:0;">
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Netto ${annoCorr}</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${nettoAnno>=0?'var(--success)':'var(--danger)'};">${nettoAnno>=0?'+':''}${eur0(nettoAnno)}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">storico: ${ec.profittoNetto>=0?'+':''}${eur0(ec.profittoNetto)}</div>
       </div>
       <div class="card" style="padding:13px 15px;margin:0;">
         <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Da incassare</div>
         <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${insoluti.length?'var(--danger)':'var(--success)'};">${eur0(insTot)}</div>
         <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${insoluti.length?insoluti.length+' canoni insoluti':'tutto in regola ✓'}</div>
       </div>
-      <div class="card" style="padding:13px 15px;margin:0;">
-        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Netto storico</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${profColor};">${ec.profittoNetto>=0?'+':''}${eur0(ec.profittoNetto)}</div>
-        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${eur0(ec.totEntrate)} entrate − ${eur0(ec.totUscite)} uscite</div>
-      </div>
     </div>
 
+    <!-- Cose in sospeso -->
+    ${(bollDaPag.length||insoluti.length)?`<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">
+      ${bollDaPag.length?`<div onclick="subDetSubview('bollette','economico')" style="display:flex;align-items:center;gap:10px;background:#fdf6ec;border:1px solid rgba(194,84,46,.3);border-radius:9px;padding:10px 14px;cursor:pointer;">
+        <span style="font-size:16px;">⚡</span>
+        <span style="flex:1;font-size:12.5px;font-weight:600;">${bollDaPag.length} bollett${bollDaPag.length===1?'a':'e'} da pagare — ${eur0(bollDaPagTot)}</span>
+        <span style="color:var(--muted-2);">›</span>
+      </div>`:''}
+      ${insoluti.length?`<div onclick="subDetSubview('affitti','economico')" style="display:flex;align-items:center;gap:10px;background:#fdf3f2;border:1px solid rgba(142,67,67,.3);border-radius:9px;padding:10px 14px;cursor:pointer;">
+        <span style="font-size:16px;">💶</span>
+        <span style="flex:1;font-size:12.5px;font-weight:600;">${insoluti.length} canon${insoluti.length===1?'e':'i'} non incassat${insoluti.length===1?'o':'i'} — ${eur0(insTot)}</span>
+        <span style="color:var(--muted-2);">›</span>
+      </div>`:''}
+    </div>`:''}
+
+    <!-- Ultimi movimenti -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Ultimi movimenti</div>
+      <button class="btn btn-primary btn-sm" onclick="subActionPagamento()">+ Registra pagamento</button>
+    </div>
+    ${!movimenti.length?'<div class="empty">Nessun movimento registrato: incassi e spese compariranno qui.</div>':
+      movimenti.map(m=>`<div style="display:flex;align-items:center;gap:11px;padding:8px 10px;border-bottom:1px solid var(--border);">
+        <span style="font-size:15px;">${m.ico}</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(m.lbl)}</div>
+          <div style="font-size:10.5px;color:var(--muted);">${fmt(m.dt)}</div>
+        </div>
+        <span style="font-weight:700;font-size:13px;color:${m.segno>0?'var(--success)':'var(--terra,#c2542e)'};">${m.segno>0?'+':'−'} ${eur0(m.imp)}</span>
+      </div>`).join('')}`;
+}
+
+// ── AFFITTI: griglia pagamenti per anno (sotto-cartella di Economico) ──
+function renderTabPagamenti(data) {
+  const ec = data.economico || {};
+  const pagamenti = data.pagamenti || [];
+  const mesi = ['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const statoColors = {pagato:'var(--green)',atteso:'var(--muted)',ritardo:'var(--orange)',insoluto:'var(--red)'};
+  const statoIcons = {pagato:'✅',atteso:'⏳',ritardo:'⚠️',insoluto:'🔴'};
+  const annoCorr = new Date().getFullYear();
+  const eur0 = n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
+  const pagPerAnno = {};
+  pagamenti.forEach(p => { if(!pagPerAnno[p.anno]) pagPerAnno[p.anno]=[];  pagPerAnno[p.anno].push(p); });
+  const anni = Object.keys(pagPerAnno).sort((a,b)=>b-a);
+  if(typeof window!=='undefined'&&window._subEcoAnno===undefined)window._subEcoAnno=null;
+
+  return `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Pagamenti affitto</div>
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Pagamenti affitto per anno</div>
       <button class="btn btn-primary btn-sm" onclick="subActionPagamento()">+ Registra pagamento</button>
     </div>
 
@@ -1236,7 +1295,7 @@ function renderTabEconomico(data) {
       const nPag = pags.filter(p=>p.stato==='pagato').length;
       return `
       <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
-        <div onclick="window._subEcoAnno='${anno}';renderSubDetTab('economico')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);cursor:pointer;user-select:none;">
+        <div onclick="window._subEcoAnno='${anno}';subDetSubview('affitti','economico')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);cursor:pointer;user-select:none;">
           <span style="font-size:13px;font-weight:700;">📅 ${anno}</span>
           <span style="font-size:11px;color:var(--muted);">${nPag}/${pags.length} pagati · ${eur0(ec.entratePerAnno?.[anno]||0)} incassati</span>
           ${pags.some(p=>p.stato==='insoluto')?'<span style="font-size:10px;background:#fdf3f2;color:var(--danger);border-radius:10px;padding:1px 8px;font-weight:700;">⚠ insoluti</span>':''}
@@ -1280,7 +1339,12 @@ async function pagStato(pid,stato){
   if(!r||r.error){toast('❌ '+(r?.error||'Aggiornamento fallito'),'error');return;}
   toast(stato==='pagato'?'✓ Segnato pagato':stato==='insoluto'?'⚠ Segnato insoluto':'Aggiornato ✓');
   const data=await api('/api/subs/'+currentSubId+'/detail');
-  if(data){currentSubData=data;renderSubDetTab('economico');}
+  if(data){
+    const boll=currentSubData?._bollette;
+    currentSubData=data;
+    if(boll)currentSubData._bollette=boll;
+    if(subDetTab==='affitti')subDetSubview('affitti','economico');else renderSubDetTab('economico');
+  }
 }
 
 function renderTabInquilini(data) {

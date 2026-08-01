@@ -61,6 +61,11 @@ async function loadDashboard(){
     insoluti.slice(0,4).forEach(p=>voci.push({ico:'💶',t:'Canone insoluto — '+(p.sub_codice?'SUB '+p.sub_codice:'')+(p.inquilino_nome?' · '+p.inquilino_nome:''),d:eur(parseFloat(p.importo)||0),urg:2,run:`showSection('affitti')`}));
     scad7.slice(0,5).forEach(e=>{const g=Math.floor((new Date(e.scadenza)-new Date())/86400000);voci.push({ico:e.icon||'📅',t:e.titolo||'Scadenza',d:g===0?'oggi':'tra '+g+'g',urg:g<=2?2:1,run:`showSection('calendario')`});});
     (dash.subsCritici||[]).slice(0,3).forEach(c=>voci.push({ico:'🔧',t:'Da attenzionare — '+c.codice+(c.sede?' · '+c.sede:''),d:(c.urgenze||0)+' urgenze',urg:1,run:`openSubDetail(${c.id})`}));
+    (notifiche||[]).filter(n=>n.tipo==='bolletta').slice(0,4).forEach(n=>{
+      const g=n.giorni==null?null:parseInt(n.giorni);
+      voci.push({ico:'⚡',t:'Bolletta da pagare — '+(n.titolo||'')+(n.sub?' · SUB '+n.sub:''),
+        d:g==null?'senza scadenza':g<0?'scaduta!':g===0?'oggi':'tra '+g+'g',urg:g!=null&&g<=7?2:1,run:`showSection('bollette')`});
+    });
     voci.sort((a,b)=>b.urg-a.urg);
     todoEl.innerHTML=voci.length?voci.slice(0,8).map(v2=>`
       <div class="row-click" onclick="${v2.run}" style="display:flex;align-items:center;gap:11px;padding:9px 6px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;">

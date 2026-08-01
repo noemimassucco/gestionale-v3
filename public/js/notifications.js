@@ -57,6 +57,8 @@ function openNotifica(uid) {
     showSection('documenti');
   } else if (n.tipo === 'scadenza_man') {
     showSection('manutenzioni');
+  } else if (n.tipo === 'bolletta') {
+    showSection('bollette');
   } else {
     showSection('notifiche');
   }
@@ -64,10 +66,10 @@ function openNotifica(uid) {
 
 function renderNotifSAList() {
   const items = _notifSAFiltro === 'tutte' ? _notifSAAll : _notifSAAll.filter(n => n.tipo === _notifSAFiltro);
-  const icons = { urgente:'⚠️', scadenza_doc:'📄', scadenza_man:'🔨', istat:'📈', incompleto:'⚠️' };
-  const colors = { urgente:'var(--red)', scadenza_doc:'var(--accent)', scadenza_man:'var(--orange)', istat:'var(--success)', incompleto:'var(--muted)' };
-  const labels = { urgente:'Urgente', scadenza_doc:'Scadenza documento', scadenza_man:'Scadenza manutenzione', istat:'ISTAT dovuto', incompleto:'Dati incompleti' };
-  const navTargets = { urgente:'interventi', scadenza_doc:'documenti', scadenza_man:'manutenzioni', istat:'subs', incompleto:'subs' };
+  const icons = { urgente:'⚠️', scadenza_doc:'📄', scadenza_man:'🔨', istat:'📈', incompleto:'⚠️', bolletta:'⚡' };
+  const colors = { urgente:'var(--red)', scadenza_doc:'var(--accent)', scadenza_man:'var(--orange)', istat:'var(--success)', incompleto:'var(--muted)', bolletta:'var(--terra,#c2542e)' };
+  const labels = { urgente:'Urgente', scadenza_doc:'Scadenza documento', scadenza_man:'Scadenza manutenzione', istat:'ISTAT dovuto', incompleto:'Dati incompleti', bolletta:'Bolletta da pagare' };
+  const navTargets = { urgente:'interventi', scadenza_doc:'documenti', scadenza_man:'manutenzioni', istat:'subs', incompleto:'subs', bolletta:'bollette' };
 
   const container = document.getElementById('notif-sa-list');
   if (!container) return;
@@ -82,7 +84,7 @@ function renderNotifSAList() {
   container.innerHTML = (unread > 0 ? `<div class="flex-between" style="margin-bottom:12px;"><span style="font-size:12px;color:var(--muted);">${unread} non lette</span><button class="btn btn-sm btn-gray" onclick="markAllNotifRead()">✓ Segna tutte come lette</button></div>` : '') +
     items.map(n => {
       const isRead = _readNotifs.has(n._uid);
-      const navLabel = { urgente:'apri intervento', scadenza_doc:'documenti', scadenza_man:'manutenzioni', istat:'apri SUB', incompleto:'apri SUB' }[n.tipo] || 'apri';
+      const navLabel = { urgente:'apri intervento', scadenza_doc:'documenti', scadenza_man:'manutenzioni', istat:'apri SUB', incompleto:'apri SUB', bolletta:'apri bollette' }[n.tipo] || 'apri';
       return `<div class="notif-item${isRead?' read':''}" onclick="openNotifica('${n._uid}')" style="cursor:pointer;">
         <div class="notif-dot" style="background:${isRead?'var(--border)':colors[n.tipo]||'var(--muted)'};"></div>
         <div style="flex:1;min-width:0;">

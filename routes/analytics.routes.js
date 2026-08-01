@@ -130,7 +130,7 @@ router.get('/api/finanze', authMiddleware, async (req, res) => {
 
 router.get('/api/notifiche', authMiddleware, async (req, res) => {
   try {
-  const [urgenti, scadenzeDoc, scadenzeMan, istat, incompleti] = await Promise.all([
+  const [urgenti, scadenzeDoc, scadenzeMan, istat, incompleti, bollDaPagare] = await Promise.all([
     pool.query(`SELECT i.id, i.descrizione, s.codice as sub, sd.nome as sede, i.updated_at as data, 'urgente' as tipo
       FROM interventi i LEFT JOIN subs s ON i.sub_id=s.id LEFT JOIN sedi sd ON i.sede_id=sd.id
       WHERE i.ha_notifica=true ORDER BY i.updated_at DESC`),
@@ -157,6 +157,11 @@ router.get('/api/notifiche', authMiddleware, async (req, res) => {
       CASE WHEN s.inquilino_id IS NULL THEN 'Manca inquilino' WHEN s.foglio IS NULL THEN 'Dati catastali incompleti' ELSE 'Canone non inserito' END as descrizione
       FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id
       WHERE s.inquilino_id IS NULL OR s.foglio IS NULL OR s.canone_annuo IS NULL ORDER BY s.codice`),
+    pool.query(`SELECT b.id, INITCAP(b.tipo)||COALESCE(' '||b.fornitore_nome,'') as titolo, s.codice as sub, sd.nome as sede,
+      COALESCE(b.scadenza, b.created_at::date) as data, 'bolletta' as tipo,
+      (b.scadenza-CURRENT_DATE) as giorni, b.importo
+      FROM bollette b LEFT JOIN subs s ON b.sub_id=s.id LEFT JOIN sedi sd ON s.sede_id=sd.id
+      WHERE b.stato='da_pagare' ORDER BY b.scadenza ASC NULLS LAST`),
   ]);
   const all = [
     ...urgenti.rows.map(r=>({...r,priorita:'alta'})),
@@ -169,6 +174,12 @@ router.get('/api/notifiche', authMiddleware, async (req, res) => {
         descrizione: (gg<0?`Scaduto da ${-gg} giorni`:gg===0?'Scade oggi':`Tra ${gg} giorni`)+` — canone € ${parseFloat(r.canone_annuo).toLocaleString('it-IT')}/anno`};
     }),
     ...incompleti.rows.map(r=>({...r,priorita:'bassa'})),
+    ...bollDaPagare.rows.map(r=>{
+      const gg=r.giorni==null?null:parseInt(r.giorni);
+      const imp=r.importo?('€ '+parseFloat(r.importo).toLocaleString('it-IT',{minimumFractionDigits:2})):'importo n.d.';
+      return {...r, priorita: gg!=null&&gg<=7?'alta':gg!=null&&gg<=30?'media':'bassa',
+        descrizione: imp+' da pagare'+(gg==null?' — senza scadenza':gg<0?` — scaduta da ${-gg} giorni`:gg===0?' — scade OGGI':` — scade tra ${gg} giorni`)};
+    }),
   ];
   res.json(all);
   } catch(e) { console.error('GET /api/notifiche:', e.message); res.status(500).json({ error: e.message }); }

@@ -56,7 +56,7 @@ async function saveBolletta(){
     const v=id=>document.getElementById(id)?.value||'';
     const r=await api('/api/bollette/'+editId,{method:'PUT',body:JSON.stringify({tipo:v('boll-tipo'),fornitore_nome:v('boll-forn')||null,numero:v('boll-num')||null,importo:v('boll-imp')||null,periodo_dal:v('boll-pdal')||null,periodo_al:v('boll-pal')||null,scadenza:v('boll-scad')||null,data_pagamento:v('boll-dpag')||null,stato:v('boll-stato'),note:v('boll-note')||null})});
     document.getElementById('modal-boll').__editId=null;
-    closeM('modal-boll');loadBollette();toast('Bolletta aggiornata ✓');return;
+    closeM('modal-boll');_bollRefresh();toast('Bolletta aggiornata ✓');return;
   }
   const v=id=>document.getElementById(id)?.value||'';
   if(!v('boll-tipo')){toast('Tipo obbligatorio','error');return;}
@@ -66,7 +66,15 @@ async function saveBolletta(){
   const f=document.getElementById('boll-file');if(f?.files[0])fd.append('file',f.files[0]);
   const r=await apiUp('/api/bollette',fd);
   if(r?.error){toast('Errore: '+r.error,'error');return;}
-  closeM('modal-boll');loadBollette();toast('Bolletta salvata ✓');
+  closeM('modal-boll');_bollRefresh();toast('Bolletta salvata ✓');
+}
+
+// Ricarica la vista giusta: se sei dentro un SUB aggiorna il fascicolo, altrimenti l'elenco
+function _bollRefresh(){
+  if(document.getElementById('sec-subdet')?.classList.contains('active')){
+    if(typeof currentSubData!=='undefined'&&currentSubData)delete currentSubData._bollette;
+    if(typeof renderSubDetTab==='function')renderSubDetTab(typeof subDetTab!=='undefined'&&subDetTab?subDetTab:'bollette');
+  }else loadBollette();
 }
 
 async function delBolletta(id){if(!await appConfirm('Eliminare?'))return;
