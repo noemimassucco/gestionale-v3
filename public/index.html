@@ -11,10 +11,10 @@
   <meta name="apple-mobile-web-app-title" content="Gestionale">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sora:wght@600;700;800&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sora:wght@600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sora:wght@600;700;800&family=Playfair+Display:wght@500;600;700&display=swap');
 
 /* ── CSS VARIABLES ── */
 :root {
@@ -629,6 +629,74 @@ tr.row-click:active td{background:var(--primary-bg);}
 .sb-group.collapsed .sb-item,.sb-group.collapsed .sb-submenu{display:none!important;}
 .sb-group.collapsed .sb-gchev{transform:rotate(-90deg);}
 
+
+/* ═══════════ TEMA "PATRIMONIO" — come il mockup ═══════════ */
+
+/* Sfondo avorio caldo */
+:root{
+  --bg:#f6f1e8; --bg2:#ece5d7; --card:#fffdf8; --card-alt:#faf6ec;
+  --border:#e5dcc9; --border-2:#d6cab2;
+  --terra:#c2542e; --terra-dark:#a03f1e; --terra-bg:#f7e5dc;
+}
+body{background:var(--bg);}
+.app-main{background:var(--bg);}
+.app-topbar{background:var(--bg);border-bottom:1px solid var(--border);}
+
+/* Sidebar verde scuro profondo (come "Patrimonio") */
+.sidebar{background:#123528;border-right:none;}
+.sb-logo{color:#f6f1e8;font-family:'Playfair Display',serif;font-size:19px;letter-spacing:.2px;}
+.sb-group-title{color:#6f8a77;}
+.sb-item{color:#b9c8ba;}
+.sb-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.sb-item.active{background:rgba(255,255,255,.10);color:#fff;border-left:3px solid var(--terra);border-radius:0 8px 8px 0;}
+.sb-ico{filter:grayscale(.4) brightness(1.3);}
+.sb-item.active .sb-ico,.sb-item:hover .sb-ico{filter:none;}
+.sb-chev-btn{background:transparent;border-color:rgba(255,255,255,.25);color:#d8cfbc;}
+.sb-chev-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.4);color:#fff;}
+.sb-submenu{border-left:1px solid rgba(255,255,255,.18);}
+.sb-subitem{color:#a7bba9;}
+.sb-subitem:hover{background:rgba(255,255,255,.07);color:#fff;}
+.sb-submenu-code{color:#e0906c;}
+.sb-submenu-sep{background:rgba(255,255,255,.14);}
+.sb-divider{background:rgba(255,255,255,.1);}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
+.sb-item .badge{background:var(--terra);}
+
+/* Titoli serif eleganti come il mockup */
+.page-title,.modal-title,#dash-app-name,.subdet-code{font-family:'Playfair Display',serif;letter-spacing:0;}
+.page-title{font-size:24px;font-weight:600;}
+
+/* Bottoni azione: arancio terracotta (il "+ Nuovo" del mockup) */
+.btn-primary{background:var(--terra);border-color:var(--terra-dark);}
+.btn-primary:hover{background:var(--terra-dark);}
+#fab-quicknote{background:var(--terra);}
+#fab-quicknote:hover{box-shadow:0 10px 26px rgba(194,84,46,.45);}
+.tab-btn.active{border-color:var(--terra)!important;}
+
+/* Scheda SUB: fascia header avorio + tab orizzontali sottolineate */
+.subdet-header{background:var(--card-alt);border:1px solid var(--border);border-left:none;border-radius:12px;padding:18px 22px;}
+.subdet-code{font-size:34px;font-weight:600;color:var(--text-strong);line-height:1.05;}
+.pill-occupato{display:inline-flex;align-items:center;gap:6px;background:#e2eede;color:#2c5b3f;border-radius:14px;padding:3px 12px;font-size:11px;font-weight:700;}
+.pill-occupato::before{content:'';width:7px;height:7px;border-radius:50%;background:#3e6b52;}
+.pill-libero{display:inline-flex;align-items:center;gap:6px;background:var(--bg2);color:var(--muted);border-radius:14px;padding:3px 12px;font-size:11px;font-weight:700;}
+.subdet-stat{padding:0 20px;border-left:1px solid var(--border-2);text-align:left;}
+.subdet-stat:first-child{border-left:none;padding-left:0;}
+.subdet-stat .lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted-2);margin-bottom:3px;display:flex;align-items:center;gap:5px;}
+.subdet-stat .val{font-size:14px;font-weight:700;color:var(--text-strong);}
+
+/* Nav della scheda: da colonna a TAB ORIZZONTALI con sottolineatura (come il mockup) */
+.subdet-grid{display:block;}
+.subdet-nav{position:static;flex-direction:row;overflow-x:auto;background:transparent;border:none;box-shadow:none;border-radius:0;padding:0;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px;scrollbar-width:none;}
+.subdet-nav::-webkit-scrollbar{display:none;}
+.subdet-nav-title{display:none;}
+.subdet-nav .tab-btn{white-space:nowrap;border:none!important;border-bottom:2.5px solid transparent!important;border-radius:0;padding:11px 15px;margin-bottom:-2px;font-size:13px;width:auto;background:transparent;}
+.subdet-nav .tab-btn:hover{background:transparent;color:var(--text-strong);}
+.subdet-nav .tab-btn.active{background:transparent;border-bottom:2.5px solid var(--terra)!important;color:var(--text-strong);font-weight:700;}
+.sn-ico{display:none;} /* tab pulite, solo testo come il mockup */
+
+/* Login: pannello brand allineato al nuovo verde */
+#login-screen .login-grid>div:first-child{background:linear-gradient(160deg,#0d281e 0%,#1d4534 100%)!important;}
+
 /* Toast coerente col tema */
 #toast{box-shadow:var(--shadow-lg);}
 
@@ -866,7 +934,7 @@ tr.row-click:active td{background:var(--primary-bg);}
         </div>
         <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
           <thead><tr id="sub-sel-mode" style="display:none;"><th><input type="checkbox" onchange="subSelAll(this.checked)"></th></tr>
-          <tr><th></th><th>Salute</th><th>SUB</th><th>Sede</th><th>Stato</th><th>Inquilino</th><th>mq</th><th>Int.</th><th>Spese totali</th><th>Azioni</th></tr></thead>
+          <tr><th></th><th>SUB</th><th>Sede</th><th>Stato</th><th>Inquilino</th><th>mq</th><th>Int.</th><th>Spese totali</th><th>Azioni</th></tr></thead>
           <tbody id="tb-subs"><tr><td colspan="10" class="empty">Nessun SUB</td></tr></tbody>
         </table></div></div>
       </div>
@@ -1310,7 +1378,7 @@ tr.row-click:active td{background:var(--primary-bg);}
         <button class="btn btn-gray btn-sm" onclick="subDeselAll()">Deseleziona</button>
       </div>
       <div class="card" style="padding:0;overflow:hidden;"><div class="table-wrap"><table>
-        <thead><tr><th></th><th>Salute</th><th>Codice</th><th>Sede</th><th>Occupazione</th><th>Inquilino</th><th>Stato operativo</th><th>mq</th><th>Int.</th><th>Spese</th><th>Azioni</th></tr></thead>
+        <thead><tr><th></th><th>Codice</th><th>Sede</th><th>Occupazione</th><th>Inquilino</th><th>Stato operativo</th><th>mq</th><th>Int.</th><th>Spese</th><th>Azioni</th></tr></thead>
         <tbody id="tb-subs-ana"><tr><td colspan="11" class="empty">Caricamento…</td></tr></tbody>
       </table></div></div>
     </div>

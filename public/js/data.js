@@ -45,7 +45,7 @@ async function loadDD(){
       console.error('Render error [' + name + ']:', err);
       const tbId = { forn:'tb-fornitori', inq:'tb-inquilini', sedi:'tb-sedi', cat:'tb-cat' }[name];
       const tb = tbId && document.getElementById(tbId);
-      if (tb) tb.innerHTML = '<tr><td colspan="11" class="empty" style="color:var(--danger);">⚠ Errore render [' + name + '] — <a href="#" onclick="loadDD();return false;">Riprova</a></td></tr>';
+      if (tb) tb.innerHTML = '<tr><td colspan="10" class="empty" style="color:var(--danger);">⚠ Errore render [' + name + '] — <a href="#" onclick="loadDD();return false;">Riprova</a></td></tr>';
     }
   }
   // SUB ha il suo loader dedicato che fa fetch diretto
@@ -55,7 +55,7 @@ async function loadDD(){
     // Mostra pulsante "Riprova" nelle tabelle che usano dati mancanti
     const tbSubs = document.getElementById('tb-subs-ana') || document.getElementById('tb-subs');
     if (tbSubs && !data.subs.length) {
-      tbSubs.innerHTML = '<tr><td colspan="11" class="empty" style="color:var(--danger);">' +
+      tbSubs.innerHTML = '<tr><td colspan="10" class="empty" style="color:var(--danger);">' +
         '⚠ Errore caricamento SUB — <a href="#" onclick="loadDD();return false;" style="color:var(--primary);">Riprova</a></td></tr>';
     }
   }
@@ -63,12 +63,12 @@ async function loadDD(){
 
 async function loadSubs() {
   const tb = document.getElementById('tb-subs-ana') || document.getElementById('tb-subs');
-  if (tb) tb.innerHTML = '<tr><td colspan="11" class="empty">Caricamento SUB…</td></tr>';
+  if (tb) tb.innerHTML = '<tr><td colspan="10" class="empty">Caricamento SUB…</td></tr>';
 
   const subs = await api('/api/subs');
   if (!subs) {
     if (tb) tb.innerHTML =
-      '<tr><td colspan="11" class="empty" style="color:var(--danger);">' +
+      '<tr><td colspan="10" class="empty" style="color:var(--danger);">' +
       '⚠ Errore caricamento SUB — ' +
       '<a href="#" onclick="loadSubs();return false;" style="color:var(--primary);">Riprova</a>' +
       '</td></tr>';
@@ -98,7 +98,7 @@ function renderTbSubs() {
   const paint = html => tbs.forEach(el => { el.innerHTML = html; });
 
   if (!DB.subs || !DB.subs.length) {
-    paint('<tr><td colspan="11" class="empty">Nessun SUB trovato.</td></tr>');
+    paint('<tr><td colspan="10" class="empty">Nessun SUB trovato.</td></tr>');
     return;
   }
 
@@ -113,8 +113,6 @@ function renderTbSubs() {
   paint(DB.subs.map(function(s) {
     const stato  = s.stato_sub || 'attivo';
     const attivo = stato === 'attivo';
-    const sal    = parseInt(s.manutenzioni_aperte) > 0 ? '🟡'
-                 : s.stato_occupazione === 'libero' ? '⚪' : '🟢';
     const spese  = parseFloat(s.totale_spese||0);
     const speseFmt = spese > 0 ? '€ ' + spese.toLocaleString('it-IT', {maximumFractionDigits:0}) : '—';
     const rowOp  = attivo ? '' : ' style="opacity:.7;"';
@@ -132,7 +130,6 @@ function renderTbSubs() {
     // Tutta la riga apre la scheda completa del SUB (pagina)
     return '<tr class="row-click"' + rowOp + ' onclick="openSubDetail(' + s.id + ')" title="Apri scheda completa">' +
       '<td onclick="event.stopPropagation()">' + checkCell + '</td>' +
-      '<td style="font-size:16px;">' + sal + '</td>' +
       '<td class="td-bold">' + esc(s.codice||'—') + '</td>' +
       '<td>' + esc(s.sede_nome||'—') + '</td>' +
       '<td style="font-size:12px;color:var(--muted);">' + esc(s.stato_occupazione||'—') + '</td>' +
