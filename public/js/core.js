@@ -62,6 +62,19 @@ async function apiUp(url, fd) {
   }
 }
 
+// Etichetta SUB: tutti i SUB sono stati riaccatastati — il formato preferito
+// è "VECCHIO adesso NUOVO" (es. "2 adesso 730-731"). Usala ovunque si mostra un SUB.
+function subLabel(s){
+  if(!s) return '';
+  const c=s.codice||'';
+  return s.ex_sub ? (s.ex_sub+' adesso '+c) : c;
+}
+function subLabelHtml(s){
+  if(!s) return '';
+  const c=esc(s.codice||'');
+  return s.ex_sub ? ('<span style="color:var(--muted);font-weight:500;">'+esc(s.ex_sub)+'</span> <span style="font-size:.72em;color:var(--muted-2);text-transform:uppercase;letter-spacing:.5px;">adesso</span> '+c) : c;
+}
+
 // Link a un file: se è servito dal gestionale aggiunge il token di accesso
 function fileUrl(u){ if(!u) return u; return u.startsWith('/api/') ? u + (u.includes('?')?'&':'?') + 'token=' + encodeURIComponent(token||'') : u; }
 

@@ -33,7 +33,7 @@ async function loadDD(){
 
   setEl('ff-sede', opt(data.sedi,     'Tutte le sedi'));
   setEl('ff-sub',  '<option value="">Tutti i SUB</option>' +
-    data.subs.map(s => `<option value="${s.id}">${s.codice}${s.ex_sub?' (ex '+s.ex_sub+')':''}</option>`).join(''));
+    data.subs.map(s => `<option value="${s.id}">${esc(subLabel(s))}</option>`).join(''));
   setEl('ff-forn', '<option value="">Tutti i fornitori</option>' +
     data.fornitori.map(f => `<option value="${f.id}">${f.ragione_sociale}</option>`).join(''));
   setEl('ff-cat',  '<option value="">Tutte</option>' +
@@ -79,12 +79,13 @@ async function loadSubs() {
 
   // Aggiorna anche i select che dipendono da DB.subs
   const subOpts = '<option value="">Tutti i SUB</option>' +
-    subs.map(s => '<option value="' + s.id + '">' + esc(s.codice) + '</option>').join('');
+    subs.map(s => '<option value="' + s.id + '">' + esc(subLabel(s)) + '</option>').join('');
   ['ff-sub','df-sub','mf-sub','bf-sub','tf-sub','af-sub'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = subOpts;
   });
 
   renderTbSubs();
+  if(typeof renderSubsCards==='function')renderSubsCards();
 }
 
 function renderTbSubs() {
@@ -130,7 +131,7 @@ function renderTbSubs() {
     // Tutta la riga apre la scheda completa del SUB (pagina)
     return '<tr class="row-click"' + rowOp + ' onclick="openSubDetail(' + s.id + ')" title="Apri scheda completa">' +
       '<td onclick="event.stopPropagation()">' + checkCell + '</td>' +
-      '<td class="td-bold">' + esc(s.codice||'—') + '</td>' +
+      '<td class="td-bold">' + (subLabelHtml(s)||'—') + '</td>' +
       '<td>' + esc(s.sede_nome||'—') + '</td>' +
       '<td style="font-size:12px;color:var(--muted);">' + esc(s.stato_occupazione||'—') + '</td>' +
       '<td style="font-size:12px;">' + esc(s.inquilino_nome||'—') + '</td>' +
@@ -646,3 +647,55 @@ async function salvaAssegnaSub() {
   toast('✅ Assegnato a SUB ' + subCodice);
   await loadDD();
 }
+
+
+// ═══════ SUB: VISTA A SCHEDE (raggruppate per sede) ═══════
+function setSubsView(v){
+  localStorage.setItem('subs_view',v);
+  const cards=document.getElementById('subs-cards');
+  const table=document.getElementById('subs-table-wrap');
+  if(cards)cards.style.display=v==='cards'?'':'none';
+  if(table)table.style.display=v==='table'?'':'none';
+  document.getElementById('sv-cards')?.classList.toggle('active',v==='cards');
+  document.getElementById('sv-table')?.classList.toggle('active',v==='table');
+  if(v==='cards')renderSubsCards();
+}
+
+function renderSubsCards(){
+  const el=document.getElementById('subs-cards');
+  if(!el)return;
+  const subs=DB.subs||[];
+  if(!subs.length){el.innerHTML='<div class="empty" style="grid-column:1/-1;">Nessun SUB.</div>';return;}
+  // raggruppa per sede
+  const gruppi={};
+  subs.forEach(s=>{const k=s.sede_nome||'Senza sede';(gruppi[k]=gruppi[k]||[]).push(s);});
+  const COLORI=['#38524a','#8c6f45','#46656e','#96742e','#8e4343','#5a5a72'];
+  let ci=0;
+  el.innerHTML=Object.entries(gruppi).map(([sede,list])=>{
+    const col=COLORI[ci++%COLORI.length];
+    return '<div class="sub-sede-title">'+esc(sede)+' <span style="letter-spacing:0;color:var(--muted);">('+list.length+')</span></div>'
+      +list.map(s=>{
+        const attivo=!s.stato_sub||s.stato_sub==='attivo';
+        const occ=s.stato_occupazione==='occupato';
+        const canone=s.canone_annuo?('€ '+(parseFloat(s.canone_annuo)/12).toLocaleString('it-IT',{maximumFractionDigits:0})+'/mese'):null;
+        return '<div class="sub-card"'+(attivo?'':' style="opacity:.65;"')+' onclick="openSubDetail('+s.id+')">'
+          +'<div class="banda" style="background:'+col+';"></div>'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">'
+            +'<div class="codice">'+subLabelHtml(s)+'</div>'
+            +'<span class="'+(occ?'pill-occupato':'pill-libero')+'">'+(occ?'Occupato':'Libero')+'</span>'
+          +'</div>'
+          +'<div style="font-size:11.5px;color:var(--muted);margin-bottom:8px;">'+esc(s.indirizzo_completo||sede)+(s.piano?' · '+esc(s.piano):'')+'</div>'
+          +'<div style="font-size:12px;color:var(--text);margin-bottom:10px;">👤 '+esc(s.inquilino_nome||'—')+(canone?' · <strong style="font-family:monospace;">'+canone+'</strong>':'')+'</div>'
+          +'<div style="display:flex;gap:12px;padding-top:9px;border-top:1px solid var(--border);font-size:10.5px;color:var(--muted);">'
+            +'<span>'+(s.mq_commerciali?parseFloat(s.mq_commerciali).toFixed(0)+' mq':'— mq')+'</span>'
+            +'<span>'+(s.num_interventi||0)+' int.</span>'
+            +'<span style="margin-left:auto;font-family:monospace;color:var(--accent);">'+(s.totale_spese>0?'€ '+parseFloat(s.totale_spese).toLocaleString('it-IT',{maximumFractionDigits:0}):'—')+'</span>'
+            +(attivo?'':'<span style="color:var(--danger);font-weight:700;">'+esc(s.stato_sub)+'</span>')
+          +'</div>'
+        +'</div>';
+      }).join('');
+  }).join('');
+}
+
+// vista iniziale
+try{ setTimeout(()=>setSubsView(localStorage.getItem('subs_view')||'cards'),50); }catch(e){}

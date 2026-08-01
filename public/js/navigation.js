@@ -240,3 +240,23 @@ function initSidebarGroups(){
   });
 }
 try { initSidebarGroups(); } catch(e) {}
+
+
+// ═══ Sidebar mini (solo icone) ═══
+function toggleSidebarMini(){
+  const sb=document.getElementById('sidebar');
+  if(!sb)return;
+  const mini=!sb.classList.contains('mini');
+  sb.classList.toggle('mini',mini);
+  localStorage.setItem('sidebar_mini',mini?'1':'0');
+  const btn=sb.querySelector('.sb-collapse-btn');
+  if(btn){btn.textContent=mini?'»':'«';btn.title=mini?'Espandi il menu':'Riduci a icone';}
+}
+try{
+  if(localStorage.getItem('sidebar_mini')==='1'){
+    const sb=document.getElementById('sidebar');
+    if(sb){sb.classList.add('mini');const b=sb.querySelector('.sb-collapse-btn');if(b){b.textContent='»';b.title='Espandi il menu';}}
+  }
+  // tooltip sulle voci quando ridotta
+  document.querySelectorAll('.sb-item[id]').forEach(b=>{const l=b.querySelector('.sb-lbl');if(l&&!b.title)b.title=l.textContent;});
+}catch(e){}

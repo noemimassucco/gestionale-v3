@@ -22,7 +22,7 @@ async function loadDocs(){
     const icon=DOC_ICONS[d.tipo]||'📂';
     const scadGiorni=d.scadenza?Math.floor((new Date(d.scadenza)-new Date())/(1000*60*60*24)):null;
     const scadHtml=scadGiorni!==null?`<span class="doc-scad" style="background:${scadGiorni<30?'rgba(239,68,68,.2)':scadGiorni<90?'rgba(184,134,11,.2)':'rgba(16,185,129,.2)'};color:${scadGiorni<30?'var(--danger)':scadGiorni<90?'var(--warning)':'var(--success)'};">${scadGiorni===0?'Scade oggi':scadGiorni<0?`Scaduto ${-scadGiorni}gg fa`:`${scadGiorni}gg`}</span>`:'';
-    return`<div class="doc-card"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(d.nome)}</div><div class="doc-meta">${d.sub_codice?'SUB '+esc(d.sub_codice)+' · ':''}${d.sede_nome?esc(d.sede_nome)+' · ':''}${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · <strong style="color:var(--accent);">€ '+parseFloat(d.importo).toLocaleString('it-IT')+'</strong>':''}</div>${d.descrizione?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(d.descrizione.slice(0,80))}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">${scadHtml}${d.url?`<a href="${fileUrl(d.url)}" target="_blank" class="btn btn-edit btn-sm">👁 Apri</a>`:''}<button class="btn btn-danger btn-sm" onclick="delDoc(${d.id})">✕</button></div></div>`;
+    return`<div class="doc-card" style="cursor:pointer;" onclick="docVaiAllaSezione(${d.id})" title="Apri la cartella di questo documento"><div class="doc-icon">${icon}</div><div class="doc-info"><div class="doc-name">${esc(d.nome)}</div><div class="doc-meta">${d.sub_codice?'SUB '+esc(d.sub_codice)+' · ':''}${d.sede_nome?esc(d.sede_nome)+' · ':''}${d.fornitore_nome?esc(d.fornitore_nome)+' · ':''}${d.data_documento?fmt(d.data_documento):''}${d.importo?' · <strong style="color:var(--accent);">€ '+parseFloat(d.importo).toLocaleString('it-IT')+'</strong>':''}</div>${d.descrizione?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(d.descrizione.slice(0,80))}</div>`:''}</div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">${scadHtml}${d.url?`<a href="${fileUrl(d.url)}" target="_blank" class="btn btn-edit btn-sm" onclick="event.stopPropagation()">👁 Apri</a>`:''}<button class="btn btn-danger btn-sm" onclick="event.stopPropagation();delDoc(${d.id})">✕</button></div></div>`;
   }).join('');
   loadScadenze();
 }
@@ -116,3 +116,22 @@ async function delDoc(id){if(!await appConfirm('Eliminare documento?'))return;
     _cache.documenti = _cache.documenti.filter(x => Number(x.id) !== Number(id));
   }
   loadDocs();await api('/api/documenti/'+id,{method:'DELETE'});loadDocs();toast('Eliminato','error');}
+
+// Click su un documento in archivio → apre il SUB nella cartella giusta
+async function docVaiAllaSezione(docId){
+  const doc=(_cache.documenti||[]).find(x=>x.id==docId);
+  if(!doc)return;
+  if(!doc.sub_id){toast('Documento non collegato a un SUB — resta in archivio','warning');return;}
+  const t=doc.tipo||'';
+  let tab='documenti';
+  if(t.startsWith('imp_')){ tab='impianto:'+t.split('_')[1]; }
+  else if(t==='ape') tab='ape';
+  else if(['catastale','visura','planimetria'].includes(t)) tab='catasto';
+  else if(['certificazione','agibilita','collaudo','polizza','certif'].includes(t)) tab='certificazioni';
+  else if(t==='foto') tab='foto';
+  else if(t==='contratto') tab='contratti';
+  else if(t==='condominiale') tab='economico';
+  await openSubDetail(doc.sub_id);
+  if(tab.startsWith('impianto:')){ subDetTab=tab; renderSubDetTab(tab); }
+  else setSubDetTab(tab,_subTabBtn(tab));
+}

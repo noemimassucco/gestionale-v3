@@ -813,7 +813,7 @@ async function renderSubDetTab(tab) {
                   i.allegati.map(function(a) {
                     return '<div style="font-size:11px;padding:3px 0;display:flex;align-items:center;gap:6px;">' +
                       '<span>' + (a.tipo==='fattura'?'🧾':a.tipo==='foto'?'🖼️':'📎') + '</span>' +
-                      '<a href="' + esc(a.url||'#') + '" target="_blank" style="color:var(--primary-dark);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.nome||'Allegato') + '</a>' +
+                      '<a href="' + esc(fileUrl(a.url)||'#') + '" target="_blank" style="color:var(--primary-dark);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(a.nome||'Allegato') + '</a>' +
                       (a.dimensione ? '<span style="color:var(--muted);">' + Math.round(a.dimensione/1024) + ' KB</span>' : '') +
                     '</div>';
                   }).join('') +
@@ -907,7 +907,7 @@ async function renderSubDetTab(tab) {
                   scadBadge +
                 '</div>' +
               '</div>' +
-              (d.url ? '<a href="' + esc(d.url) + '" target="_blank" class="btn btn-xs btn-gray" onclick="event.stopPropagation();">👁</a>' : '') +
+              (d.url ? '<a href="' + esc(fileUrl(d.url)) + '" target="_blank" class="btn btn-xs btn-gray" onclick="event.stopPropagation();">👁</a>' : '') +
             '</div>';
         });
         html += '</div>';
@@ -953,7 +953,7 @@ async function renderSubDetTab(tab) {
                 (ct.note ? '<div style="font-size:11px;color:var(--muted);margin-top:3px;font-style:italic;">' + esc(ct.note.slice(0,80)) + '</div>' : '') +
               '</div>' +
               (ct.url
-                ? '<a href="' + esc(ct.url) + '" target="_blank" class="btn btn-xs btn-gray" style="flex-shrink:0;" onclick="event.stopPropagation();">👁</a>'
+                ? '<a href="' + esc(fileUrl(ct.url)) + '" target="_blank" class="btn btn-xs btn-gray" style="flex-shrink:0;" onclick="event.stopPropagation();">👁</a>'
                 : '') +
             '</div>' +
           '</div>';
@@ -975,7 +975,7 @@ async function renderSubDetTab(tab) {
         </div>
         ${b.importo?`<div class="td-price">€ ${parseFloat(b.importo).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>`:''}
         <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${b.stato==='pagato'?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)'};color:${b.stato==='pagato'?'var(--green)':'var(--red)'};">${b.stato==='pagato'?'✅ Pagato':'Da pagare'}</span>
-        ${b.url?`<a href="${b.url}" target="_blank" class="btn btn-edit btn-sm">👁</a>`:''}
+        ${b.url?`<a href="${fileUrl(b.url)}" target="_blank" class="btn btn-edit btn-sm">👁</a>`:''}
         ${b.stato!=='pagato'?`<button class="btn btn-success btn-sm" onclick="pagaBolletta(${b.id})">✓</button>`:''}
       </div>`).join('')}`;
   }else if(tab==='manutenzioni'){
