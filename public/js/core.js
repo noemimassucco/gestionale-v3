@@ -48,6 +48,10 @@ async function apiUp(url, fd) {
       body: fd,
     });
     if (!r.ok) {
+      // Restituisci il corpo dell'errore: il chiamante mostra il motivo VERO
+      let body = null;
+      try { body = await r.json(); } catch(e) {}
+      if (body && body.error) return body;
       toast('Upload fallito (' + r.status + ')', 'error');
       return null;
     }
