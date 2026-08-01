@@ -23,6 +23,7 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS bollette_files (bolletta_id INTEGER PRIMARY KEY REFERENCES bollette(id) ON DELETE CASCADE, mime VARCHAR(150), size INTEGER, data BYTEA);
       CREATE TABLE IF NOT EXISTS team_messaggi (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), testo TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS team_menzioni (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, messaggio_id INTEGER REFERENCES team_messaggi(id) ON DELETE CASCADE, letto BOOLEAN DEFAULT false, created_at TIMESTAMP DEFAULT NOW());
+      CREATE TABLE IF NOT EXISTS notifiche_utente (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tipo VARCHAR(40) DEFAULT 'info', titolo VARCHAR(300), testo TEXT, link VARCHAR(120), letto BOOLEAN DEFAULT false, created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS settings (cfg_key VARCHAR(100) PRIMARY KEY, value TEXT, updated_by INTEGER, updated_at TIMESTAMP DEFAULT NOW());
     `);
 

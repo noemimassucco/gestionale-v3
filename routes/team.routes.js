@@ -5,6 +5,7 @@ const router = express.Router();
 const pool = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const { smtpConfigured, sendMail } = require('../utils/mailer');
+const { notificaUtente } = require('../utils/notify');
 
 // Trova gli utenti taggati con @Nome (o @parte-email) nel testo
 function trovaMenzioni(testo, utenti, autoreId) {
@@ -50,8 +51,11 @@ router.post('/api/team-chat', authMiddleware, async (req, res) => {
       try {
         const ur = await pool.query('SELECT id, nome, email, attivo FROM users');
         const taggati = trovaMenzioni(testo, ur.rows, req.user.id);
+        const autoreNome = req.user.nome || req.user.email;
         for (const u of taggati) {
           await pool.query('INSERT INTO team_menzioni (user_id, messaggio_id) VALUES ($1,$2)', [u.id, msg.id]);
+          notificaUtente(u.id, { tipo: 'menzione', titolo: '💬 ' + autoreNome + ' ti ha menzionato in Chat Team',
+            testo: testo.slice(0, 160), link: 'teamchat' });
         }
         // Email (solo se SMTP configurato) — best effort, non blocca il messaggio
         if (taggati.length && smtpConfigured()) {

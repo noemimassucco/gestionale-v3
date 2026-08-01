@@ -50,11 +50,9 @@ function renderMenuPrefs(){
     const lbl=btn.querySelector('.sb-lbl')?.textContent||btn.textContent.trim();
     const locked=id==='sb-impostazioni';
     const on=!hidden.has(id);
-    return `<label style="display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;cursor:${locked?'not-allowed':'pointer'};background:${on?'var(--card)':'var(--bg2)'};opacity:${locked?.6:1};">
-      <input type="checkbox" ${on?'checked':''} ${locked?'disabled':''} onchange="toggleMenuItem('${id}',this.checked);renderMenuPrefs();">
-      <span style="width:20px;text-align:center;">${ico}</span>
-      <span style="font-size:12px;color:var(--text);">${lbl}</span>
-    </label>`;
+    return `<span class="pref-pill ${on?'on':''} ${locked?'locked':''}" ${locked?'':`onclick="toggleMenuItem('${id}',${!on});renderMenuPrefs();"`}>
+      <span>${on?'✓':'○'}</span><span>${ico}</span><span>${lbl}</span>
+    </span>`;
   }).join('');
 }
 

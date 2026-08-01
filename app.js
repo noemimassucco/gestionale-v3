@@ -37,6 +37,7 @@ app.use('/', require('./routes/team.routes'));
 app.use('/', require('./routes/solleciti.routes'));
 app.use('/', require('./routes/smartzip.routes'));
 app.use('/', require('./routes/aimail.routes'));
+app.use('/', require('./routes/user-notifiche.routes'));
 
 // ── 404 API ──
 app.use('/api', (req, res) => {

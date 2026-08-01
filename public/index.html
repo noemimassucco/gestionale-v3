@@ -423,6 +423,15 @@ tr:hover td{background:var(--primary-bg);}
   .subdet-nav .tab-btn.active{border-left:none;border-bottom:2px solid var(--primary);border-radius:8px 8px 0 0;}
 }
 
+/* Impostazioni: griglia responsive */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;}
+@media(max-width:768px){.settings-grid{grid-template-columns:1fr;}}
+/* Voci del menu come pill on/off */
+.pref-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:20px;border:1px solid var(--border-2);cursor:pointer;font-size:12px;user-select:none;transition:all .13s;background:var(--bg2);color:var(--muted);}
+.pref-pill.on{background:var(--primary-bg);border-color:var(--primary);color:var(--primary-dark);font-weight:600;}
+.pref-pill.locked{opacity:.5;cursor:not-allowed;}
+.pref-pill:not(.locked):hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(30,35,30,.1);}
+
 /* Righe cliccabili */
 tr.row-click{cursor:pointer;}
 tr.row-click:hover td{background:var(--accent-bg);}
@@ -898,10 +907,28 @@ input,select,textarea{border-radius:8px;}
       </div>
     </div>
     <div class="topbar-right">
-      <button class="tbtn" onclick="showSection('notifiche')">🔔 <span id="notif-badge-cnt" class="notif-badge hidden">0</span></button>
+      <button class="tbtn" id="btn-perte" onclick="togglePerTe(event)" style="position:relative;">🔔<span id="perte-dot" style="display:none;position:absolute;top:5px;right:4px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--card);"></span></button>
       <span class="tbtn" id="user-badge" style="color:var(--text);">👤</span>
-      <span id="badge-promemoria" style="display:none;"></span>
       <button class="tbtn" onclick="doLogout()">Esci</button>
+    </div>
+  </div>
+
+  <!-- POPUP "PER TE": notifiche personali + promemoria di oggi -->
+  <div id="perte-panel" style="display:none;position:fixed;top:54px;right:12px;width:min(390px,calc(100vw - 20px));max-height:min(560px,80vh);background:var(--card);border:1px solid var(--border-2);border-radius:14px;box-shadow:0 14px 40px rgba(20,25,20,.22);z-index:400;overflow:hidden;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-family:'Fraunces',serif;font-size:15px;font-weight:700;">Per te</div>
+      <button class="btn btn-xs btn-gray" onclick="perTeTutteLette()">✓ Segna tutte lette</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;">
+      <div id="perte-list"></div>
+      <div id="perte-prom-block" style="display:none;border-top:1px solid var(--border);">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted-2);font-weight:700;padding:10px 16px 4px;">📌 Promemoria urgenti</div>
+        <div id="perte-prom"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--card-alt);">
+      <button class="btn btn-sm btn-gray" style="flex:1;" onclick="showSection('notifiche');closePerTe()">🔔 Tutte le notifiche</button>
+      <button class="btn btn-sm btn-gray" style="flex:1;" onclick="showSection('calendario');closePerTe()">📅 Calendario</button>
     </div>
   </div>
 
@@ -1329,32 +1356,16 @@ input,select,textarea{border-radius:8px;}
 
     <!-- IMPOSTAZIONI -->
     <div id="sec-impostazioni" class="section">
-      <h2 style="font-family:'Fraunces',serif;font-size:20px;color:#0f172a;margin-bottom:20px;">⚙️ Impostazioni</h2>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div class="card" style="grid-column:1/-1;">
-          <div class="card-title">📌 Personalizza menu laterale</div>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Scegli quali voci vedere nel menu di sinistra. Le voci nascoste restano raggiungibili riattivandole da qui.</p>
-          <div id="menu-prefs-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;"></div>
-        </div>
+      <h2 style="font-family:'Fraunces',serif;font-size:20px;color:#0f172a;margin-bottom:4px;">Impostazioni</h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:20px;">Account, team, email e personalizzazione del gestionale</p>
+
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted-2);font-weight:700;margin:0 0 10px 2px;">Account e team</div>
+      <div class="settings-grid" style="margin-bottom:26px;">
         <div class="card">
-          <div class="card-title">🎨 Personalizzazione</div>
-          <div class="form-grid" style="grid-template-columns:1fr;">
-            <div class="field"><label>Nome applicazione</label><input id="s-nome"></div>
-            <div class="field"><label>Testo footer</label><input id="s-footer"></div>
-          </div>
-          <button class="btn btn-success" style="margin-top:12px;" onclick="saveSettings()">✓ Salva</button>
-        </div>
-        <div class="card">
-          <div class="card-title">🗄️ Salvaguardia dati</div>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Ogni domenica alle 3:00 il gestionale salva da solo una copia completa dei dati su Cloudinary (cartella "gestionale-backups"). Puoi anche farne una adesso.</p>
-          <button class="btn btn-sm btn-gray" onclick="backupAdesso()">💾 Esegui backup adesso</button>
-          <span id="backup-status" style="font-size:11px;color:var(--muted);margin-left:8px;"></span>
-        </div>
-        <div class="card">
-          <div class="card-title">✉️ Email (solleciti e promemoria)</div>
-          <div id="email-status" style="font-size:12px;margin-bottom:10px;">Verifica…</div>
-          <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Con le email attive: promemoria e scadenze in arrivo ogni mattina alle 7:00, e bottone "✉️ Sollecito" sugli affitti non pagati.</p>
-          <button class="btn btn-sm btn-gray" onclick="testEmail()">📨 Invia email di prova</button>
+          <div class="card-title">👥 Utenti</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Chi può accedere al gestionale. Alla creazione, il nuovo utente riceve un'email di conferma con le credenziali.</p>
+          <div id="users-list" style="margin-bottom:12px;"></div>
+          <button class="btn btn-primary btn-sm" onclick="openModalUser()">+ Nuovo Utente</button>
         </div>
         <div class="card">
           <div class="card-title">🔐 Cambia Password</div>
@@ -1365,14 +1376,44 @@ input,select,textarea{border-radius:8px;}
           </div>
           <button class="btn btn-success" style="margin-top:12px;" onclick="changePwd()">✓ Aggiorna</button>
         </div>
+      </div>
+
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted-2);font-weight:700;margin:0 0 10px 2px;">Email e sicurezza dei dati</div>
+      <div class="settings-grid" style="margin-bottom:26px;">
         <div class="card">
-          <div class="card-title">👥 Utenti</div>
-          <div id="users-list" style="margin-bottom:10px;"></div>
-          <button class="btn btn-primary btn-sm" onclick="openModalUser()">+ Nuovo Utente</button>
+          <div class="card-title">✉️ Email (solleciti e promemoria)</div>
+          <div id="email-status" style="font-size:12px;margin-bottom:10px;">Verifica…</div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:10px;">Con le email attive: promemoria ogni mattina alle 7:00, solleciti sugli affitti non pagati, conferme di registrazione e avvisi di sicurezza.</p>
+          <button class="btn btn-sm btn-gray" onclick="testEmail()">📨 Invia email di prova</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🗄️ Salvaguardia dati</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Ogni domenica alle 3:00 viene salvata da sola una copia completa dei dati su Cloudinary. Puoi anche farne una adesso.</p>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-gray" onclick="backupAdesso()">💾 Esegui backup adesso</button>
+            <span id="backup-status" style="font-size:11px;color:var(--muted);"></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted-2);font-weight:700;margin:0 0 10px 2px;">Personalizzazione</div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">📌 Personalizza menu laterale</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Tocca una voce per mostrarla o nasconderla dal menu di sinistra.</p>
+        <div id="menu-prefs-grid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+      <div class="settings-grid">
+        <div class="card">
+          <div class="card-title">🎨 Nome e testi</div>
+          <div class="form-grid" style="grid-template-columns:1fr;">
+            <div class="field"><label>Nome applicazione</label><input id="s-nome"></div>
+            <div class="field"><label>Testo footer</label><input id="s-footer"></div>
+          </div>
+          <button class="btn btn-success" style="margin-top:12px;" onclick="saveSettings()">✓ Salva</button>
         </div>
         <div class="card">
           <div class="card-title">☁️ Allegati (Cloudinary)</div>
-          <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Per abilitare upload di foto e documenti, aggiungi su Railway:</p>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Per abilitare upload di foto e documenti, aggiungi su Render:</p>
           <div style="background:#0b0f1a;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-family:monospace;font-size:11px;color:#4f6f4f;line-height:2;">
             CLOUDINARY_CLOUD_NAME<br>CLOUDINARY_API_KEY<br>CLOUDINARY_API_SECRET
           </div>
@@ -3066,6 +3107,7 @@ input,select,textarea{border-radius:8px;}
   <script src="js/auth.js?v=10"></script>
   <script src="js/navigation.js?v=10"></script>
   <script src="js/promemoria.js?v=10"></script>
+  <script src="js/perte.js?v=10"></script>
   <script src="js/teamchat.js?v=10"></script>
   <script src="js/data.js?v=10"></script>
   <script src="js/lead_ui.js?v=10"></script>

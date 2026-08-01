@@ -59,9 +59,10 @@ function _tcCheckMentionTyping() {
   const m = before.match(/@([\wÀ-ú]*)$/);
   if (!m) { box.style.display = 'none'; return; }
   const q = m[1].toLowerCase();
-  const match = _tcUsers.filter(u => u.id !== _tcMyId() && (
+  // Suggerisce TUTTI gli utenti (anche te stesso: utile finché il team è piccolo)
+  const match = _tcUsers.filter(u =>
     (u.nome || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().startsWith(q)
-  )).slice(0, 6);
+  ).slice(0, 6);
   if (!match.length) { box.style.display = 'none'; return; }
   box.innerHTML = match.map(u => `
     <div onclick="_tcInsertMention(${u.id})" style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
@@ -94,18 +95,9 @@ async function checkMenzioni() {
     badge.textContent = r.count;
     badge.classList.toggle('hidden', !r.count);
   }
-  // Nuove menzioni rispetto all'ultimo controllo → toast + notifica desktop
-  if (r.count > _tcMenzCount && r.menzioni?.length) {
-    const ultima = r.menzioni[0];
-    const inChat = document.getElementById('sec-teamchat')?.classList.contains('active');
-    if (!inChat) {
-      toast('💬 ' + ultima.autore + ' ti ha menzionato nella Chat Team', 'warning');
-      if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
-        try { new Notification('Chat Team — ' + ultima.autore, { body: ultima.testo.slice(0, 120), icon: 'icon-192.png' }); } catch(e) {}
-      }
-    } else {
-      tcSegnaMenzioniLette();
-    }
+  // Se sto già leggendo la chat, la menzione è "vista" (toast e popup li gestisce il sistema "Per te")
+  if (r.count > _tcMenzCount && document.getElementById('sec-teamchat')?.classList.contains('active')) {
+    tcSegnaMenzioniLette();
   }
   _tcMenzCount = r.count;
 }

@@ -125,18 +125,9 @@ async function loadPromemoriaAttivi() {
     }
   });
 
-  // Aggiorna badge campanella
-  const badge = document.getElementById('badge-promemoria');
-  if (badge) {
-    // Rosso solo per promemoria di OGGI o SCADUTI (prima contava tutti i prossimi 7 giorni → sempre acceso)
-    const urgenti = (data||[]).filter(p => p.urgenza === 'oggi' || p.urgenza === 'scaduto');
-    if (urgenti.length > 0) {
-      badge.style.display = 'flex';
-      badge.textContent = urgenti.length > 9 ? '9+' : urgenti.length;
-    } else {
-      badge.style.display = 'none';
-    }
-  }
+  // Niente più numero in topbar: i promemoria urgenti alimentano il popup "Per te" (pallino rosso)
+  window._promAttivi = data || [];
+  if (typeof _perteUpdateDot === 'function') _perteUpdateDot();
 
   if (!data.length) {
     list.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;">✅ Nessun promemoria in scadenza</div>';

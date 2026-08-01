@@ -465,16 +465,7 @@ async function loadClienti(stato = 'attivo') {
 }
 
 // Filtri live
-function applyLeadFilter() { loadLeadCards(); }
-
-async function convertiLead(id) {
-  if(!await appConfirm('Convertire questo lead in cliente attivo?')) return;
-  const r = await api(`/api/clienti/${id}/converti-lead`, { method: 'PUT' });
-  if (!r || r.error) { toast('Errore: ' + (r?.error || '?'), 'error'); return; }
-  toast('✅ Lead convertito in cliente attivo');
-  await loadDD();
-  switchClienteTab('attivo', document.querySelector('[data-stato="attivo"]'));
-}
+// (spostata in lead_ui.js)
 
 // ── Crea accesso portale inquilino (solo admin) ─────────────
 async function creaAccessoPortale(inquilinoId, nomeInquilino) {
@@ -492,108 +483,11 @@ async function creaAccessoPortale(inquilinoId, nomeInquilino) {
 }
 
 
-function openModalNuovoLead() {
-  // Set today's date
-  const oggi = new Date().toLocaleDateString('it-IT');
-  const lbl = document.getElementById('lead-data-oggi');
-  if (lbl) lbl.textContent = oggi;
-  // Clear fields
-  ['lead-nome','lead-cognome','lead-tel','lead-email','lead-note'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  document.getElementById('modal-nuovo-lead').classList.add('open');
-}
+// (spostata in lead_ui.js)
 
-async function saveNewLead() {
-  const nome    = (document.getElementById('lead-nome')?.value || '').trim();
-  const cognome = (document.getElementById('lead-cognome')?.value || '').trim();
-  const tel     = (document.getElementById('lead-tel')?.value || '').trim();
-  const telAlt  = (document.getElementById('lead-tel-alt')?.value || '').trim();
-  const email   = (document.getElementById('lead-email')?.value || '').trim();
-  const fonte   = document.getElementById('lead-fonte')?.value || '';
+// (spostata in lead_ui.js)
 
-  if (!nome && !cognome) { toast('Inserisci almeno il nome', 'error'); return; }
-  if (!tel && !email)    { toast('Telefono o email obbligatorio', 'error'); return; }
-
-  // Ricerca immobile
-  const ricTipo    = document.getElementById('lead-ric-tipo')?.value    || null;
-  const ricCat     = document.getElementById('lead-ric-cat')?.value     || null;
-  const ricZona    = document.getElementById('lead-ric-zona')?.value    || null;
-  const ricMqMin   = parseInt(document.getElementById('lead-ric-mq-min')?.value) || null;
-  const ricMqMax   = parseInt(document.getElementById('lead-ric-mq-max')?.value) || null;
-  const ricStanze  = parseInt(document.getElementById('lead-ric-stanze')?.value) || null;
-  const ricBudget  = parseFloat(document.getElementById('lead-ric-budget')?.value) || null;
-  const ricDal     = document.getElementById('lead-ric-dal')?.value     || null;
-  const ricSubId   = document.getElementById('lead-ric-sub')?.value     || null;
-
-  // Promemoria inline
-  const promData   = document.getElementById('lead-prom-data')?.value;
-  const promOra    = document.getElementById('lead-prom-ora')?.value    || null;
-  const promTipo   = document.getElementById('lead-prom-tipo')?.value   || 'chiamata';
-  const promTitolo = document.getElementById('lead-prom-titolo')?.value?.trim();
-  const promNote   = document.getElementById('lead-prom-note-brevi')?.value?.trim() || null;
-  const alertGiorni = [];
-  if (document.getElementById('lead-alert-2g')?.checked) alertGiorni.push(2);
-  if (document.getElementById('lead-alert-1g')?.checked) alertGiorni.push(1);
-  const alertOre = [];
-  if (document.getElementById('lead-alert-2h')?.checked) alertOre.push(2);
-
-  const body = {
-    nome, cognome, tel, tel_alt: telAlt||null, email: email||null, lead_fonte: fonte||null,
-    ricerca_tipologia: ricTipo, ricerca_categoria: ricCat, ricerca_zona: ricZona,
-    ricerca_mq_min: ricMqMin, ricerca_mq_max: ricMqMax, ricerca_stanze: ricStanze,
-    ricerca_budget_max: ricBudget, ricerca_disponibilita_da: ricDal,
-    ricerca_sub_interesse_id: ricSubId ? parseInt(ricSubId) : null,
-    note_lead: document.getElementById('lead-note')?.value?.trim() || null,
-  };
-
-  // Aggiungi promemoria solo se ha data e titolo
-  if (promData && promTitolo) {
-    body.promemoria = {
-      titolo: promTitolo,
-      data_evento: promData,
-      ora_evento:  promOra,
-      tipo_azione: promTipo,
-      descrizione: promNote,
-      alert_giorni_prima: alertGiorni.length ? alertGiorni : [1],
-      alert_ore_prima:    alertOre.length    ? alertOre    : [],
-    };
-  }
-
-  const r = await api('/api/clienti/lead', { method:'POST', body: JSON.stringify(body) });
-  if (!r || r.error) { toast('Errore: ' + (r?.error||'?'), 'error'); return; }
-
-  closeM('modal-nuovo-lead');
-  const promMsg = r.promemoria
-    ? ` + promemoria del ${new Date(r.promemoria.data_evento).toLocaleDateString('it-IT')}`
-    : '';
-  toast('💡 Lead creato' + promMsg);
-  await loadDD();
-  const leadBtn = document.querySelector('[data-stato="lead"]');
-  if (leadBtn) switchClienteTab('lead', leadBtn);
-}
-
-function autoTitoloLead() {
-  const nome    = (document.getElementById('lead-nome')?.value||'').trim();
-  const cognome = (document.getElementById('lead-cognome')?.value||'').trim();
-  const note    = (document.getElementById('lead-prom-note-brevi')?.value||'').trim();
-  const tipo    = document.getElementById('lead-prom-tipo')?.value || 'chiamata';
-  const TIPO_LABELS = { chiamata:'Richiamare', email:'Scrivere email a', visita:'Visita con', appuntamento:'Appuntamento con', altro:'Azione con' };
-  const label   = TIPO_LABELS[tipo] || 'Azione con';
-  const nomeFull = [nome, cognome].filter(Boolean).join(' ');
-  if (!nomeFull) return;
-  const titoloEl = document.getElementById('lead-prom-titolo');
-  if (titoloEl && !titoloEl.dataset.modified) {
-    titoloEl.value = [label, nomeFull, note ? '— '+note : ''].filter(Boolean).join(' ');
-  }
-  // Set tomorrow as default date
-  const dataEl = document.getElementById('lead-prom-data');
-  if (dataEl && !dataEl.value) {
-    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-    dataEl.value = tomorrow.toISOString().split('T')[0];
-  }
-}
+// (spostata in lead_ui.js)
 
 
 // (placeholder rimosso: la versione vera di openNuovoPromemoriaLead è in promemoria.js)

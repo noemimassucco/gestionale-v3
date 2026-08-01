@@ -31,6 +31,15 @@ router.post('/api/auth/change-password', authMiddleware, async (req, res) => {
     return res.status(401).json({ error: 'Password attuale errata' });
   const hash = await bcrypt.hash(newPassword, 10);
   await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, req.user.id]);
+  // Conferma di sicurezza: email + notifica personale (best-effort)
+  try {
+    const { smtpConfigured, sendMail } = require('../utils/mailer');
+    if (smtpConfigured()) {
+      sendMail({ to: req.user.email, subject: '🔒 Password cambiata — Gestionale Immobili',
+        html: `<p>Ciao ${req.user.nome || ''},</p><p>la password del tuo account è stata appena cambiata.</p><p>Se non sei stato tu, contatta subito l'amministratore.</p>`,
+      }).catch(err => console.warn('[auth] email cambio pwd fallita:', err.message));
+    }
+  } catch(e2) {}
   res.json({ ok: true });
 });
 
@@ -76,7 +85,26 @@ router.post('/api/users', authMiddleware, async (req, res) => {
       'INSERT INTO users (email,password_hash,nome,ruolo) VALUES ($1,$2,$3,$4) RETURNING id,email,nome,ruolo',
       [String(email).trim().toLowerCase(), hash, nome, ruolo || 'operatore']
     );
-    res.json(r.rows[0]);
+    const nuovo = r.rows[0];
+    // Benvenuto: notifica personale + email di conferma registrazione (best-effort)
+    try {
+      const { notificaUtente } = require('../utils/notify');
+      notificaUtente(nuovo.id, { tipo: 'account', titolo: '👋 Benvenuto/a nel Gestionale Immobili!',
+        testo: 'Il tuo account è attivo. Ti consigliamo di cambiare la password da Impostazioni → Cambia password.', link: 'impostazioni' });
+      const { smtpConfigured, sendMail } = require('../utils/mailer');
+      if (smtpConfigured()) {
+        sendMail({
+          to: nuovo.email,
+          subject: '✅ Il tuo account Gestionale Immobili è pronto',
+          html: `<p>Ciao ${nuovo.nome || ''},</p>
+            <p>${req.user.nome || 'Un amministratore'} ti ha creato un account sul Gestionale Immobili.</p>
+            <p><b>Email di accesso:</b> ${nuovo.email}<br><b>Password:</b> ${String(password).replace(/</g,'&lt;')}</p>
+            <p>Accedi qui: <a href="https://gestionale-v3.onrender.com">gestionale-v3.onrender.com</a></p>
+            <p>Al primo accesso cambia la password da <b>Impostazioni → Cambia password</b>.</p>`,
+        }).catch(err => console.warn('[users] email benvenuto fallita:', err.message));
+      }
+    } catch(e2) { console.warn('[users] benvenuto non inviato:', e2.message); }
+    res.json(nuovo);
   } catch(e) {
     if (e.code === '23505') return res.status(400).json({ error: 'Esiste già un utente con questa email' });
     res.status(500).json({ error: e.message });
@@ -90,8 +118,20 @@ router.post('/api/users/:id/password', authMiddleware, async (req, res) => {
   const { password } = req.body;
   if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password troppo corta (min 6 caratteri)' });
   const hash = await bcrypt.hash(password, 10);
-  const r = await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2 RETURNING id', [hash, req.params.id]);
+  const r = await pool.query('UPDATE users SET password_hash=$1 WHERE id=$2 RETURNING id, email, nome', [hash, req.params.id]);
   if (!r.rows.length) return res.status(404).json({ error: 'Utente non trovato' });
+  const u = r.rows[0];
+  try {
+    const { notificaUtente } = require('../utils/notify');
+    notificaUtente(u.id, { tipo: 'sicurezza', titolo: '🔑 La tua password è stata reimpostata da un amministratore',
+      testo: 'Se non te l\'aspettavi, contatta subito l\'amministratore.', link: 'impostazioni' });
+    const { smtpConfigured, sendMail } = require('../utils/mailer');
+    if (smtpConfigured()) {
+      sendMail({ to: u.email, subject: '🔑 Password reimpostata — Gestionale Immobili',
+        html: `<p>Ciao ${u.nome || ''},</p><p>un amministratore ha reimpostato la tua password. La nuova password ti verrà comunicata direttamente.</p><p>Dopo l'accesso, cambiala da <b>Impostazioni → Cambia password</b>.</p>`,
+      }).catch(err => console.warn('[users] email reset fallita:', err.message));
+    }
+  } catch(e2) {}
   res.json({ ok: true });
 });
 

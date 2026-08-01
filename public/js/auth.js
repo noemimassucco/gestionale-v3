@@ -35,6 +35,7 @@ function _showLogin() {
 function _showApp() {
   startPromemoriaPolling();
   if (typeof startMenzioniPolling === 'function') startMenzioniPolling();
+  if (typeof startPerTePolling === 'function') startPerTePolling();
   const ls = document.getElementById('login-screen');
   const aw = document.getElementById('app-wrapper');
   if (ls) ls.style.display = 'none';
@@ -135,6 +136,7 @@ async function sendForgot() {
 function doLogout() {
   if(typeof _promIntervalId!=='undefined'&&_promIntervalId){clearInterval(_promIntervalId);_promIntervalId=null;}
   if(typeof _tcMenzPollId!=='undefined'&&_tcMenzPollId){clearInterval(_tcMenzPollId);_tcMenzPollId=null;}
+  if(typeof _perteInterval!=='undefined'&&_perteInterval){clearInterval(_perteInterval);_perteInterval=null;}
   sessionStorage.clear();
   token = '';
   currentUser = null;
