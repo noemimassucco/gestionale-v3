@@ -36,7 +36,7 @@ async function loadBollette(){
         <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${b.stato==='pagato'?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)'};color:${b.stato==='pagato'?'var(--green)':'var(--red)'};">${statoLabel}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;margin-left:8px;">
-        ${b.url?`<a href="${b.url}" target="_blank" class="btn btn-edit btn-sm">👁</a>`:''}
+        ${b.url?`<a href="${fileUrl(b.url)}" target="_blank" class="btn btn-edit btn-sm">👁</a>`:''}
         ${b.stato==='da_pagare'?`<button class="btn btn-success btn-sm" onclick="pagaBolletta(${b.id})">✓ Paga</button>`:''}
         <button class="btn btn-edit btn-xs" onclick="openEditBolletta(${b.id})" style="flex-shrink:0;">✏️</button><button class="btn btn-danger btn-sm" onclick="delBolletta(${b.id})">✕</button>
       </div>
@@ -90,4 +90,34 @@ async function openEditBolletta(id){
     sv('boll-stato',b.stato||'da_pagare');sv('boll-note',b.note||'');
     document.getElementById('modal-boll').__editId=id;
   },100);
+}
+
+// ═══ File bolletta: feedback + lettura AI ═══
+function bollFileSelected(input){
+  const f=input.files[0];
+  const zone=document.getElementById('boll-file-zone');
+  if(zone&&f)zone.textContent=`✓ ${f.name} (${Math.round(f.size/1024)} KB)`;
+  const row=document.getElementById('boll-ai-row');
+  if(row)row.style.display=(f&&/pdf|image/.test(f.type||''))?'flex':'none';
+  const st=document.getElementById('boll-ai-status');if(st)st.textContent='';
+}
+
+async function bollOCR(){
+  const f=document.getElementById('boll-file')?.files[0];
+  if(!f){toast('Allega prima la bolletta','error');return;}
+  const st=document.getElementById('boll-ai-status');
+  if(st){st.textContent='Lettura in corso…';st.style.color='var(--muted)';}
+  const fd=new FormData();fd.append('file',f);
+  const r=await apiUp('/api/ocr',fd);
+  const d=r?.dati;
+  if(!d){if(st){st.textContent='❌ '+(r?.error||'Lettura fallita');st.style.color='var(--danger)';}return;}
+  const set=(id,val)=>{const el=document.getElementById(id);if(el&&val)el.value=val;};
+  if(d.categoria_bolletta){const sel=document.getElementById('boll-tipo');if(sel&&[...sel.options].some(o=>o.value===d.categoria_bolletta))sel.value=d.categoria_bolletta;}
+  set('boll-forn',d.fornitore);
+  set('boll-num',d.num_fattura);
+  if(d.importo){const el=document.getElementById('boll-imp');if(el)el.value=parseFloat(String(d.importo).replace(',','.'))||'';}
+  set('boll-pdal',d.periodo_dal);
+  set('boll-pal',d.periodo_al);
+  set('boll-scad',d.scadenza);
+  if(st){st.textContent='✅ Campi compilati — controlla e salva';st.style.color='var(--success)';}
 }

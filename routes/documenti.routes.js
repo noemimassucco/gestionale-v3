@@ -33,9 +33,14 @@ router.post('/api/documenti', authMiddleware, upload.single('file'), async (req,
   let url = null, cloudinary_id = null, salvaInDb = false;
   if (req.file) {
     if (process.env.CLOUDINARY_CLOUD_NAME) {
-      const b64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-      const result = await cloudinary.uploader.upload(b64, { folder: 'gestionale-documenti', resource_type: 'auto' });
-      url = result.secure_url; cloudinary_id = result.public_id;
+      try {
+        const b64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        const result = await cloudinary.uploader.upload(b64, { folder: 'gestionale-documenti', resource_type: 'auto' });
+        url = result.secure_url; cloudinary_id = result.public_id;
+      } catch(cldErr) {
+        console.error('⚠️ Cloudinary fallito, salvo nel DB:', cldErr.message);
+        salvaInDb = true; // piano B: il file non si perde mai
+      }
     } else {
       salvaInDb = true; // file conservato nel database (tabella documenti_files)
     }

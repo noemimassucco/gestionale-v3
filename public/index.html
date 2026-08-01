@@ -2527,8 +2527,12 @@ tr.row-click:active td{background:var(--primary-bg);}
       <div class="field"><label>Data pagamento</label><input type="date" id="boll-dpag"></div>
       <div class="field form-full"><label>Note</label><input id="boll-note" placeholder="Note…"></div>
       <div class="field form-full"><label>Allegato PDF/foto</label>
-        <div class="upload-zone" onclick="document.getElementById('boll-file').click()">📎 Carica bolletta</div>
-        <input type="file" id="boll-file" style="display:none" accept="image/*,.pdf">
+        <div class="upload-zone" id="boll-file-zone" onclick="document.getElementById('boll-file').click()">📎 Carica bolletta</div>
+        <input type="file" id="boll-file" style="display:none" accept="image/*,.pdf" onchange="bollFileSelected(this)">
+        <div id="boll-ai-row" style="display:none;margin-top:8px;align-items:center;gap:8px;">
+          <button class="btn btn-sm" type="button" style="background:var(--accent-bg);color:var(--accent-dark);border:1px solid var(--border-2);" onclick="bollOCR()">✨ Leggi con AI e compila i campi</button>
+          <span id="boll-ai-status" style="font-size:11px;color:var(--muted);"></span>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
