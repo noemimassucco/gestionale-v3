@@ -423,6 +423,17 @@ async function smartUpload(input){
     +'</select>'
     +(match?'<span style="font-size:11px;color:var(--success);font-weight:600;">✓ agganciato dal '+match.via+'</span>':'<span style="font-size:11px;color:var(--muted);">nessun SUB riconosciuto — scegli tu</span>')
     +'</div>'
+    +(isBolletta?'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:12px;">'
+      +'<span style="color:var(--muted);">Stato:</span>'
+      +'<select id="smart-stato" onchange="document.getElementById(\'smart-dpag-wrap\').style.display=this.value===\'pagato\'?\'inline-flex\':\'none\'" style="font-size:12px;padding:7px 10px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">'
+      +'<option value="da_pagare">Da pagare</option><option value="pagato">Già pagata</option></select>'
+      +'<span id="smart-dpag-wrap" style="display:none;align-items:center;gap:6px;"><span style="color:var(--muted);">il</span>'
+      +'<input type="date" id="smart-dpag" value="'+new Date().toISOString().slice(0,10)+'" style="font-size:12px;padding:6px 8px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);"></span>'
+      +'<span style="color:var(--muted);margin-left:6px;">Periodo:</span>'
+      +'<input type="date" id="smart-pdal" value="'+(d.periodo_dal||'')+'" style="font-size:12px;padding:6px 8px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">'
+      +'<span style="color:var(--muted);">→</span>'
+      +'<input type="date" id="smart-pal" value="'+(d.periodo_al||'')+'" style="font-size:12px;padding:6px 8px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">'
+      +'</div>':'')
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
     +(isBolletta?'<button class="btn btn-success btn-sm" onclick="smartSalva(\'bolletta\')">✓ Salva come bolletta</button>':'')
     +'<button class="btn '+(isBolletta?'btn-gray':'btn-success')+' btn-sm" onclick="smartSalva(\'documento\')">✓ Salva come documento</button>'
@@ -453,10 +464,17 @@ async function smartSalva(come){
     if(d.fornitore)fd.append('fornitore_nome',d.fornitore);
     if(d.num_fattura)fd.append('numero',d.num_fattura);
     if(d.importo)fd.append('importo',parseFloat(String(d.importo).replace(',','.'))||'');
-    if(d.periodo_dal)fd.append('periodo_dal',d.periodo_dal);
-    if(d.periodo_al)fd.append('periodo_al',d.periodo_al);
+    const pdal=document.getElementById('smart-pdal')?.value||d.periodo_dal||'';
+    const pal=document.getElementById('smart-pal')?.value||d.periodo_al||'';
+    if(pdal)fd.append('periodo_dal',pdal);
+    if(pal)fd.append('periodo_al',pal);
     if(d.scadenza)fd.append('scadenza',d.scadenza);
-    fd.append('stato','da_pagare');
+    const stato=document.getElementById('smart-stato')?.value||'da_pagare';
+    fd.append('stato',stato);
+    if(stato==='pagato'){
+      const dpag=document.getElementById('smart-dpag')?.value||new Date().toISOString().slice(0,10);
+      fd.append('data_pagamento',dpag);
+    }
     r=await apiUp('/api/bollette',fd);
   }else{
     fd.append('tipo',(d.tipo_documento&&d.tipo_documento!=='bolletta')?d.tipo_documento:'documento');

@@ -1053,7 +1053,7 @@ async function renderSubDetTab(tab) {
         ${b.importo?`<div class="td-price">€ ${parseFloat(b.importo).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>`:''}
         <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${b.stato==='pagato'?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)'};color:${b.stato==='pagato'?'var(--green)':'var(--red)'};">${b.stato==='pagato'?'✅ Pagato':'Da pagare'}</span>
         ${b.url?`<a href="${fileUrl(b.url)}" target="_blank" class="btn btn-edit btn-sm">👁</a>`:''}
-        ${b.stato!=='pagato'?`<button class="btn btn-success btn-sm" onclick="pagaBolletta(${b.id})">✓</button>`:''}
+        ${b.stato!=='pagato'?`<button class="btn btn-success btn-sm" title="Segna pagata" onclick="pagaBollettaChiedi(${b.id},this)">✓</button>`:''}
       </div>`).join('')}`;
   }else if(tab==='manutenzioni'){
     const items=data.manutenzioni||[];
@@ -1063,15 +1063,50 @@ async function renderSubDetTab(tab) {
       ${items.length?items.map(m=>`<div class="int-card" style="border-left:3px solid ${pc[m.priorita]||'var(--border)'};margin-bottom:8px;"><div class="int-card-hdr">${pi[m.priorita]||'⚪'} <strong style="font-size:13px;color:#0f172a;">${esc(m.tipo)}</strong><span style="font-size:11px;padding:2px 8px;border-radius:5px;background:var(--surface2);color:var(--muted);">${m.stato||'—'}</span>${m.costo?`<span class="td-price" style="margin-left:auto;">€ ${parseFloat(m.costo).toLocaleString('it-IT')}</span>`:''}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${m.prossima_scadenza?'Prossima: '+fmt(m.prossima_scadenza)+' · ':''}${esc(m.ricorrenza||'Una tantum')}${m.fornitore_nome?' · '+esc(m.fornitore_nome):''}</div></div>`).join(''):'<div class="empty">Nessuna manutenzione.</div>'}`;
 
   }else if(tab==='costi'){
-    const anni=data.costiAnno||[],forn=data.costiFornitore||[],tot=parseFloat(s.totale_spese||0);
-    el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Spese totali</div><div style="font-size:22px;font-weight:700;color:var(--accent);font-family:monospace;">€ ${tot.toLocaleString('it-IT',{minimumFractionDigits:2})}</div></div>
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:4px;">Interventi totali</div><div style="font-size:22px;font-weight:700;color:var(--text);">${s.num_interventi||0}</div></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px;font-weight:600;">Per anno</div>
-    ${anni.length?anni.map(a=>{const pct=tot>0?parseFloat(a.totale)/tot*100:0;return`<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;"><span style="min-width:50px;font-family:monospace;font-size:12px;color:var(--text);">${a.anno}</span><div style="flex:1;height:8px;background:var(--border);border-radius:4px;"><div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--accent),var(--accent));border-radius:4px;"></div></div><span style="font-family:monospace;font-size:12px;font-weight:700;color:var(--accent);min-width:100px;text-align:right;">€ ${parseFloat(a.totale).toLocaleString('it-IT',{maximumFractionDigits:0})}</span><span style="font-size:10px;color:var(--muted);">${a.num} int.</span></div>`;}).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0;">Nessun dato</div>'}
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin:16px 0 10px;font-weight:600;">Per fornitore</div>
-    ${forn.length?forn.map(f=>`<div style="display:flex;align-items:center;gap:12px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;margin-bottom:7px;"><span style="flex:1;font-size:13px;">🔧 ${esc(f.fornitore||'—')}</span><span style="font-size:11px;color:var(--muted);">${f.num} int.</span><span style="font-family:monospace;font-weight:700;color:var(--accent);">€ ${parseFloat(f.totale).toLocaleString('it-IT',{maximumFractionDigits:0})}</span></div>`).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 0;">Nessun dato</div>'}`;
+    // ── USCITE COMPLETE DEL SUB: interventi + manutenzioni + bollette, da data a data ──
+    el.innerHTML='<div class="empty" style="padding:20px;">Caricamento costi…</div>';
+    if(!currentSubData._bollette)currentSubData._bollette=await api('/api/bollette?sub_id='+currentSubId)||[];
+    const rng=window._subCostiRange||{};
+    const oggi=new Date();
+    const dal=rng.dal||new Date(oggi.getFullYear()-1,oggi.getMonth(),1).toISOString().slice(0,10);
+    const al=rng.al||oggi.toISOString().slice(0,10);
+    window._subCostiRange={dal,al};
+    const inR=d=>{if(!d)return false;const x=String(d).slice(0,10);return x>=dal&&x<=al;};
+    const eur2=n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
+    const usc=[
+      ...(data.interventi||[]).filter(i=>i.prezzo&&inR(i.data_fattura||i.data_intervento||i.created_at)).map(i=>({ico:'🔧',fonte:'Intervento',dt:i.data_fattura||i.data_intervento||i.created_at,imp:parseFloat(i.prezzo)||0,desc:(i.fornitore_nome?i.fornitore_nome+' · ':'')+(i.descrizione||'')})),
+      ...(data.manutenzioni||[]).filter(m=>m.costo&&inR(m.data_eseguita||m.data_programmata)).map(m=>({ico:'🔨',fonte:'Manutenzione',dt:m.data_eseguita||m.data_programmata,imp:parseFloat(m.costo)||0,desc:m.tipo||''})),
+      ...(currentSubData._bollette||[]).filter(b=>b.stato==='pagato'&&b.importo&&inR(b.data_pagamento||b.scadenza)).map(b=>({ico:'⚡',fonte:'Bolletta '+(b.tipo||''),dt:b.data_pagamento||b.scadenza,imp:parseFloat(b.importo)||0,desc:(b.fornitore_nome||'')+(b.periodo_dal?' · periodo '+fmt(b.periodo_dal)+' → '+fmt(b.periodo_al):'')})),
+    ].sort((a,b)=>new Date(b.dt)-new Date(a.dt));
+    const tInt=usc.filter(u=>u.ico==='🔧').reduce((a,u)=>a+u.imp,0);
+    const tMan=usc.filter(u=>u.ico==='🔨').reduce((a,u)=>a+u.imp,0);
+    const tBol=usc.filter(u=>u.ico==='⚡').reduce((a,u)=>a+u.imp,0);
+    const tot=tInt+tMan+tBol;
+    const bollNonPagate=(currentSubData._bollette||[]).filter(b=>b.stato!=='pagato'&&b.importo);
+    el.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;">
+        <span style="color:var(--muted);">Uscite dal</span>
+        <input type="date" id="subcosti-dal" value="${dal}" style="font-size:12px;padding:6px 8px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">
+        <span style="color:var(--muted);">al</span>
+        <input type="date" id="subcosti-al" value="${al}" style="font-size:12px;padding:6px 8px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">
+        <button class="btn btn-xs btn-primary" onclick="window._subCostiRange={dal:document.getElementById('subcosti-dal').value,al:document.getElementById('subcosti-al').value};renderSubDetTab('costi')">Aggiorna</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px;">
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">Totale periodo</div><div style="font-size:20px;font-weight:700;color:var(--terra,#c2542e);font-family:'Fraunces',serif;">${eur2(tot)}</div></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">🔧 Interventi</div><div style="font-size:16px;font-weight:700;">${eur2(tInt)}</div></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">🔨 Manutenzioni</div><div style="font-size:16px;font-weight:700;">${eur2(tMan)}</div></div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;"><div style="font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:4px;">⚡ Bollette pagate</div><div style="font-size:16px;font-weight:700;">${eur2(tBol)}</div></div>
+      </div>
+      ${bollNonPagate.length?`<div style="background:#fdf3f2;border:1px solid rgba(142,67,67,.25);border-radius:8px;padding:9px 13px;margin-bottom:14px;font-size:12px;color:var(--danger);">⚠ ${bollNonPagate.length} bollette ancora da pagare per ${eur2(bollNonPagate.reduce((a,b)=>a+parseFloat(b.importo),0))} (non incluse nel totale)</div>`:''}
+      ${!usc.length?'<div class="empty">Nessuna uscita nel periodo selezionato.</div>':usc.map(u=>`
+        <div style="display:flex;align-items:center;gap:11px;padding:9px 12px;border-bottom:1px solid var(--border);">
+          <span style="font-size:16px;">${u.ico}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.fonte)}${u.desc?' — '+esc(String(u.desc).slice(0,70)):''}</div>
+            <div style="font-size:10.5px;color:var(--muted);">${fmt(u.dt)}</div>
+          </div>
+          <span style="font-weight:700;color:var(--terra,#c2542e);font-size:13px;flex-shrink:0;">${eur2(u.imp)}</span>
+        </div>`).join('')}`;
 
   }else if(tab==='scadenze'){
     const items=data.scadenze||[];
@@ -1375,9 +1410,23 @@ function subActionScissione() {
   }, {once:false});
 }
 
-async function pagaBolletta(id){
-  await api('/api/bollette/'+id,{method:'PUT',body:JSON.stringify({stato:'pagato',data_pagamento:new Date().toISOString().split('T')[0]})});
-  loadBollette();toast('✓ Bolletta pagata');
+// Chiede la data prima di segnare pagata (piccolo popover inline al posto del bottone)
+function pagaBollettaChiedi(id,btn){
+  const oggi=new Date().toISOString().split('T')[0];
+  const wrap=document.createElement('span');
+  wrap.style.cssText='display:inline-flex;gap:5px;align-items:center;';
+  wrap.innerHTML=`<span style="font-size:11px;color:var(--muted);">pagata il</span>
+    <input type="date" id="pagab-${id}" value="${oggi}" style="font-size:12px;padding:5px 7px;border:1px solid var(--border-2);border-radius:7px;background:var(--card);">
+    <button class="btn btn-success btn-sm" onclick="pagaBolletta(${id},document.getElementById('pagab-${id}').value)">✓</button>`;
+  btn.replaceWith(wrap);
+}
+
+async function pagaBolletta(id,data){
+  await api('/api/bollette/'+id,{method:'PUT',body:JSON.stringify({stato:'pagato',data_pagamento:data||new Date().toISOString().split('T')[0]})});
+  toast('✓ Bolletta pagata');
+  if(typeof currentSubData!=='undefined'&&currentSubData)delete currentSubData._bollette;
+  if(document.getElementById('sec-subdet')?.classList.contains('active'))renderSubDetTab(typeof subDetTab!=='undefined'&&subDetTab?subDetTab:'bollette');
+  else loadBollette();
 }
 
 async function updateTicketStato(id,stato){
