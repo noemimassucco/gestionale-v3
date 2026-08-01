@@ -243,6 +243,14 @@ try { initSidebarGroups(); } catch(e) {}
 
 
 // ═══ Sidebar mini (solo icone) ═══
+// In modalità mini anche il click sul logo riapre il menu
+document.addEventListener('click',function(e){
+  const sb=document.getElementById('sidebar');
+  if(sb&&sb.classList.contains('mini')&&e.target.closest('.sb-logo')){
+    e.stopPropagation();toggleSidebarMini();
+  }
+},true);
+
 function toggleSidebarMini(){
   const sb=document.getElementById('sidebar');
   if(!sb)return;
