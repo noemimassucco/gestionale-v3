@@ -802,6 +802,7 @@ async function renderSubDetTab(tab) {
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('costi','economico')">📊 Costi</button>
       <button class="btn btn-xs btn-gray" onclick="subDetSubview('scadenze','economico')">📅 Scadenze</button>
     </div>`+renderTabEconomico(data)
+    +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px;align-items:start;margin-top:16px;">`
     +_subIstatCard(s)
     +`<div style="border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:10px;background:var(--card-alt);">
       <div class="flex-between" style="margin-bottom:8px;flex-wrap:wrap;gap:8px;">
@@ -818,7 +819,7 @@ async function renderSubDetTab(tab) {
         <input id="sub-mill-spesa" type="number" step="0.01" value="${s.spesa_cond_totale||''}" placeholder="0.00" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="calcQuotaMillesimi()" onchange="saveMillesimiSub()">
         <span>→ quota SUB: <strong id="sub-mill-quota" style="color:var(--accent);font-family:monospace;">${(s.millesimi&&s.spesa_cond_totale)?('€ '+(parseFloat(s.spesa_cond_totale)*parseFloat(s.millesimi)/1000).toLocaleString('it-IT',{minimumFractionDigits:2})+' ('+parseFloat(s.millesimi)+'‰)'):'—'}</strong></span>
       </div>
-    </div>`
+    </div></div>`
     +_subDocFolder('🏢 Spese condominiali','condominiale','Carica qui riparti, verbali assemblea e rendiconti condominiali (con importo e scadenza).');
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
@@ -1190,47 +1191,96 @@ function renderTabEconomico(data) {
   pagamenti.forEach(p => { if(!pagPerAnno[p.anno]) pagPerAnno[p.anno]=[];  pagPerAnno[p.anno].push(p); });
   const anni = Object.keys(pagPerAnno).sort((a,b)=>b-a);
 
+  const annoCorr = new Date().getFullYear();
+  const canoneMese = data.sub?.canone_annuo ? parseFloat(data.sub.canone_annuo)/12 : 0;
+  const insoluti = pagamenti.filter(p=>p.stato==='insoluto'||p.stato==='ritardo');
+  const insTot = insoluti.reduce((a,p)=>a+(parseFloat(p.importo)||0),0);
+  const incAnno = ec.entratePerAnno?.[annoCorr]||0;
+  const eur0 = n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
+  if(typeof window!=='undefined'&&window._subEcoAnno===undefined)window._subEcoAnno=null;
+
   return `
-    <!-- KPI redditività -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:20px;">
-      <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;">Entrate totali</div>
-        <div style="font-size:20px;font-weight:700;color:var(--green);font-family:monospace;">€ ${ec.totEntrate?.toLocaleString('it-IT',{minimumFractionDigits:2})||'0,00'}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;">Da ${pagamenti.filter(p=>p.stato==='pagato').length} pagamenti</div>
+    <!-- Sintesi -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px;">
+      <div class="card" style="padding:13px 15px;margin:0;">
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Canone / mese</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--text-strong);">${canoneMese?eur0(canoneMese):'—'}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${canoneMese?eur0(parseFloat(data.sub.canone_annuo))+'/anno':'imposta il canone in anagrafica'}</div>
       </div>
-      <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;">Uscite totali</div>
-        <div style="font-size:20px;font-weight:700;color:var(--red);font-family:monospace;">€ ${ec.totUscite?.toLocaleString('it-IT',{minimumFractionDigits:2})||'0,00'}</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:3px;">Interventi + manutenzioni</div>
+      <div class="card" style="padding:13px 15px;margin:0;">
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Incassato ${annoCorr}</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--success);">${eur0(incAnno)}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${pagamenti.filter(p=>p.stato==='pagato'&&p.anno===annoCorr).length} mensilità</div>
       </div>
-      <div style="background:${ec.profittoNetto>=0?'rgba(16,185,129,.1)':'rgba(239,68,68,.1)'};border:1px solid ${ec.profittoNetto>=0?'rgba(16,185,129,.25)':'rgba(239,68,68,.25)'};border-radius:10px;padding:14px;">
-        <div style="font-size:10px;color:${profColor};text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;">Profitto netto</div>
-        <div style="font-size:20px;font-weight:700;color:${profColor};font-family:monospace;">${ec.profittoNetto>=0?'+':''}€ ${ec.profittoNetto?.toLocaleString('it-IT',{minimumFractionDigits:2})||'0,00'}</div>
+      <div class="card" style="padding:13px 15px;margin:0;">
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Da incassare</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${insoluti.length?'var(--danger)':'var(--success)'};">${eur0(insTot)}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${insoluti.length?insoluti.length+' canoni insoluti':'tutto in regola ✓'}</div>
       </div>
-      ${pagamenti.filter(p=>p.stato==='insoluto').length?`<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:14px;"><div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:5px;">Insoluti</div><div style="font-size:20px;font-weight:700;color:var(--red);">${pagamenti.filter(p=>p.stato==='insoluto').length}</div></div>`:''}
+      <div class="card" style="padding:13px 15px;margin:0;">
+        <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Netto storico</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${profColor};">${ec.profittoNetto>=0?'+':''}${eur0(ec.profittoNetto)}</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${eur0(ec.totEntrate)} entrate − ${eur0(ec.totUscite)} uscite</div>
+      </div>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Storico pagamenti affitto</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">Pagamenti affitto</div>
       <button class="btn btn-primary btn-sm" onclick="subActionPagamento()">+ Registra pagamento</button>
     </div>
 
     ${!pagamenti.length ? '<div class="empty">Nessun pagamento registrato. Usa "Genera anno affitti" per creare tutti i mesi.</div>' : ''}
-    ${anni.map(anno => `
-      <div style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
-          📅 ${anno}
-          <span style="font-size:11px;font-weight:400;color:var(--muted);">— € ${(ec.entratePerAnno?.[anno]||0).toLocaleString('it-IT',{minimumFractionDigits:2})} incassati</span>
+    ${anni.map(anno => {
+      const aperto = window._subEcoAnno ? String(window._subEcoAnno)===String(anno) : String(anno)===String(annoCorr);
+      const pags = pagPerAnno[anno];
+      const nPag = pags.filter(p=>p.stato==='pagato').length;
+      return `
+      <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;">
+        <div onclick="window._subEcoAnno='${anno}';renderSubDetTab('economico')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg2);cursor:pointer;user-select:none;">
+          <span style="font-size:13px;font-weight:700;">📅 ${anno}</span>
+          <span style="font-size:11px;color:var(--muted);">${nPag}/${pags.length} pagati · ${eur0(ec.entratePerAnno?.[anno]||0)} incassati</span>
+          ${pags.some(p=>p.stato==='insoluto')?'<span style="font-size:10px;background:#fdf3f2;color:var(--danger);border-radius:10px;padding:1px 8px;font-weight:700;">⚠ insoluti</span>':''}
+          <span style="margin-left:auto;font-size:10px;color:var(--muted);">${aperto?'▼':'▶'}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:7px;">
-          ${pagPerAnno[anno].map(p=>`
-            <div onclick="deletePagamento(${p.id})" title="Clicca per eliminare" style="background:var(--surface2);border:1px solid ${p.stato==='pagato'?'rgba(16,185,129,.3)':p.stato==='insoluto'?'rgba(239,68,68,.3)':'var(--border)'};border-radius:8px;padding:9px 11px;cursor:pointer;transition:all .2s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
-              <div style="font-size:11px;font-weight:600;color:#0f172a;">${mesi[p.mese]}</div>
-              <div style="font-size:10px;color:${statoColors[p.stato]||'var(--muted)'};">${statoIcons[p.stato]||''} ${p.stato||'—'}</div>
-              <div style="font-size:11px;font-family:monospace;font-weight:700;color:var(--accent);margin-top:2px;">€ ${parseFloat(p.importo).toLocaleString('it-IT')}</div>
+        ${aperto?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:7px;padding:12px 14px;">
+          ${pags.map(p=>`
+            <div onclick="pagMenu(${p.id},this)" title="Clicca per modificare" style="background:${p.stato==='pagato'?'rgba(62,107,82,.1)':p.stato==='insoluto'?'rgba(142,67,67,.09)':'var(--surface2)'};border:1px solid ${p.stato==='pagato'?'rgba(62,107,82,.35)':p.stato==='insoluto'?'rgba(142,67,67,.35)':'var(--border)'};border-radius:8px;padding:9px 11px;cursor:pointer;transition:all .15s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform=''">
+              <div style="font-size:11px;font-weight:700;color:var(--text-strong);">${mesi[p.mese]}</div>
+              <div style="font-size:10px;color:${statoColors[p.stato]||'var(--muted)'};margin-top:1px;">${statoIcons[p.stato]||''} ${p.stato||'—'}</div>
+              <div style="font-size:11.5px;font-weight:700;color:${p.stato==='pagato'?'var(--success)':'var(--text-strong)'};margin-top:2px;">€ ${parseFloat(p.importo).toLocaleString('it-IT')}</div>
             </div>`).join('')}
-        </div>
-      </div>`).join('')}`;
+        </div>`:''}
+      </div>`;
+    }).join('')}`;
+}
+
+// ── Menu azioni su un singolo mese (pagato / insoluto / elimina) ──
+function _pagMenuClose(){document.getElementById('pag-menu')?.remove();document.removeEventListener('click',_pagMenuOut);}
+function _pagMenuOut(e){const m=document.getElementById('pag-menu');if(m&&!m.contains(e.target))_pagMenuClose();}
+function pagMenu(pid,el){
+  _pagMenuClose();
+  const m=document.createElement('div');
+  m.id='pag-menu';
+  m.style.cssText='position:fixed;z-index:500;background:var(--card);border:1px solid var(--border-2);border-radius:10px;box-shadow:0 10px 26px rgba(20,25,20,.2);padding:7px;display:flex;gap:6px;flex-wrap:wrap;';
+  m.innerHTML=`<button class="btn btn-xs btn-success" onclick="pagStato(${pid},'pagato')">✓ Pagato</button>
+    <button class="btn btn-xs" style="background:#fdf3f2;color:var(--danger);border:1px solid rgba(142,67,67,.3);" onclick="pagStato(${pid},'insoluto')">⚠ Insoluto</button>
+    <button class="btn btn-xs btn-gray" onclick="pagStato(${pid},'atteso')">⏳ Atteso</button>
+    <button class="btn btn-xs btn-gray" onclick="_pagMenuClose();deletePagamento(${pid})">🗑</button>`;
+  document.body.appendChild(m);
+  const r=el.getBoundingClientRect();
+  m.style.left=Math.max(8,Math.min(r.left,window.innerWidth-m.offsetWidth-8))+'px';
+  m.style.top=Math.min(r.bottom+5,window.innerHeight-60)+'px';
+  setTimeout(()=>document.addEventListener('click',_pagMenuOut),0);
+}
+async function pagStato(pid,stato){
+  _pagMenuClose();
+  const body={stato};
+  if(stato==='pagato')body.data_pagamento=new Date().toISOString().split('T')[0];
+  const r=await api('/api/pagamenti-affitto/'+pid,{method:'PUT',body:JSON.stringify(body)});
+  if(!r||r.error){toast('❌ '+(r?.error||'Aggiornamento fallito'),'error');return;}
+  toast(stato==='pagato'?'✓ Segnato pagato':stato==='insoluto'?'⚠ Segnato insoluto':'Aggiornato ✓');
+  const data=await api('/api/subs/'+currentSubId+'/detail');
+  if(data){currentSubData=data;renderSubDetTab('economico');}
 }
 
 function renderTabInquilini(data) {
@@ -1633,9 +1683,15 @@ async function sollecitoAffitto(pagamentoId){
 
 async function testEmail(){
   toast('Invio email di prova…','warning');
+  const el=document.getElementById('email-status');
   const r=await api('/api/email/test',{method:'POST'});
-  if(!r||r.error){toast('❌ '+(r?.error||'Invio fallito'),'error');return;}
+  if(!r||r.error){
+    toast('❌ Invio fallito — leggi il dettaglio nella card','error');
+    if(el)el.innerHTML='<span style="color:var(--danger);font-weight:600;">❌ Invio fallito</span><div style="font-size:11.5px;color:var(--danger);margin-top:6px;line-height:1.55;background:#fdf3f2;border:1px solid rgba(142,67,67,.25);border-radius:7px;padding:8px 11px;">'+esc(r?.error||'Errore sconosciuto')+'</div>';
+    return;
+  }
   toast('✉️ Email di prova inviata! Controlla la casella ✓');
+  if(el)el.innerHTML='<span style="color:var(--success);font-weight:600;">✅ Email inviata correttamente — controlla la casella</span>';
 }
 
 async function loadEmailStatus(){
