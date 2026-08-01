@@ -397,45 +397,72 @@ async function switchClienteTab(stato, btn) {
 }
 
 async function loadClienti(stato = 'attivo') {
-  const data = await api(`/api/clienti?stato=${stato}`);
+  const anno=new Date().getFullYear();
+  const [data,pags] = await Promise.all([
+    api(`/api/clienti?stato=${stato}`),
+    api('/api/pagamenti-affitto?anno='+anno),
+  ]);
   if (!data) return;
+
+  // Morosità per inquilino (canoni insoluti/in ritardo dell'anno)
+  const morosi={};
+  (pags||[]).forEach(p=>{
+    if(p.stato==='insoluto'||p.stato==='ritardo'){
+      const k=p.inquilino_id; if(!k)return;
+      morosi[k]=morosi[k]||{tot:0,n:0};
+      morosi[k].tot+=parseFloat(p.importo)||0; morosi[k].n++;
+    }
+  });
 
   const lbl = document.getElementById('cnt-' + (stato === 'attivo' ? 'attivi' : stato));
   if (lbl) lbl.textContent = data.length;
 
-  const BADGE = {
-    attivo: '<span style="background:var(--success-bg);color:var(--success);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;">Attivo</span>',
-    ex:     '<span style="background:var(--bg2);color:var(--muted);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;">Ex cliente</span>',
-    lead:   '<span style="background:var(--accent-bg);color:var(--accent);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:600;">Lead</span>',
-  };
-
   const tbody = document.getElementById('tb-inquilini');
   if (!tbody) return;
+  // intestazioni nuove
+  const thead=tbody.closest('table')?.querySelector('thead');
+  if(thead)thead.innerHTML='<tr><th style="width:34px;"><input type="checkbox" id="inq-sel-all" onchange="inqSelAll(this)"></th><th>Cliente</th><th>Contatti</th><th>Unità</th><th>Situazione pagamenti</th><th>Prossima azione</th><th>Stato</th><th style="width:80px;">Azioni</th></tr>';
 
   if (!data.length) {
     tbody.innerHTML = `<tr><td colspan="8" class="empty">Nessun ${stato === 'attivo' ? 'cliente attivo' : stato === 'ex' ? 'ex cliente' : 'lead'} trovato.</td></tr>`;
     return;
   }
 
-  // Click sulla riga → apre direttamente l'anagrafica in modifica (niente matitina).
-  // La prima e l'ultima cella fermano il click (checkbox e azioni).
-  tbody.innerHTML = data.map(i => `
-    <tr class="row-click" onclick="openAnaById('inquilino',${i.id})" title="Clicca per modificare">
+  const BADGE = {
+    attivo: '<span class="pill-stato" style="background:var(--success-bg);color:var(--success);">Attivo</span>',
+    ex:     '<span class="pill-stato" style="background:var(--bg2);color:var(--muted);">Ex</span>',
+    lead:   '<span class="pill-stato" style="background:var(--accent-bg);color:var(--accent-dark);">Lead</span>',
+  };
+  const iniz=n=>String(n||'?').split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase();
+
+  tbody.innerHTML = data.map(i => {
+    const m=morosi[i.id];
+    const prox=i.prossimo_promemoria;
+    return `
+    <tr class="row-click" onclick="openAnaById('inquilino',${i.id})" title="Clicca per aprire la scheda">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="sel-check inquilini-chk" data-id="${i.id}" onchange="genToggle('inquilini',${i.id},this)"></td>
-      <td class="td-bold">${esc(i.ragione_sociale)}</td>
-      <td style="font-size:12px;color:var(--muted);">${esc(i.cf||i.piva||'—')}</td>
-      <td>${esc(i.citta||'—')}</td>
-      <td>${esc(i.tel||'—')}</td>
-      <td>${esc(i.email||'—')}</td>
+      <td><div style="display:flex;align-items:center;gap:10px;">
+        <span class="avatar-ini">${iniz(i.ragione_sociale)}</span>
+        <div style="min-width:0;"><div style="font-weight:600;color:var(--text-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px;">${esc(i.ragione_sociale)}</div>
+        <div style="font-size:10.5px;color:var(--muted);">${esc(i.citta||'')}${i.piva?' · P.IVA '+esc(i.piva):''}</div></div>
+      </div></td>
+      <td onclick="event.stopPropagation()"><div style="display:flex;gap:5px;">
+        ${i.tel?`<a class="ct-quick" href="tel:${esc(i.tel)}" title="${esc(i.tel)}">📞</a>`:''}
+        ${i.email?`<a class="ct-quick" href="#" onclick="event.preventDefault();openAiMail('${esc(i.email)}')" title="Scrivi email (AI) a ${esc(i.email)}">✉️</a>`:''}
+        ${!i.tel&&!i.email?'<span style="font-size:11px;color:var(--muted-2);">—</span>':''}
+      </div></td>
+      <td style="font-size:12px;">${i.sub_attivi>0?'<strong>'+i.sub_attivi+'</strong> attive':'—'}</td>
+      <td>${m?`<span class="pill-stato" style="background:var(--danger-bg);color:var(--danger);">⚠ € ${m.tot.toLocaleString('it-IT',{maximumFractionDigits:0})} · ${m.n} canoni</span>`
+             :(i.sub_attivi>0?'<span class="pill-stato" style="background:var(--success-bg);color:var(--success);">In regola</span>':'<span style="font-size:11px;color:var(--muted-2);">—</span>')}</td>
+      <td style="font-size:11px;color:var(--muted);">${prox&&prox.titolo?esc(String(prox.titolo).slice(0,26))+(prox.data_evento?' · '+fmt(prox.data_evento):''):'—'}</td>
       <td>${BADGE[i.stato_calcolato] || BADGE.ex}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id})" title="Assegna SUB">🏠</button>
         <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})" title="Elimina">🗑</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
-
-
 
 // Filtri live
 function applyLeadFilter() { loadLeadCards(); }

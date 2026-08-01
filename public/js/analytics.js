@@ -16,14 +16,26 @@ async function loadAffitti(){
   const mesi=['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
   const statoColors={pagato:'var(--green)',atteso:'var(--muted)',ritardo:'var(--orange)',insoluto:'var(--red)'};
   const statoIcons={pagato:'✅',atteso:'⏳',ritardo:'⚠️',insoluto:'🔴'};
-  // Stats
+  // Stats + AGING CREDITI (fasce di ritardo: lo strumento che le aziende usano per riscuotere)
   const totPag=filtered.filter(p=>p.stato==='pagato').reduce((s,p)=>s+parseFloat(p.importo||0),0);
-  const totInsoluti=filtered.filter(p=>p.stato==='insoluto').length;
-  document.getElementById('affitti-stats').innerHTML=[
-    {label:'Totale incassato',val:'€ '+totPag.toLocaleString('it-IT',{minimumFractionDigits:2}),color:'var(--green)'},
-    {label:'Pagamenti',val:filtered.filter(p=>p.stato==='pagato').length,color:'var(--green)'},
-    {label:'Insoluti',val:totInsoluti,color:totInsoluti>0?'var(--red)':'var(--muted)'},
-  ].map(k=>`<div class="home-kpi-card"><div class="stat-label">${k.label}</div><div style="font-size:20px;font-weight:700;color:${k.color};">${k.val}</div></div>`).join('');
+  const nonPagati=filtered.filter(p=>p.stato==='insoluto'||p.stato==='ritardo');
+  const oggi=new Date();
+  const bande={b30:0,b60:0,b90:0,b90p:0};
+  nonPagati.forEach(p=>{
+    const fine=new Date(p.anno,p.mese,0); // fine del mese di competenza
+    const gg=Math.floor((oggi-fine)/86400000);
+    const imp=parseFloat(p.importo)||0;
+    if(gg<=30)bande.b30+=imp; else if(gg<=60)bande.b60+=imp; else if(gg<=90)bande.b90+=imp; else bande.b90p+=imp;
+  });
+  const eur=n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
+  document.getElementById('affitti-stats').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;grid-column:1/-1;">
+      <div class="aging-chip" style="background:var(--success-bg);color:var(--success);"><div class="n">${eur(totPag)}</div><div class="l">Incassato</div></div>
+      <div class="aging-chip" style="background:var(--card);border:1px solid var(--border);color:${bande.b30?'var(--warning)':'var(--muted-2)'};"><div class="n">${eur(bande.b30)}</div><div class="l">Ritardo 1-30 gg</div></div>
+      <div class="aging-chip" style="background:var(--card);border:1px solid var(--border);color:${bande.b60?'var(--warning)':'var(--muted-2)'};"><div class="n">${eur(bande.b60)}</div><div class="l">31-60 gg</div></div>
+      <div class="aging-chip" style="background:var(--card);border:1px solid var(--border);color:${bande.b90?'var(--danger)':'var(--muted-2)'};"><div class="n">${eur(bande.b90)}</div><div class="l">61-90 gg</div></div>
+      <div class="aging-chip" style="background:${bande.b90p?'var(--danger-bg)':'var(--card)'};border:1px solid ${bande.b90p?'var(--danger)':'var(--border)'};color:${bande.b90p?'var(--danger)':'var(--muted-2)'};"><div class="n">${eur(bande.b90p)}</div><div class="l">Oltre 90 gg ⚠</div></div>
+    </div>`;
   const el=document.getElementById('affitti-list');
   if(!filtered.length){el.innerHTML='<div class="empty">Nessun pagamento trovato.</div>';return;}
   el.innerHTML=filtered.map(p=>`

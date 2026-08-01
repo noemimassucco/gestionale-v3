@@ -751,6 +751,33 @@ body{background:var(--bg);}
 label{font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:700;}
 input,select,textarea{border-radius:8px;}
 
+
+/* ═══════════ ANTI-OVERFLOW: niente più scritte fuori dalle card ═══════════ */
+.card,.int-card,.boll-card,.doc-card,.sub-card,.home-kpi-card{overflow:hidden;min-width:0;}
+.card *,.int-card *,.boll-card *{min-width:0;}
+.int-card-hdr{flex-wrap:wrap;row-gap:5px;}
+.int-card-hdr>*{max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+.td-bold,td{word-break:break-word;}
+.card-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.doc-meta{overflow:hidden;text-overflow:ellipsis;}
+.tab-btns{max-width:100%;}
+
+/* Ticket e Fatturazione: pill e ordine */
+.pill-stato{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:2px 11px;font-size:10px;font-weight:700;white-space:nowrap;}
+.avatar-ini{width:34px;height:34px;border-radius:50%;background:var(--primary-bg);color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;letter-spacing:.5px;}
+.ct-quick{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:var(--bg2);text-decoration:none;font-size:12px;filter:grayscale(.4);transition:background .12s;}
+.ct-quick:hover{background:var(--primary-bg);filter:none;}
+.aging-chip{border-radius:9px;padding:8px 14px;text-align:center;flex:1;min-width:100px;}
+.aging-chip .n{font-family:'Fraunces',serif;font-size:19px;font-weight:600;line-height:1.1;}
+.aging-chip .l{font-size:9px;text-transform:uppercase;letter-spacing:1.4px;font-weight:700;opacity:.75;margin-top:2px;}
+
+
+/* Logo sidebar fisso durante lo scroll */
+.sb-logo{position:sticky;top:0;z-index:20;background:#123528;box-shadow:0 6px 12px rgba(10,25,18,.35);}
+.sb-collapse-btn{top:18px;right:12px;}
+.sidebar.mini .sb-collapse-btn{position:absolute;top:14px;right:50%;transform:translateX(50%);margin:0;}
+.sidebar.mini .sb-logo{padding-top:48px!important;}
+
 /* Toast coerente col tema */
 #toast{box-shadow:var(--shadow-lg);}
 
@@ -857,14 +884,15 @@ input,select,textarea{border-radius:8px;}
     <div class="topbar-right">
       <button class="tbtn" onclick="showSection('notifiche')">🔔 <span id="notif-badge-cnt" class="notif-badge hidden">0</span></button>
       <span class="tbtn" id="user-badge" style="color:var(--text);">👤</span>
-      <button id="bell-btn" class="tbtn" style="position:relative;" onclick="showSection('calendario')" title="Promemoria">📅<span id="badge-promemoria" style="display:none;position:absolute;top:3px;right:3px;background:var(--danger);color:#fff;border-radius:50%;min-width:16px;height:16px;font-size:9px;font-weight:700;line-height:16px;text-align:center;padding:0 2px;"></span></button>
+      <span id="badge-promemoria" style="display:none;"></span>
       <button class="tbtn" onclick="doLogout()">Esci</button>
     </div>
   </div>
 
   <div class="app-body">
     <aside class="sidebar" id="sidebar">
-      <div class="sb-logo" onclick="showSection('dashboard')" style="cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px 16px 14px;">
+      <div class="sb-logo" onclick="showSection('dashboard')" style="cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:20px 16px 14px;position:relative;">
+        <button class="sb-collapse-btn" onclick="event.stopPropagation();toggleSidebarMini()" title="Riduci a icone">«</button>
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="4" y="7" width="17" height="24" rx="1.5" stroke="#ffffff" stroke-width="2"/>
           <rect x="21" y="14" width="9" height="17" rx="1.5" stroke="#ffffff" stroke-width="2"/>
@@ -881,7 +909,6 @@ input,select,textarea{border-radius:8px;}
       </div>
       <div class="sb-group">
         <div class="sb-group-title">Immobiliare</div>
-        <button class="sb-collapse-btn" onclick="toggleSidebarMini()" title="Riduci a icone">«</button>
         <button class="sb-item active" id="sb-dashboard" onclick="showSection('dashboard')"><span class="sb-ico">🏠</span><span class="sb-lbl">Dashboard</span></button>
         <button class="sb-item" id="sb-subs" onclick="showSection('subs')"><span class="sb-ico">🏢</span><span class="sb-lbl">SUB</span><span class="sb-chev-btn" onclick="event.stopPropagation();toggleSubMenu()" title="Cartelle del SUB aperto">▾</span></button>
         <div id="sb-subs-sub" class="sb-submenu" style="display:none;">
