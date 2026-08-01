@@ -16,6 +16,7 @@ function _cmdkBuild(q){
     ['📝','Nota rapida',()=>{openQuickNote();}],
     ['✉️','Scrivi email con AI',()=>{openAiMail();}],
     ['📐','Millesimi condominiali',()=>{renderMillesimiGlobale();}],
+    ['💶','Incassi & Uscite (da data a data)',()=>{showSection('finanze');}],
     ['🤖','Riconoscimento automatico documento',()=>{showSection('import');}],
     ['💳','Registra pagamento affitto',()=>{subActionNuovoAffitto();}],
     ['🔨','Nuova manutenzione',()=>{showSection('manutenzioni');if(typeof openModalMan==='function')openModalMan();}],

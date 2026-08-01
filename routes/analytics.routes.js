@@ -39,6 +39,95 @@ router.get('/api/dashboard', authMiddleware, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════ FINANZE: incassi, ritardi e uscite in un periodo ═══════
+router.get('/api/finanze', authMiddleware, async (req, res) => {
+  try {
+    const dal = req.query.dal || new Date(new Date().getFullYear(),0,1).toISOString().slice(0,10);
+    const al  = req.query.al  || new Date().toISOString().slice(0,10);
+
+    const [entrateR, ritardiR, intervR, manutR, bollR] = await Promise.all([
+      // Entrate: canoni PAGATI nel periodo (per data pagamento; se assente, per mese di competenza)
+      pool.query(`
+        SELECT p.*, s.codice AS sub_codice, s.ex_sub, i.ragione_sociale AS inquilino_nome,
+               COALESCE(p.data_pagamento, make_date(p.anno, p.mese, 1)) AS data_rif
+        FROM pagamenti_affitto p
+        LEFT JOIN subs s ON p.sub_id=s.id
+        LEFT JOIN inquilini i ON p.inquilino_id=i.id
+        WHERE p.stato='pagato'
+          AND COALESCE(p.data_pagamento, make_date(p.anno, p.mese, 1)) BETWEEN $1 AND $2
+        ORDER BY data_rif DESC`, [dal, al]),
+      // Ritardi/insoluti con competenza nel periodo
+      pool.query(`
+        SELECT p.*, s.codice AS sub_codice, s.ex_sub, i.ragione_sociale AS inquilino_nome
+        FROM pagamenti_affitto p
+        LEFT JOIN subs s ON p.sub_id=s.id
+        LEFT JOIN inquilini i ON p.inquilino_id=i.id
+        WHERE p.stato IN ('insoluto','ritardo')
+          AND make_date(p.anno, p.mese, 1) BETWEEN $1 AND $2
+        ORDER BY p.anno, p.mese`, [dal, al]),
+      // Uscite: interventi
+      pool.query(`
+        SELECT i.id, i.prezzo AS importo, COALESCE(i.data_fattura, i.data_intervento, i.created_at::date) AS data_rif,
+               i.descrizione, s.codice AS sub_codice, s.ex_sub, i.sub_id
+        FROM interventi i LEFT JOIN subs s ON i.sub_id=s.id
+        WHERE i.prezzo IS NOT NULL
+          AND COALESCE(i.data_fattura, i.data_intervento, i.created_at::date) BETWEEN $1 AND $2`, [dal, al]),
+      // Uscite: manutenzioni con costo
+      pool.query(`
+        SELECT m.id, m.costo AS importo, COALESCE(m.data_eseguita, m.data_programmata) AS data_rif,
+               m.tipo AS descrizione, s.codice AS sub_codice, s.ex_sub, m.sub_id
+        FROM manutenzioni m LEFT JOIN subs s ON m.sub_id=s.id
+        WHERE m.costo IS NOT NULL
+          AND COALESCE(m.data_eseguita, m.data_programmata) BETWEEN $1 AND $2`, [dal, al]),
+      // Uscite: bollette pagate
+      pool.query(`
+        SELECT b.id, b.importo, COALESCE(b.data_pagamento, b.scadenza) AS data_rif,
+               b.tipo AS descrizione, s.codice AS sub_codice, s.ex_sub, b.sub_id
+        FROM bollette b LEFT JOIN subs s ON b.sub_id=s.id
+        WHERE b.stato='pagato' AND b.importo IS NOT NULL
+          AND COALESCE(b.data_pagamento, b.scadenza) BETWEEN $1 AND $2`, [dal, al]),
+    ]);
+
+    const somma = rows => rows.reduce((a,r)=>a+(parseFloat(r.importo)||0),0);
+    const entrate = entrateR.rows, ritardi = ritardiR.rows;
+    const uscite = [
+      ...intervR.rows.map(r=>({...r, fonte:'intervento'})),
+      ...manutR.rows.map(r=>({...r, fonte:'manutenzione'})),
+      ...bollR.rows.map(r=>({...r, fonte:'bolletta'})),
+    ].sort((a,b)=>new Date(b.data_rif)-new Date(a.data_rif));
+
+    // Aggregato per mese (entrate vs uscite)
+    const perMese = {};
+    entrate.forEach(r=>{const k=String(r.data_rif).slice(0,7);perMese[k]=perMese[k]||{entrate:0,uscite:0};perMese[k].entrate+=parseFloat(r.importo)||0;});
+    uscite.forEach(r=>{const k=String(r.data_rif).slice(0,7);perMese[k]=perMese[k]||{entrate:0,uscite:0};perMese[k].uscite+=parseFloat(r.importo)||0;});
+
+    // Netto per SUB (per trovare le unità che perdono)
+    const perSub = {};
+    const addSub = (r, campo) => {
+      const k = r.sub_codice || 'Senza SUB';
+      perSub[k] = perSub[k] || { codice:k, ex_sub:r.ex_sub||null, sub_id:r.sub_id||null, entrate:0, uscite:0 };
+      perSub[k][campo] += parseFloat(r.importo)||0;
+    };
+    entrate.forEach(r=>addSub(r,'entrate'));
+    uscite.forEach(r=>addSub(r,'uscite'));
+
+    res.json({
+      dal, al,
+      totali: {
+        entrate: somma(entrate),
+        uscite: somma(uscite),
+        ritardi: somma(ritardi),
+        netto: somma(entrate) - somma(uscite),
+        uscite_interventi: somma(intervR.rows),
+        uscite_manutenzioni: somma(manutR.rows),
+        uscite_bollette: somma(bollR.rows),
+      },
+      perMese, perSub: Object.values(perSub).sort((a,b)=>(a.entrate-a.uscite)-(b.entrate-b.uscite)),
+      entrate: entrate.slice(0,50), uscite: uscite.slice(0,50), ritardi,
+    });
+  } catch(e) { console.error('GET /api/finanze:', e.message); res.status(500).json({ error: e.message }); }
+});
+
 router.get('/api/notifiche', authMiddleware, async (req, res) => {
   try {
   const [urgenti, scadenzeDoc, scadenzeMan, istat, incompleti] = await Promise.all([

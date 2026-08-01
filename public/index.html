@@ -950,6 +950,7 @@ input,select,textarea{border-radius:8px;}
       <div class="sb-divider"></div>
       <div class="sb-group">
         <div class="sb-group-title">Economico</div>
+        <button class="sb-item" id="sb-finanze" onclick="showSection('finanze')"><span class="sb-ico">💶</span><span class="sb-lbl">Incassi &amp; Uscite</span></button>
         <button class="sb-item" id="sb-fatturazione" onclick="showSection('fatturazione')"><span class="sb-ico">🧾</span><span class="sb-lbl">Schema Fatturazione</span></button>
         <button class="sb-item" id="sb-riepilogo" onclick="showSection('riepilogo')"><span class="sb-ico">📊</span><span class="sb-lbl">Riepilogo</span></button>
       </div>
@@ -1155,6 +1156,49 @@ input,select,textarea{border-radius:8px;}
         <button class="tab-btn" onclick="setRiepTab('sede',this)">📍 Per Sede</button>
       </div>
       <div id="riep-list"></div>
+    </div>
+
+    <!-- FINANZE: INCASSI & USCITE -->
+    <div id="sec-finanze" class="section">
+      <div class="flex-between mb-16" style="flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 style="font-family:'Fraunces',serif;font-size:20px;color:#0f172a;">Incassi &amp; Uscite</h2>
+          <p class="text-muted" style="font-size:12px;margin-top:2px;" id="fin-lbl">Seleziona il periodo e premi Aggiorna</p>
+        </div>
+        <div class="flex" style="align-items:center;gap:8px;flex-wrap:wrap;">
+          <div id="fin-presets" class="flex" style="gap:6px;">
+            <button class="btn btn-sm btn-gray" onclick="finPreset('mese')">Questo mese</button>
+            <button class="btn btn-sm btn-gray" onclick="finPreset('trimestre')">Ultimi 3 mesi</button>
+            <button class="btn btn-sm btn-gray" onclick="finPreset('anno')">Anno corrente</button>
+            <button class="btn btn-sm btn-gray" onclick="finPreset('anno_prec')">Anno scorso</button>
+          </div>
+          <input type="date" id="fin-dal" class="input" style="width:auto;">
+          <span style="color:var(--muted);font-size:12px;">→</span>
+          <input type="date" id="fin-al" class="input" style="width:auto;">
+          <button class="btn btn-primary btn-sm" onclick="loadFinanze()">Aggiorna</button>
+        </div>
+      </div>
+      <div id="fin-kpi" class="dash-kpi" style="margin-bottom:18px;"></div>
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">Andamento mensile — entrate vs uscite</div>
+        <div id="fin-chart" style="overflow-x:auto;"></div>
+      </div>
+      <div class="dash-2col" style="align-items:start;">
+        <div class="card">
+          <div class="card-title">Rendimento per unità (netto del periodo)</div>
+          <div id="fin-persub" style="max-height:420px;overflow-y:auto;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:18px;min-width:0;">
+          <div class="card">
+            <div class="card-title">⚠ Ritardi e insoluti nel periodo</div>
+            <div id="fin-ritardi" style="max-height:220px;overflow-y:auto;"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">Ultime uscite</div>
+            <div id="fin-uscite" style="max-height:260px;overflow-y:auto;"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- IMPORT -->
@@ -3023,6 +3067,7 @@ input,select,textarea{border-radius:8px;}
   <script src="js/chat.js?v=9"></script>
   <script src="js/calendar.js?v=9"></script>
   <script src="js/analytics.js?v=9"></script>
+  <script src="js/finanze.js?v=9"></script>
   <script src="js/misc.js?v=9"></script>
   <script src="js/cmdk.js?v=9"></script>
   <!-- app.js — init entry point (loaded last) -->
