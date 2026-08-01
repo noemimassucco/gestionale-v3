@@ -351,7 +351,7 @@ tr:hover td{background:rgba(107,142,107,.04);}
 .chat-msg.bot{background:#f1f5f9;color:var(--text);align-self:flex-start;border-bottom-left-radius:3px;border:1px solid #e2e8f0;}
 .chat-result{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-top:5px;font-size:11px;cursor:pointer;}
 .btn-orange{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(184,134,11,.3);}
-@media(max-width:900px){.dash-3col{grid-template-columns:1fr 1fr!important;}.dash-2col{grid-template-columns:1fr!important;}}
+@media(max-width:900px){.dash-3col{grid-template-columns:1fr 1fr!important;}.dash-2col{grid-template-columns:1fr!important;}.dash-main{grid-template-columns:1fr!important;}}
 @media(max-width:600px){.dash-3col{grid-template-columns:1fr!important;}}
 
 /* ── DETAIL ROW ── */
@@ -1863,54 +1863,48 @@ input,select,textarea{border-radius:8px;}
         </div>
       </div>
 
-      <div id="dash-kpi" class="home-kpi" style="margin-bottom:18px;"></div>
+      <div id="dash-kpi" style="margin-bottom:16px;"></div>
 
-      <div id="dash-alert-banner" class="hidden" style="background:#fee2e2;border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:11px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:10px;" onclick="showSection('notifiche')">
-        <span style="font-size:18px;">🚨</span>
-        <div id="dash-alert-text" style="font-size:12px;color:var(--red);font-weight:600;flex:1;"></div>
+      <div id="dash-alert-banner" class="hidden" style="background:var(--danger-bg);border:1px solid var(--danger);border-radius:10px;padding:11px 16px;margin-bottom:16px;cursor:pointer;display:flex;align-items:center;gap:10px;" onclick="showSection('notifiche')">
+        <span style="font-size:16px;">⚠</span>
+        <div id="dash-alert-text" style="font-size:12px;color:var(--danger);font-weight:600;flex:1;"></div>
         <span style="font-size:11px;color:var(--muted);">→ Notifiche</span>
       </div>
 
-      <!-- Riga 1: occupazione + spese mensili + SUB da attenzionare -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:18px;">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:10px;font-size:13px;">🏠 Occupazione</div>
-          <div id="dash-occupazione" style="display:flex;align-items:center;gap:16px;">Caricamento…</div>
-        </div>
-        <div class="card">
-          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">📊 Spese ultimi mesi</div><button class="btn btn-xs btn-gray" onclick="showSection('riepilogo')">→</button></div>
-          <div id="dash-chart" style="height:130px;display:flex;align-items:flex-end;gap:6px;padding-bottom:4px;"></div>
-        </div>
-        <div class="card">
-          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">⚠️ SUB da attenzionare</div><button class="btn btn-xs btn-gray" onclick="showSection('subs')">→</button></div>
-          <div id="dash-critici" style="font-size:11px;color:var(--muted);">Caricamento…</div>
-        </div>
-      </div>
-
-      <!-- Riga 2: scadenze + attività + promemoria + notifiche -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px;">
-        <div class="card">
-          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">📅 Scadenze 7gg</div><button class="btn btn-xs btn-gray" onclick="showSection('calendario')">→</button></div>
-          <div id="dash-scadenze" style="font-size:11px;color:var(--muted);">Caricamento…</div>
-        </div>
-        <div class="card">
-          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">⚡ Ultime attività</div><button class="btn btn-xs btn-gray" onclick="showSection('interventi')">→</button></div>
-          <div id="dash-activity" style="font-size:11px;color:var(--muted);">Caricamento…</div>
-        </div>
-        <div class="card">
-          <div class="flex-between" style="margin-bottom:10px;">
-            <div class="card-title" style="margin:0;font-size:13px;">🗓️ Promemoria attivi</div>
-            <button class="btn btn-xs btn-gray" onclick="loadPromemoriaAttivi()">↻</button>
+      <!-- Griglia principale: DA FARE (grande) + colonna attività -->
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px;" class="dash-main">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="card">
+            <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;">Da fare adesso</div><button class="btn btn-xs btn-gray" onclick="showSection('calendario')">Calendario →</button></div>
+            <div id="dash-todo" style="font-size:12px;color:var(--muted);">Caricamento…</div>
           </div>
-          <div id="dash-promemoria-list">
-            <div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;">Caricamento…</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="dash-2col">
+            <div class="card">
+              <div class="card-title" style="margin-bottom:10px;">Occupazione</div>
+              <div id="dash-occupazione" style="display:flex;align-items:center;gap:16px;">Caricamento…</div>
+            </div>
+            <div class="card">
+              <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;">Spese ultimi mesi</div><button class="btn btn-xs btn-gray" onclick="showSection('riepilogo')">→</button></div>
+              <div id="dash-chart" style="height:110px;display:flex;align-items:flex-end;gap:6px;padding-bottom:4px;"></div>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;font-size:13px;">🔔 Notifiche</div><button class="btn btn-xs btn-gray" onclick="showSection('notifiche')">→</button></div>
-          <div id="dash-notif-quick" style="font-size:11px;color:var(--muted);">Caricamento…</div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="card">
+            <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;">Ultime attività</div><button class="btn btn-xs btn-gray" onclick="showSection('interventi')">→</button></div>
+            <div id="dash-activity" style="font-size:11px;color:var(--muted);">Caricamento…</div>
+          </div>
+          <div class="card">
+            <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;">Promemoria</div><button class="btn btn-xs btn-gray" onclick="loadPromemoriaAttivi()">↻</button></div>
+            <div id="dash-promemoria-list"><div style="font-size:12px;color:var(--muted);text-align:center;padding:12px;">Caricamento…</div></div>
+          </div>
+          <div class="card">
+            <div class="flex-between" style="margin-bottom:10px;"><div class="card-title" style="margin:0;">Notifiche</div><button class="btn btn-xs btn-gray" onclick="showSection('notifiche')">→</button></div>
+            <div id="dash-notif-quick" style="font-size:11px;color:var(--muted);">Caricamento…</div>
+          </div>
         </div>
       </div>
+      <div style="display:none;"><div id="dash-scadenze"></div><div id="dash-critici"></div></div>
 
       <!-- Riga 3: i tuoi SUB -->
       <div style="margin-bottom:18px;">
@@ -1921,13 +1915,7 @@ input,select,textarea{border-radius:8px;}
         <div id="dash-sub-grid" class="home-sub-grid"></div>
       </div>
 
-      <div>
-        <div class="flex-between" style="margin-bottom:10px;">
-          <div style="font-size:14px;font-weight:600;color:#0f172a;">📰 Notizie immobiliare</div>
-          <a href="https://www.idealista.it/news/" target="_blank" class="btn btn-xs btn-gray">→</a>
-        </div>
-        <div id="dash-news" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;"></div>
-      </div>
+
 
     </div>
 

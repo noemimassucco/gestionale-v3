@@ -6,9 +6,10 @@ async function loadSettings(){const s=await api('/api/settings');if(!s)return;if
 
 async function loadDashboard(){
   if(typeof loadPromemoriaAttivi==='function')loadPromemoriaAttivi();
-  const [dash,notifiche,subs,news,cal,recentInts]=await Promise.all([
+  const _anno=new Date().getFullYear();
+  const [dash,notifiche,subs,pagamenti,cal,recentInts]=await Promise.all([
     api('/api/dashboard'), api('/api/notifiche'), api('/api/subs'),
-    api('/api/news'), api('/api/calendario'),
+    api('/api/pagamenti-affitto?anno='+_anno), api('/api/calendario'),
     api('/api/interventi?limit=5'),
   ]);
   if(!dash)return;
@@ -19,20 +20,56 @@ async function loadDashboard(){
   const _read = (typeof _readNotifs!=='undefined') ? _readNotifs : new Set();
   const notifNonLette=(notifiche||[]).filter(n=>!_read.has(_uid(n)));
   const nc=notifNonLette.filter(n=>n.tipo!=='incompleto').length;
-  const kpis=[
-    {l:'SUB gestiti',v:dash.totali?.num_subs||0,c:'var(--text-strong)',s:'subs'},
-    {l:'Interventi',v:dash.totali?.num_interventi||0,c:'var(--text-strong)',s:'interventi'},
-    {l:'Spese totali',v:'€ '+parseFloat(dash.totali?.totale_spese||0).toLocaleString('it-IT',{maximumFractionDigits:0}),c:'var(--accent)',s:'riepilogo'},
-    {l:'Manutenzioni',v:dash.totali?.manutenzioni_aperte||0,c:'var(--text-strong)',s:'manutenzioni'},
-    {l:'Documenti',v:dash.totali?.num_documenti||0,c:'var(--text-strong)',s:'documenti'},
-    {l:'Notifiche',v:nc,c:nc>0?'var(--danger)':'var(--success)',s:'notifiche'},
+  // ═══ I 4 NUMERI CHE CONTANO (ricerca: soldi prima di tutto, semaforo, zero scroll) ═══
+  const attivi=(subs||[]).filter(x=>!x.stato_sub||x.stato_sub==='attivo');
+  const occupati=attivi.filter(x=>x.stato_occupazione==='occupato');
+  const occPct=attivi.length?Math.round(occupati.length/attivi.length*100):0;
+  const attesoMese=occupati.reduce((a,x)=>a+(parseFloat(x.canone_annuo)||0),0)/12;
+  const meseCorr=new Date().getMonth()+1;
+  const pags=pagamenti||[];
+  const incassatoMese=pags.filter(p=>p.mese==meseCorr&&p.stato==='pagato').reduce((a,p)=>a+(parseFloat(p.importo)||0),0);
+  const insoluti=pags.filter(p=>p.stato==='insoluto'||p.stato==='ritardo');
+  const insolutiTot=insoluti.reduce((a,p)=>a+(parseFloat(p.importo)||0),0);
+  const scad7=(cal||[]).filter(e=>{const g=Math.floor((new Date(e.scadenza)-new Date())/86400000);return g>=0&&g<=7;});
+  const manAperte=parseInt(dash.totali?.manutenzioni_aperte)||0;
+  const eur=n=>'€ '+(n||0).toLocaleString('it-IT',{maximumFractionDigits:0});
+  const dot=c=>`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;"></span>`;
+
+  const hero=[
+    { l:'Canone atteso / mese', v:eur(attesoMese), col:'var(--text-strong)',
+      st: attesoMese>0?dot('var(--success)')+occupati.length+' unità a reddito':dot('var(--muted-2)')+'nessun canone impostato', s:'affitti' },
+    { l:'Incassato questo mese', v:eur(incassatoMese),
+      col: attesoMese&&incassatoMese>=attesoMese*.95?'var(--success)':incassatoMese>0?'var(--warning)':'var(--text-strong)',
+      st: attesoMese?dot(incassatoMese>=attesoMese*.95?'var(--success)':'var(--warning)')+Math.round(incassatoMese/attesoMese*100)+'% dell\'atteso':dot('var(--muted-2)')+'registra i pagamenti', s:'affitti' },
+    { l:'Da incassare', v:eur(insolutiTot), col: insoluti.length?'var(--danger)':'var(--success)',
+      st: insoluti.length?dot('var(--danger)')+insoluti.length+' canoni insoluti — sollecita':dot('var(--success)')+'nessun insoluto', s:'affitti' },
+    { l:'Occupazione', v:occPct+'%', col: occPct>=90?'var(--success)':occPct>=70?'var(--warning)':'var(--danger)',
+      st: dot(occPct>=90?'var(--success)':occPct>=70?'var(--warning)':'var(--danger)')+(attivi.length-occupati.length)+' unità libere', s:'subs' },
   ];
   const kpiEl=document.getElementById('dash-kpi');
-  if(kpiEl)kpiEl.innerHTML='<div style="display:flex;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:6px 0;box-shadow:var(--shadow-sm);">'
-    +kpis.map((k,i)=>`<div onclick="showSection('${k.s}')" style="cursor:pointer;flex:1;min-width:130px;padding:14px 20px;${i>0?'border-left:1px solid var(--border);':''}">
-      <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:var(--muted-2);font-weight:700;margin-bottom:6px;">${k.l}</div>
-      <div style="font-family:'Fraunces',serif;font-size:26px;font-weight:600;color:${k.c};line-height:1;">${k.v}</div>
+  if(kpiEl)kpiEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px;">'
+    +hero.map(k=>`<div class="card" onclick="showSection('${k.s}')" style="cursor:pointer;padding:16px 18px;">
+      <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted-2);font-weight:700;margin-bottom:8px;">${k.l}</div>
+      <div style="font-family:'Fraunces',serif;font-size:29px;font-weight:600;color:${k.col};line-height:1;margin-bottom:8px;">${k.v}</div>
+      <div style="font-size:11px;color:var(--muted);">${k.st}</div>
     </div>`).join('')+'</div>';
+
+  // ═══ DA FARE ADESSO: scadenze + insoluti + SUB da attenzionare, in un'unica lista azionabile ═══
+  const todoEl=document.getElementById('dash-todo');
+  if(todoEl){
+    const voci=[];
+    insoluti.slice(0,4).forEach(p=>voci.push({ico:'💶',t:'Canone insoluto — '+(p.sub_codice?'SUB '+p.sub_codice:'')+(p.inquilino_nome?' · '+p.inquilino_nome:''),d:eur(parseFloat(p.importo)||0),urg:2,run:`showSection('affitti')`}));
+    scad7.slice(0,5).forEach(e=>{const g=Math.floor((new Date(e.scadenza)-new Date())/86400000);voci.push({ico:e.icon||'📅',t:e.titolo||'Scadenza',d:g===0?'oggi':'tra '+g+'g',urg:g<=2?2:1,run:`showSection('calendario')`});});
+    (dash.subsCritici||[]).slice(0,3).forEach(c=>voci.push({ico:'🔧',t:'Da attenzionare — '+c.codice+(c.sede?' · '+c.sede:''),d:(c.urgenze||0)+' urgenze',urg:1,run:`openSubDetail(${c.id})`}));
+    voci.sort((a,b)=>b.urg-a.urg);
+    todoEl.innerHTML=voci.length?voci.slice(0,8).map(v2=>`
+      <div class="row-click" onclick="${v2.run}" style="display:flex;align-items:center;gap:11px;padding:9px 6px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;">
+        <span style="width:28px;height:28px;border-radius:8px;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:13px;filter:grayscale(.4);flex-shrink:0;">${v2.ico}</span>
+        <span style="flex:1;font-size:12.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(v2.t)}</span>
+        <span style="font-size:11.5px;font-weight:700;color:${v2.urg===2?'var(--danger)':'var(--muted)'};white-space:nowrap;">${v2.d}</span>
+        <span style="color:var(--muted-2);">›</span>
+      </div>`).join(''):'<div style="color:var(--success);font-size:12.5px;padding:14px 4px;">✓ Tutto in ordine: nessuna urgenza, nessun insoluto, nessuna scadenza nei prossimi 7 giorni.</div>';
+  }
 
   // Saluto con nome e data
   const gr=document.getElementById('dash-greeting');
@@ -161,18 +198,5 @@ async function loadDashboard(){
     </div>`;
   }).join('')||'<div class="empty">Nessun SUB ancora.</div>';
 
-  // News
-  const newsEl=document.getElementById('dash-news');
-  if(newsEl&&news?.length){
-    newsEl.innerHTML=news.slice(0,6).map(n=>`
-      <a href="${n.link||'#'}" target="_blank" style="text-decoration:none;">
-        <div class="card" style="transition:all .2s;padding:12px 14px;" onmouseover="this.style.borderColor='rgba(107,142,107,.4)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
-          <div style="font-size:9px;color:var(--info);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">🏢 Immobiliare</div>
-          <div style="font-size:12px;font-weight:600;color:#0f172a;line-height:1.4;margin-bottom:5px;">${esc(n.title||'—')}</div>
-          ${n.desc?`<div style="font-size:10px;color:var(--muted);line-height:1.5;">${esc(n.desc.slice(0,80))}</div>`:''}
-        </div>
-      </a>`).join('');
-  }
-
-  await loadSettings();
+    await loadSettings();
 }
