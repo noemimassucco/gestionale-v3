@@ -35,7 +35,21 @@ async function registraUscita(pool, { origine_tipo, origine_id, sub_id, sede_id,
 }
 
 async function rimuoviUscita(pool, origine_tipo, origine_id) {
-  try { await pool.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=$2', [origine_tipo, origine_id]); }
+  try {
+    // Se l'uscita era già stata spostata nello Schema Fatturazione (ordine collegato) e la
+    // contabile non l'ha ancora lavorata (nessun numero fattura, non pagato), rimuovi anche
+    // quell'ordine: altrimenti resterebbe orfano, agganciato a un'uscita ormai cancellata.
+    const cf = await pool.query('SELECT fattura_id FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=$2', [origine_tipo, origine_id]);
+    const fatturaId = cf.rows[0]?.fattura_id;
+    if (fatturaId) {
+      const or = await pool.query('SELECT numero_fattura, stato_pagamento FROM ordini_fatturazione WHERE id=$1', [fatturaId]);
+      const ord = or.rows[0];
+      if (ord && !ord.numero_fattura && ord.stato_pagamento !== 'pagato') {
+        await pool.query('DELETE FROM ordini_fatturazione WHERE id=$1', [fatturaId]);
+      }
+    }
+    await pool.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=$2', [origine_tipo, origine_id]);
+  }
   catch (e) { console.error('⚠️ rimuoviUscita fallita (non bloccante):', e.message); }
 }
 

@@ -1924,7 +1924,7 @@ input,select,textarea{border-radius:8px;}
       <div class="flex-between mb-16" style="flex-wrap:wrap;gap:10px;">
         <div>
           <h2 class="page-title">🔄 Controllo Fatturazione</h2>
-          <p class="page-sub">Ogni uscita registrata (bollette, interventi, manutenzioni, documenti con importo) passa da qui: decidi se e come va rifatturata, oppure segnala che non lo è — nessuna spesa resta fuori dal flusso.</p>
+          <p class="page-sub">Ogni uscita registrata (bollette, interventi, manutenzioni, documenti con importo) passa da qui: decidi se e come va rifatturata, oppure segnala che non lo è — nessuna spesa resta fuori dal flusso. Quando segni "da fatturare" passa automaticamente allo <a href="#" onclick="event.preventDefault();showSection('fatturazione')" style="color:var(--accent);font-weight:600;">Schema Fatturazione</a>, evidenziata in giallo: è un unico flusso, non due elenchi separati.</p>
         </div>
         <div class="flex" style="gap:8px;flex-wrap:wrap;">
           <button class="btn btn-gray" onclick="document.getElementById('cf-reimport-file').click()">📥 Ricarica da contabile</button>
@@ -2031,7 +2031,7 @@ input,select,textarea{border-radius:8px;}
       <div class="flex-between mb-16">
         <div>
           <h2 class="page-title">🧾 Schema di Fatturazione</h2>
-          <p class="page-sub">Tutti i servizi da fatturare ai clienti — canoni, domiciliazioni, sale riunioni, box auto e servizi vari</p>
+          <p class="page-sub">Tutti i servizi da fatturare ai clienti — canoni, domiciliazioni, sale riunioni, box auto, servizi vari e le uscite marcate "da fatturare" dal <a href="#" onclick="event.preventDefault();showSection('controllofatt')" style="color:var(--accent);font-weight:600;">Controllo Fatturazione</a> (evidenziate in giallo qui sotto)</p>
         </div>
         <button class="btn btn-primary" onclick="openModalFatt()">+ Nuovo ordine</button>
       </div>

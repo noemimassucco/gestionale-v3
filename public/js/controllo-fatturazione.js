@@ -61,7 +61,10 @@ function _cfRenderList(data){
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Origine</th><th>Data</th><th>Fornitore</th><th>Descrizione</th><th>Importo</th><th>Rifatturabile</th><th>Attribuita a</th><th>Stato</th><th></th></tr></thead>
     <tbody>
-    ${data.map(r=>`<tr class="row-click" onclick="cfApriDecisione(${r.id})">
+    ${data.map(r=>{
+      const inSchema = !!r.fattura_id;
+      const rowBg = r.stato_decisione==='da_fatturare' ? 'background:rgba(250,204,21,.14);' : '';
+      return `<tr class="row-click" style="${rowBg}" onclick="cfApriDecisione(${r.id})">
       <td style="font-size:12px;">${CF_ORIGINE_LABEL[r.origine_tipo]||r.origine_tipo}</td>
       <td style="font-size:12px;">${r.data_documento?fmt(r.data_documento):'—'}</td>
       <td style="font-size:12px;">${esc(r.fornitore_nome||'—')}</td>
@@ -69,9 +72,10 @@ function _cfRenderList(data){
       <td class="td-price">€ ${parseFloat(r.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</td>
       <td style="font-size:12px;">${r.rifatturabile==='si'?'✅ Sì'+(r.modalita?' ('+r.modalita+')':''):r.rifatturabile==='no'?'❌ No':'❓ Da decidere'}</td>
       <td style="font-size:12px;">${esc(r.attribuito_a_nome||'—')}</td>
-      <td><span class="pill-stato" style="background:${CF_STATO_COLOR[r.stato_decisione]||'var(--bg2)'}22;color:${CF_STATO_COLOR[r.stato_decisione]||'var(--muted)'};">${CF_STATO_LABEL[r.stato_decisione]||r.stato_decisione}</span></td>
+      <td><span class="pill-stato" style="background:${CF_STATO_COLOR[r.stato_decisione]||'var(--bg2)'}22;color:${CF_STATO_COLOR[r.stato_decisione]||'var(--muted)'};">${CF_STATO_LABEL[r.stato_decisione]||r.stato_decisione}</span>
+        ${inSchema?`<span title="Presente nello Schema Fatturazione" style="margin-left:4px;font-size:9px;font-weight:700;color:#b8860b;background:rgba(250,204,21,.3);border-radius:8px;padding:1px 6px;">🧾 in Schema</span>`:''}</td>
       <td onclick="event.stopPropagation()"><button class="btn btn-xs btn-gray" onclick="cfApriDecisione(${r.id})">✏️</button></td>
-    </tr>`).join('')}
+    </tr>`;}).join('')}
     </tbody>
   </table></div>`;
 }
@@ -109,6 +113,15 @@ function cfToggleCampi(){
   show('cf-campo-criterio', isSi);
   if (!isSi) { show('cf-campo-attrib-select', false); show('cf-campo-attrib-testo', false); }
   else cfToggleAttrib();
+  // "Da fatturare" e "Fatturata" hanno senso solo se è stato deciso rifatturabile=sì —
+  // altrimenti non c'è nulla da spostare nello Schema Fatturazione: evita stati incoerenti.
+  const statoSel = document.getElementById('cf-stato');
+  if (statoSel) {
+    [...statoSel.options].forEach(o => {
+      if (o.value === 'da_fatturare' || o.value === 'fatturata') o.disabled = !isSi;
+    });
+    if (!isSi && (statoSel.value === 'da_fatturare' || statoSel.value === 'fatturata')) statoSel.value = 'da_decidere';
+  }
 }
 
 function cfToggleAttrib(){
@@ -148,7 +161,13 @@ async function cfSalvaDecisione(){
   const r = await api('/api/controllo-fatturazione/' + _cfEditId, { method:'PUT', body: JSON.stringify(body) });
   if (!r || r.error) { toast('Errore: ' + (r?.error||'salvataggio fallito'), 'error'); return; }
   closeM('modal-cf');
-  toast('🔄 Decisione salvata ✓');
+  // Flusso unico: "da fatturare" sposta automaticamente l'uscita nello Schema Fatturazione
+  // (evidenziata in giallo lì), quindi il messaggio riflette dove è finita davvero.
+  if (r.fattura_id && body.stato_decisione === 'da_fatturare') {
+    toast('🧾 Spostata nello Schema Fatturazione — evidenziata in giallo ✓');
+  } else {
+    toast('🔄 Decisione salvata ✓');
+  }
   loadControlloFatt();
 }
 

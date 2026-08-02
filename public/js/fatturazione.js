@@ -102,7 +102,11 @@ function renderFattTable(rows) {
   tbody.innerHTML = rows.map(o => {
     const isNc = !o.flag_contabilizzato;
     const isPending = o.stato_pagamento === 'non_pagato';
-    const rowBg = isNc ? 'background:rgba(239,68,68,.03);' : '';
+    // "Da fatturare" evidenziato in giallo — sia le rifatturazioni arrivate dal Controllo
+    // Fatturazione (uscite) sia, più in generale, qualunque ordine attivo non ancora fatturato/pagato,
+    // stesso colore usato per gli alert ISTAT in scadenza.
+    const isDaFatturare = o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato';
+    const rowBg = isDaFatturare ? 'background:rgba(250,204,21,.14);' : isNc ? 'background:rgba(239,68,68,.03);' : '';
     return `<tr style="${rowBg}cursor:pointer;" onclick="openFattDetail(${o.id})" title="Clicca per aprire — doppio click per modificare" ondblclick="event.stopPropagation();openEditFatt(${o.id})">
       <td><input type="checkbox" class="sel-check fatt-chk" data-id="${o.id}" onchange="fattChkChange(${o.id},this)"></td>
       <td>
@@ -110,7 +114,7 @@ function renderFattTable(rows) {
         ${o.sede_nome ? `<div style="font-size:10px;color:var(--muted);">${esc(o.sede_nome)}</div>` : ''}
       </td>
       <td>
-        <div style="font-size:12px;">${TIPI_SERVIZIO[o.tipo_servizio]||o.tipo_servizio}</div>
+        <div style="font-size:12px;">${TIPI_SERVIZIO[o.tipo_servizio]||o.tipo_servizio}${isDaFatturare?' <span style="font-size:9px;font-weight:700;color:#b8860b;background:rgba(250,204,21,.3);border-radius:8px;padding:1px 6px;">🟡 DA FATTURARE</span>':''}</div>
         <div style="font-size:11px;color:var(--muted);">${esc(o.nome_servizio||'')}</div>
       </td>
       <td>${o.sub_codice ? `<span class="badge badge-sede">${esc(o.sub_codice)}</span>` : '—'}</td>

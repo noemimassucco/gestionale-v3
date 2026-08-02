@@ -95,6 +95,67 @@ router.get('/api/controllo-fatturazione/:id', authMiddleware, async (req, res) =
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ═══════════════════════════════════════════════════════════
+// Sincronizzazione con lo Schema di Fatturazione: è un flusso UNICO — quando una
+// uscita viene marcata "da fatturare" qui, l'ordine corrispondente compare
+// automaticamente nello Schema Fatturazione (evidenziato in giallo), senza doverlo
+// ricreare a mano. Se la decisione cambia prima che la contabile l'abbia lavorato
+// (nessun numero fattura, non pagato), l'ordine generato viene rimosso di conseguenza.
+// ═══════════════════════════════════════════════════════════
+async function _syncOrdineFatturazione(pool, cf, userId) {
+  const vuoleOrdine = cf.rifatturabile === 'si' && cf.stato_decisione === 'da_fatturare';
+
+  if (vuoleOrdine && !cf.fattura_id) {
+    let sub_id = null, inquilino_id = null;
+    if (cf.attribuito_a_tipo === 'sub') sub_id = cf.attribuito_a_id;
+    else if (cf.attribuito_a_tipo === 'cliente') inquilino_id = cf.attribuito_a_id;
+    if (!sub_id && cf.sub_id) sub_id = cf.sub_id;
+    if (sub_id && !inquilino_id) {
+      const sr = await pool.query('SELECT inquilino_id FROM subs WHERE id=$1', [sub_id]).catch(() => null);
+      inquilino_id = sr?.rows[0]?.inquilino_id || null;
+    }
+    const importo = cf.modalita === 'parziale' ? (cf.quota_rifatturabile || cf.importo) : cf.importo;
+    const attribLabel = cf.attribuito_a_tipo === 'condominio' ? 'condominio/sede'
+      : cf.attribuito_a_tipo === 'commessa' ? `commessa: ${cf.attribuito_a_testo || ''}`
+      : cf.attribuito_a_tipo === 'centro_costo' ? `centro di costo: ${cf.attribuito_a_testo || ''}` : '';
+    const nomeServizio = `Rifatturazione: ${(cf.fornitore_nome || cf.descrizione || 'spesa').slice(0, 80)}`;
+    const descrizione = [cf.descrizione, attribLabel, cf.criterio_riparto ? `criterio: ${cf.criterio_riparto}` : null]
+      .filter(Boolean).join(' — ');
+    const rifData = cf.data_documento ? new Date(cf.data_documento) : new Date();
+    const r = await pool.query(
+      `INSERT INTO ordini_fatturazione
+        (sub_id,inquilino_id,tipo_servizio,nome_servizio,descrizione,importo,periodicita,stato,
+         mese_riferimento,anno_riferimento,stato_pagamento,note,created_by)
+       VALUES ($1,$2,'rifatturazione_spesa',$3,$4,$5,'una_tantum','attivo',$6,$7,'non_pagato',$8,$9)
+       RETURNING id`,
+      [sub_id, inquilino_id, nomeServizio, descrizione || null, importo,
+       rifData.getMonth() + 1, rifData.getFullYear(),
+       `Generato automaticamente dal Controllo Fatturazione (uscita #${cf.id} — ${cf.origine_tipo})`, userId]);
+    await pool.query('UPDATE controllo_fatturazione SET fattura_id=$1 WHERE id=$2', [r.rows[0].id, cf.id]);
+    return;
+  }
+
+  if (!vuoleOrdine && cf.fattura_id) {
+    const or = await pool.query('SELECT numero_fattura, stato_pagamento FROM ordini_fatturazione WHERE id=$1', [cf.fattura_id]).catch(() => null);
+    const ord = or?.rows[0];
+    if (ord && !ord.numero_fattura && ord.stato_pagamento !== 'pagato') {
+      await pool.query('DELETE FROM ordini_fatturazione WHERE id=$1', [cf.fattura_id]);
+      await pool.query('UPDATE controllo_fatturazione SET fattura_id=NULL WHERE id=$1', [cf.id]);
+    }
+    return;
+  }
+
+  if (vuoleOrdine && cf.fattura_id) {
+    // Resta "da fatturare": tieni l'importo dell'ordine allineato, se la contabile non l'ha già lavorato
+    const or = await pool.query('SELECT numero_fattura, stato_pagamento FROM ordini_fatturazione WHERE id=$1', [cf.fattura_id]).catch(() => null);
+    const ord = or?.rows[0];
+    if (ord && !ord.numero_fattura && ord.stato_pagamento !== 'pagato') {
+      const importo = cf.modalita === 'parziale' ? (cf.quota_rifatturabile || cf.importo) : cf.importo;
+      await pool.query('UPDATE ordini_fatturazione SET importo=$1, updated_at=NOW() WHERE id=$2', [importo, cf.fattura_id]).catch(() => {});
+    }
+  }
+}
+
 // Aggiorna SOLO i campi di decisione (mai i dati descrittivi, che restano allineati alla fonte)
 router.put('/api/controllo-fatturazione/:id', authMiddleware, async (req, res) => {
   const v = req.body;
@@ -110,16 +171,17 @@ router.put('/api/controllo-fatturazione/:id', authMiddleware, async (req, res) =
         criterio_riparto=$7,
         millesimi_tabella_id=$8,
         stato_decisione=COALESCE($9,stato_decisione),
-        fattura_id=$10,
-        note=$11,
+        note=$10,
         updated_at=NOW()
-      WHERE id=$12 RETURNING *`,
+      WHERE id=$11 RETURNING *`,
       [v.rifatturabile||null, v.modalita||null, v.quota_rifatturabile||null,
        v.attribuito_a_tipo||null, v.attribuito_a_id||null, v.attribuito_a_testo||null,
        v.criterio_riparto||null, v.millesimi_tabella_id||null, v.stato_decisione||null,
-       v.fattura_id||null, v.note||null, req.params.id]);
+       v.note||null, req.params.id]);
     if (!r.rows.length) return res.status(404).json({ error: 'Non trovato' });
-    res.json(r.rows[0]);
+    await _syncOrdineFatturazione(pool, r.rows[0], req.user.id);
+    const fresh = await pool.query(`${SELECT_BASE} WHERE c.id=$1`, [req.params.id]);
+    res.json(fresh.rows[0] || r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

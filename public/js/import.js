@@ -84,6 +84,7 @@ function _xMapCols(cols,MAP){
     let bi=-1,bScore=-1;
     variants.forEach(v=>{
       const nv=_xNorm(v);
+      if(!nv)return; // sinonimo che si riduce a stringa vuota (es. simboli) non deve "rubare" colonne
       low.forEach((c,i)=>{
         if(usati.has(i)||!c)return;
         let score=-1;

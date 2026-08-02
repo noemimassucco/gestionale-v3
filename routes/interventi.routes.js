@@ -212,7 +212,13 @@ router.post('/api/interventi/import-storico', authMiddleware, async (req, res) =
     };
     const parsePrice=v=>{
       if(!v)return null;
-      const s=String(v).replace(/[€$£\s]/g,'').replace(',','.');
+      if(typeof v==='number')return v;
+      let s=String(v).replace(/[€$£\s]/g,'').trim();
+      if(!s)return null;
+      // Formato italiano "1.234,56" → 1234.56 (punto=migliaia, virgola=decimali);
+      // altrimenti tratta il punto come separatore decimale normale (es. "1234.56")
+      if(/,\d{1,2}$/.test(s)) s=s.replace(/\./g,'').replace(',','.');
+      else s=s.replace(/,/g,'');
       const n=parseFloat(s);
       return isNaN(n)?null:n;
     };
