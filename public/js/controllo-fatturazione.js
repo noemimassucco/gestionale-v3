@@ -6,14 +6,45 @@
 
 let _cfEditId = null;
 let _cfCache = [];
+let _cfTab = 'sospeso'; // sospeso | rifatturate | non_rifatturate
+
+// Stati raggruppati per tab: "in sospeso" = tutto ciò che non è ancora una decisione definitiva
+// (compreso "da fatturare", che è già passato allo Schema Fatturazione ma non è ancora stato
+// effettivamente fatturato dalla contabile). Una volta segnata "non rifatturabile" una spesa
+// esce dalla vista di default e finisce solo nella tab dedicata — non resta a intasare la lista.
+const CF_TAB_STATI = {
+  sospeso: ['da_decidere', 'sospesa', 'da_fatturare'],
+  rifatturate: ['fatturata'],
+  non_rifatturate: ['non_rifatturabile'],
+};
+
+function cfSwitchTab(tab){
+  _cfTab = tab;
+  document.querySelectorAll('.cf-tab-btn').forEach(b => {
+    const active = b.dataset.tab === tab;
+    b.style.color        = active ? 'var(--primary-dark)' : 'var(--muted)';
+    b.style.fontWeight   = active ? '600' : '500';
+    b.style.borderBottom = active ? '2px solid var(--primary)' : '2px solid transparent';
+  });
+  // Il filtro per periodo di fatturazione (mese/anno) ha senso solo per la tab "Rifatturate"
+  const showPeriodo = tab === 'rifatturate';
+  const elA = document.getElementById('cf-campo-f-anno'), elM = document.getElementById('cf-campo-f-mese');
+  if (elA) elA.style.display = showPeriodo ? '' : 'none';
+  if (elM) elM.style.display = showPeriodo ? '' : 'none';
+  loadControlloFatt();
+}
 
 async function loadControlloFatt(){
   const p = new URLSearchParams();
   const v = id => document.getElementById(id)?.value || '';
+  p.set('stato_decisione', (CF_TAB_STATI[_cfTab] || []).join(','));
   if (v('cf-f-rifatt')) p.set('rifatturabile', v('cf-f-rifatt'));
-  if (v('cf-f-stato')) p.set('stato_decisione', v('cf-f-stato'));
   if (v('cf-f-origine')) p.set('origine_tipo', v('cf-f-origine'));
   if (v('cf-f-search')) p.set('search', v('cf-f-search'));
+  if (_cfTab === 'rifatturate') {
+    if (v('cf-f-anno-fattura')) p.set('anno_fattura', v('cf-f-anno-fattura'));
+    if (v('cf-f-mese-fattura')) p.set('mese_fattura', v('cf-f-mese-fattura'));
+  }
 
   const [data, riep] = await Promise.all([
     api('/api/controllo-fatturazione?' + p),
@@ -22,6 +53,25 @@ async function loadControlloFatt(){
   if (data) _cfCache = data;
   _cfRenderRiepilogo(riep);
   _cfRenderList(data || []);
+}
+
+// Azione rapida direttamente dalla riga: segna "non rifatturabile" senza aprire la modale.
+// Ripulisce anche i campi di attribuzione/modalità (non più rilevanti) mantenendo le note esistenti,
+// e — se era già "da fatturare" con un ordine non ancora lavorato dalla contabile — lo rimuove
+// automaticamente dallo Schema Fatturazione (gestito lato server da _syncOrdineFatturazione).
+async function cfNonRifatturabile(id, ev){
+  ev?.stopPropagation();
+  const r = _cfCache.find(x => x.id === id);
+  if (!r) return;
+  const body = {
+    rifatturabile: 'no', modalita: null, quota_rifatturabile: null,
+    attribuito_a_tipo: null, attribuito_a_id: null, attribuito_a_testo: null,
+    criterio_riparto: null, stato_decisione: 'non_rifatturabile', note: r.note || null,
+  };
+  const res = await api('/api/controllo-fatturazione/' + id, { method: 'PUT', body: JSON.stringify(body) });
+  if (!res || res.error) { toast('Errore: ' + (res?.error || 'salvataggio fallito'), 'error'); return; }
+  toast('🚫 Segnata come non rifatturabile — tolta dalla lista');
+  loadControlloFatt();
 }
 
 function _cfRenderRiepilogo(r){
@@ -50,7 +100,7 @@ function _cfRenderRiepilogo(r){
   </div>`;
 }
 
-const CF_ORIGINE_LABEL = { bolletta:'⚡ Bolletta', intervento:'🛠️ Intervento', manutenzione:'🔨 Manutenzione', documento:'📄 Documento' };
+const CF_ORIGINE_LABEL = { bolletta:'⚡ Bolletta', intervento:'🛠️ Intervento', manutenzione:'🔨 Manutenzione', documento:'📄 Documento', ripartizione_condominiale:'📐 Spesa condominiale' };
 const CF_STATO_LABEL = { da_decidere:'Da decidere', da_fatturare:'Da fatturare', fatturata:'Fatturata', sospesa:'Sospesa', non_rifatturabile:'Non rifatturabile' };
 const CF_STATO_COLOR = { da_decidere:'var(--muted)', da_fatturare:'var(--warning)', fatturata:'var(--success)', sospesa:'var(--orange)', non_rifatturabile:'var(--muted-2)' };
 
@@ -74,7 +124,10 @@ function _cfRenderList(data){
       <td style="font-size:12px;">${esc(r.attribuito_a_nome||'—')}</td>
       <td><span class="pill-stato" style="background:${CF_STATO_COLOR[r.stato_decisione]||'var(--bg2)'}22;color:${CF_STATO_COLOR[r.stato_decisione]||'var(--muted)'};">${CF_STATO_LABEL[r.stato_decisione]||r.stato_decisione}</span>
         ${inSchema?`<span title="Presente nello Schema Fatturazione" style="margin-left:4px;font-size:9px;font-weight:700;color:#b8860b;background:rgba(250,204,21,.3);border-radius:8px;padding:1px 6px;">🧾 in Schema</span>`:''}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-xs btn-gray" onclick="cfApriDecisione(${r.id})">✏️</button></td>
+      <td onclick="event.stopPropagation()"><div style="display:flex;gap:4px;">
+        <button class="btn btn-xs btn-gray" onclick="cfApriDecisione(${r.id})" title="Apri decisione">✏️</button>
+        ${r.stato_decisione!=='non_rifatturabile' ? `<button class="btn btn-xs btn-danger" onclick="cfNonRifatturabile(${r.id},event)" title="Segna non rifatturabile — la toglie dalla lista">🚫</button>` : ''}
+      </div></td>
     </tr>`;}).join('')}
     </tbody>
   </table></div>`;

@@ -28,14 +28,24 @@ const SELECT_BASE = `
 `;
 
 router.get('/api/controllo-fatturazione', authMiddleware, async (req, res) => {
-  const { stato_decisione, rifatturabile, sede_id, sub_id, origine_tipo, search, anno } = req.query;
+  const { stato_decisione, rifatturabile, sede_id, sub_id, origine_tipo, search, anno, mese, anno_fattura, mese_fattura } = req.query;
   let where = ['1=1'], params = [], p = 1;
-  if (stato_decisione) { where.push(`c.stato_decisione=$${p++}`); params.push(stato_decisione); }
+  if (stato_decisione) {
+    // Supporta più stati insieme (es. tab "In sospeso" = da_decidere,sospesa,da_fatturare)
+    const vals = String(stato_decisione).split(',').map(s => s.trim()).filter(Boolean);
+    if (vals.length === 1) { where.push(`c.stato_decisione=$${p++}`); params.push(vals[0]); }
+    else if (vals.length > 1) { where.push(`c.stato_decisione = ANY($${p++})`); params.push(vals); }
+  }
   if (rifatturabile)   { where.push(`c.rifatturabile=$${p++}`); params.push(rifatturabile); }
   if (sede_id)         { where.push(`c.sede_id=$${p++}`); params.push(sede_id); }
   if (sub_id)          { where.push(`c.sub_id=$${p++}`); params.push(sub_id); }
   if (origine_tipo)    { where.push(`c.origine_tipo=$${p++}`); params.push(origine_tipo); }
   if (anno)            { where.push(`EXTRACT(YEAR FROM c.data_documento)=$${p++}`); params.push(anno); }
+  if (mese)            { where.push(`EXTRACT(MONTH FROM c.data_documento)=$${p++}`); params.push(mese); }
+  // Periodo di fatturazione effettivo (mese/anno dell'ordine collegato in Schema Fatturazione,
+  // quello di QUANDO è stata messa a fatturare, non della spesa originale) — per la tab "Rifatturate"
+  if (anno_fattura)    { where.push(`of.anno_riferimento=$${p++}`); params.push(anno_fattura); }
+  if (mese_fattura)    { where.push(`of.mese_riferimento=$${p++}`); params.push(mese_fattura); }
   if (search)          { where.push(`(c.fornitore_nome ILIKE $${p} OR c.descrizione ILIKE $${p} OR c.protocollo ILIKE $${p})`); params.push(`%${search}%`); p++; }
   try {
     const r = await pool.query(`${SELECT_BASE} WHERE ${where.join(' AND ')} ORDER BY c.data_documento DESC NULLS LAST, c.id DESC`, params);

@@ -33,7 +33,7 @@ async function openFattDetail(id) {
         <div class="detail-row"><span>Stato pagamento</span><strong style="color:${statusColor[obj.stato_pagamento]||'var(--muted)'};">${statusLabel[obj.stato_pagamento]||obj.stato_pagamento||'—'}</strong></div>
         ${obj.data_pagamento ? `<div class="detail-row"><span>Data pagamento</span><strong>${fmt(obj.data_pagamento)}</strong></div>` : ''}
         ${obj.importo_pagato ? `<div class="detail-row"><span>Importo pagato</span><strong>€ ${parseFloat(obj.importo_pagato).toLocaleString('it-IT',{minimumFractionDigits:2})}</strong></div>` : ''}
-        <div class="detail-row"><span>Contabilizzato</span><strong>${obj.flag_contabilizzato ? '✅ Sì' : '🔴 No'}</strong></div>
+        <div class="detail-row"><span>Fatturato</span><strong>${obj.numero_fattura ? '🧾 Sì — n.'+esc(obj.numero_fattura) : '⏳ Non ancora'}</strong></div>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -54,7 +54,6 @@ async function openFattDetail(id) {
     <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
       ${obj.stato_pagamento !== 'pagato' ? `<button class="btn btn-success btn-sm" onclick="fattPaga(${obj.id});closeM('modal-fatt-detail')">💳 Segna pagato</button>` : ''}
       <button class="btn btn-sm" style="background:rgba(107,142,107,.15);color:#93c5fd;" onclick="closeM('modal-fatt-detail');openEditFatt(${obj.id})">✏️ Modifica</button>
-      ${!obj.flag_contabilizzato ? `<button class="btn btn-sm btn-gray" onclick="fattToggleContabilizza(${obj.id});closeM('modal-fatt-detail');loadFatturazione()">📋 Contabilizza</button>` : ''}
     </div>`;
 
   document.getElementById('fatt-detail-title').textContent =
@@ -70,11 +69,11 @@ async function loadFatturazione() {
   const anno = document.getElementById('fatt-f-anno')?.value;
   const mese = document.getElementById('fatt-f-mese')?.value;
   const stato = document.getElementById('fatt-f-stato')?.value;
-  const cont = document.getElementById('fatt-f-cont')?.value;
+  const fatt = document.getElementById('fatt-f-fatt')?.value;
   if (anno) p.set('anno', anno);
   if (mese) p.set('mese', mese);
   if (stato) p.set('stato_pagamento', stato);
-  if (cont !== undefined && cont !== '') p.set('contabilizzato', cont);
+  if (fatt !== undefined && fatt !== '') p.set('fatturato', fatt);
 
   const [data, istatAlert] = await Promise.all([
     api('/api/fatturazione?' + p),
@@ -93,7 +92,6 @@ async function loadFatturazione() {
   renderFattTable(_fattData);
   renderFattKpi(_fattData);
   renderIstatAlert(istatAlert || []);
-  renderNonContabilizzati(_fattData);
 }
 
 function renderFattTable(rows) {
@@ -102,14 +100,18 @@ function renderFattTable(rows) {
   if (cnt) cnt.textContent = rows.length ? rows.length + ' ordini' : '';
   if (!rows.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">Nessun ordine per i filtri selezionati</div>'; return; }
   grid.innerHTML = rows.map(o => {
-    const isNc = !o.flag_contabilizzato;
     const isPending = o.stato_pagamento === 'non_pagato';
+    const isFatturato = !!o.numero_fattura;
     // "Da fatturare" evidenziato in giallo — sia le rifatturazioni arrivate dal Controllo
     // Fatturazione (uscite) sia, più in generale, qualunque ordine attivo non ancora fatturato/pagato,
     // stesso colore usato per gli alert ISTAT in scadenza.
     const isDaFatturare = o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato';
-    const borderColor = isDaFatturare ? '#eab308' : isNc ? 'var(--red)' : o.stato_pagamento === 'pagato' ? 'var(--green)' : 'var(--border)';
+    const borderColor = isDaFatturare ? '#eab308' : o.stato_pagamento === 'pagato' ? 'var(--green)' : 'var(--border)';
     const bg = isDaFatturare ? 'background:rgba(250,204,21,.08);' : '';
+    // Ciò che conta davvero: è da fatturare o no · è stata fatturata (dopo il reimport dalla contabile) · è pagata.
+    const fatturatoBadge = isFatturato
+      ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(37,99,235,.12);color:#2563eb;">🧾 Fatturato n.${esc(o.numero_fattura)}</span>`
+      : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg2);color:var(--muted);">⏳ Non ancora fatturato</span>`;
     const pagamentoBadge = o.stato_pagamento === 'pagato'
       ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(16,185,129,.15);color:var(--green);">✅ Pagato</span>`
       : o.stato_pagamento === 'parziale'
@@ -132,24 +134,17 @@ function renderFattTable(rows) {
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(o.nome_servizio||'')}</div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 8px;">
-        <div style="font-size:11px;color:var(--muted);">
-          ${o.mese_riferimento ? MESI_NOMI[o.mese_riferimento] : '—'} ${o.anno_riferimento || ''}
-          ${o.numero_fattura ? ` · n.${esc(o.numero_fattura)}` : ''}
-        </div>
+        <div style="font-size:11px;color:var(--muted);">${o.mese_riferimento ? MESI_NOMI[o.mese_riferimento] : '—'} ${o.anno_riferimento || ''}</div>
         <div class="td-price" style="font-size:15px;">€ ${parseFloat(o.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
-        <div style="display:flex;gap:6px;align-items:center;">
-          ${pagamentoBadge}
-          ${o.flag_contabilizzato
-            ? `<button class="btn btn-xs" style="background:rgba(16,185,129,.1);color:var(--green);" onclick="event.stopPropagation();fattToggleContabilizza(${o.id})" title="Contabilizzato">✅</button>`
-            : `<button class="btn btn-xs btn-danger" onclick="event.stopPropagation();fattToggleContabilizza(${o.id})" title="Non contabilizzato — clicca per contabilizzare">🔴</button>`}
-        </div>
-        <div style="display:flex;gap:4px;">
-          ${isPending ? `<button class="btn btn-success btn-xs" onclick="event.stopPropagation();fattPaga(${o.id})" title="Segna pagato">💳</button>` : ''}
-          <button class="btn btn-edit btn-xs" onclick="event.stopPropagation();openEditFatt(${o.id})" title="Modifica">✏️</button>
-          <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delFatt(${o.id})" title="Elimina">✕</button>
-        </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        ${fatturatoBadge}
+        ${pagamentoBadge}
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:4px;">
+        ${isPending ? `<button class="btn btn-success btn-xs" onclick="event.stopPropagation();fattPaga(${o.id})" title="Segna pagato">💳</button>` : ''}
+        <button class="btn btn-edit btn-xs" onclick="event.stopPropagation();openEditFatt(${o.id})" title="Modifica">✏️</button>
+        <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delFatt(${o.id})" title="Elimina">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -161,25 +156,14 @@ function renderFattKpi(rows) {
   const totale = rows.reduce((s, o) => s + parseFloat(o.importo || 0), 0);
   const pagato = rows.filter(o => o.stato_pagamento === 'pagato').reduce((s, o) => s + parseFloat(o.importo || 0), 0);
   const nonPagato = rows.filter(o => o.stato_pagamento !== 'pagato').reduce((s, o) => s + parseFloat(o.importo || 0), 0);
-  const nonContab = rows.filter(o => !o.flag_contabilizzato).length;
+  const daFatturare = rows.filter(o => o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato').length;
   el.innerHTML = [
     { label: 'Totale ordini', val: rows.length, color: 'var(--info)' },
     { label: 'Totale importi', val: '€ ' + totale.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: 'var(--accent)' },
     { label: 'Incassato', val: '€ ' + pagato.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: 'var(--green)' },
     { label: 'Da incassare', val: '€ ' + nonPagato.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: nonPagato > 0 ? 'var(--red)' : 'var(--muted)' },
-    { label: 'Non contabilizzati', val: nonContab, color: nonContab > 0 ? 'var(--orange)' : 'var(--muted)' },
+    { label: 'Da fatturare', val: daFatturare, color: daFatturare > 0 ? '#b8860b' : 'var(--muted)' },
   ].map(k => `<div class="home-kpi-card"><div class="stat-label">${k.label}</div><div style="font-size:18px;font-weight:700;color:${k.color};font-family:monospace;">${k.val}</div></div>`).join('');
-}
-
-function renderNonContabilizzati(rows) {
-  const nc = rows.filter(o => !o.flag_contabilizzato);
-  const banner = document.getElementById('fatt-nc-banner');
-  const list = document.getElementById('fatt-nc-list');
-  if (!nc.length) { banner?.classList.add('hidden'); return; }
-  banner?.classList.remove('hidden');
-  list.innerHTML = nc.slice(0, 5).map(o =>
-    `${esc(o.cliente_nome || '—')} — ${esc(o.nome_servizio || o.tipo_servizio)} — €${parseFloat(o.importo || 0).toLocaleString('it-IT', {maximumFractionDigits: 0})}`
-  ).join(' · ') + (nc.length > 5 ? ` · e altri ${nc.length - 5}` : '');
 }
 
 function renderIstatAlert(rows) {

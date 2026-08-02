@@ -1362,6 +1362,19 @@ input,select,textarea{border-radius:8px;}
           <div id="storico-wiz" style="display:none;margin-top:14px;"></div>
         </div>
 
+        <!-- Spese condominiali con ripartizione automatica per millesimi -->
+        <div class="card">
+          <div class="card-title">📐 Import Spese Condominiali (ripartizione automatica)</div>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Importa spese condominiali complessive per sede: ogni spesa viene ripartita automaticamente fra tutti i SUB in base ai millesimi già impostati sulla loro scheda. Ogni quota entra come uscita nel <a href="#" onclick="event.preventDefault();showSection('controllofatt')" style="color:var(--accent);font-weight:600;">Controllo Fatturazione</a>.</p>
+          <div style="background:#fef3c7;border:1px solid rgba(184,134,11,.2);border-radius:7px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:#b8860b;">⚠️ Prima configura i millesimi dei SUB (scheda SUB → tab 📐 Millesimi)</div>
+          <div class="import-zone" onclick="document.getElementById('speseCondoFile').click()">
+            <div style="font-size:22px;margin-bottom:5px;">📂</div>
+            <div style="font-size:13px;font-weight:600;">Seleziona file .xlsx spese condominiali</div>
+          </div>
+          <input type="file" id="speseCondoFile" accept=".xlsx,.xls" style="display:none" onchange="loadSpeseCondoImport(this)">
+          <div id="spesecondo-wiz" style="display:none;margin-top:14px;"></div>
+        </div>
+
       </div>
 
       <!-- Export / Backup -->
@@ -1938,6 +1951,13 @@ input,select,textarea{border-radius:8px;}
 
       <div id="cf-riepilogo" style="margin-bottom:16px;"></div>
 
+      <!-- TAB: In sospeso / Rifatturate / Non rifatturate -->
+      <div class="flex" style="gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);">
+        <button class="clienti-tab-btn cf-tab-btn" data-tab="sospeso" onclick="cfSwitchTab('sospeso')">⏳ In sospeso</button>
+        <button class="clienti-tab-btn cf-tab-btn" data-tab="rifatturate" onclick="cfSwitchTab('rifatturate')">✅ Rifatturate</button>
+        <button class="clienti-tab-btn cf-tab-btn" data-tab="non_rifatturate" onclick="cfSwitchTab('non_rifatturate')">🚫 Non rifatturate</button>
+      </div>
+
       <div class="card" style="margin-bottom:16px;">
         <div class="form-grid">
           <div class="field"><label>Rifatturabile</label>
@@ -1948,14 +1968,16 @@ input,select,textarea{border-radius:8px;}
               <option value="da_decidere">Da decidere</option>
             </select>
           </div>
-          <div class="field"><label>Stato</label>
-            <select id="cf-f-stato" onchange="loadControlloFatt()">
+          <div class="field" id="cf-campo-f-anno" style="display:none;"><label>Anno fatturazione</label>
+            <input type="number" id="cf-f-anno-fattura" placeholder="2026" onchange="loadControlloFatt()">
+          </div>
+          <div class="field" id="cf-campo-f-mese" style="display:none;"><label>Mese fatturazione</label>
+            <select id="cf-f-mese-fattura" onchange="loadControlloFatt()">
               <option value="">Tutti</option>
-              <option value="da_decidere">Da decidere</option>
-              <option value="da_fatturare">Da fatturare</option>
-              <option value="fatturata">Fatturata</option>
-              <option value="sospesa">Sospesa</option>
-              <option value="non_rifatturabile">Non rifatturabile</option>
+              <option value="1">Gennaio</option><option value="2">Febbraio</option><option value="3">Marzo</option>
+              <option value="4">Aprile</option><option value="5">Maggio</option><option value="6">Giugno</option>
+              <option value="7">Luglio</option><option value="8">Agosto</option><option value="9">Settembre</option>
+              <option value="10">Ottobre</option><option value="11">Novembre</option><option value="12">Dicembre</option>
             </select>
           </div>
           <div class="field"><label>Origine</label>
@@ -1965,6 +1987,7 @@ input,select,textarea{border-radius:8px;}
               <option value="intervento">Intervento</option>
               <option value="manutenzione">Manutenzione</option>
               <option value="documento">Documento</option>
+              <option value="ripartizione_condominiale">Spesa condominiale</option>
             </select>
           </div>
           <div class="field"><label>Cerca</label><input id="cf-f-search" placeholder="fornitore, descrizione, protocollo…" onkeydown="if(event.key==='Enter')loadControlloFatt()"></div>
@@ -2069,11 +2092,11 @@ input,select,textarea{border-radius:8px;}
               <option value="parziale">⚠️ Parziale</option>
             </select>
           </div>
-          <div class="field"><label>Contabilizzato</label>
-            <select id="fatt-f-cont" onchange="loadFatturazione()">
+          <div class="field"><label>Fatturato</label>
+            <select id="fatt-f-fatt" onchange="loadFatturazione()">
               <option value="">Tutti</option>
-              <option value="false">🔴 Non contab.</option>
-              <option value="true">✅ Contabilizzato</option>
+              <option value="false">⏳ Non ancora</option>
+              <option value="true">🧾 Fatturato</option>
             </select>
           </div>
           <div class="field"><label>Cliente / SUB</label>
@@ -2088,12 +2111,6 @@ input,select,textarea{border-radius:8px;}
       <!-- KPI ROW -->
       <div id="fatt-kpi" class="home-kpi" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-bottom:14px;"></div>
 
-      <!-- NON CONTABILIZZATI WARNING -->
-      <div id="fatt-nc-banner" class="hidden" style="background:#fee2e2;border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:600;color:var(--red);">🚨 Ordini non contabilizzati — richiedono attenzione</div>
-        <div id="fatt-nc-list" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>
-      </div>
-
       <!-- ORDINI (card list) -->
       <div class="flex-between" style="margin-bottom:10px;">
         <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer;user-select:none;">
@@ -2105,7 +2122,6 @@ input,select,textarea{border-radius:8px;}
       <div id="fatt-bulk-bar" class="hidden" style="position:sticky;bottom:14px;margin-top:14px;padding:10px 14px;background:#fff;border:1px solid rgba(107,142,107,.25);border-radius:10px;box-shadow:0 6px 20px rgba(60,70,50,.14);display:flex;gap:8px;align-items:center;">
         <span id="fatt-bulk-cnt" style="font-size:12px;font-weight:600;color:var(--accent);">0 selezionati</span>
         <button class="btn btn-success btn-sm" onclick="fattBulkPaga()">✅ Segna pagati</button>
-        <button class="btn btn-sm" style="background:#fef3c7;color:#7a5a08;" onclick="fattBulkContabilizza()">📋 Contabilizza</button>
         <button class="btn btn-danger btn-sm" onclick="fattBulkElimina()">🗑 Elimina</button>
       </div>
 
@@ -3276,6 +3292,7 @@ input,select,textarea{border-radius:8px;}
   <script src="js/analytics.js?v=10"></script>
   <script src="js/finanze.js?v=10"></script>
   <script src="js/controllo-fatturazione.js?v=1"></script>
+  <script src="js/spese-condominiali.js?v=1"></script>
   <script src="js/misc.js?v=10"></script>
   <script src="js/cmdk.js?v=10"></script>
   <!-- app.js — init entry point (loaded last) -->

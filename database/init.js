@@ -378,6 +378,37 @@ async function initDB() {
       ON CONFLICT (origine_tipo, origine_id) DO NOTHING;
     `).catch(()=>{});
 
+    // ── Spese condominiali: una spesa complessiva per sede, ripartita automaticamente
+    // per SUB in base ai millesimi (tabella millesimale scelta) — ogni quota entra poi
+    // nel flusso unico di Controllo Fatturazione come una normale "uscita". ──────────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS spese_condominiali (
+        id SERIAL PRIMARY KEY,
+        sede_id INTEGER REFERENCES sedi(id) ON DELETE SET NULL,
+        tabella_millesimale_id INTEGER REFERENCES millesimi_tabelle(id) ON DELETE SET NULL,
+        data_spesa DATE,
+        descrizione TEXT,
+        fornitore_nome VARCHAR(300),
+        protocollo VARCHAR(100),
+        importo_totale DECIMAL(12,2) NOT NULL,
+        importo_ripartito DECIMAL(12,2) DEFAULT 0,
+        sub_senza_millesimi INTEGER DEFAULT 0,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS spese_condominiali_ripartizioni (
+        id SERIAL PRIMARY KEY,
+        spesa_condominiale_id INTEGER REFERENCES spese_condominiali(id) ON DELETE CASCADE,
+        sub_id INTEGER REFERENCES subs(id) ON DELETE CASCADE,
+        millesimo DECIMAL(10,4),
+        quota DECIMAL(12,2),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(spesa_condominiale_id, sub_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_spesecondo_sede ON spese_condominiali(sede_id);
+      CREATE INDEX IF NOT EXISTS idx_spesecondorip_sub ON spese_condominiali_ripartizioni(sub_id);
+    `).catch(()=>{});
+
     // Step 5: Indici DB per performance
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_interventi_sub ON interventi(sub_id);

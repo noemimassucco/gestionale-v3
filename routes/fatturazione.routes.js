@@ -4,12 +4,14 @@ const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 
 router.get('/api/fatturazione', authMiddleware, async (req, res) => {
-  const { anno, mese, stato_pagamento, contabilizzato, sub_id, inquilino_id } = req.query;
+  const { anno, mese, stato_pagamento, contabilizzato, fatturato, sub_id, inquilino_id } = req.query;
   let where = ['1=1'], params = [], p = 1;
   if (anno) { where.push(`o.anno_riferimento=$${p++}`); params.push(parseInt(anno)); }
   if (mese) { where.push(`o.mese_riferimento=$${p++}`); params.push(parseInt(mese)); }
   if (stato_pagamento) { where.push(`o.stato_pagamento=$${p++}`); params.push(stato_pagamento); }
   if (contabilizzato !== undefined && contabilizzato !== '') { where.push(`o.flag_contabilizzato=$${p++}`); params.push(contabilizzato === 'true'); }
+  // "Fatturato" = numero_fattura valorizzato — di solito arriva dal reimport della contabile
+  if (fatturato !== undefined && fatturato !== '') { where.push(fatturato === 'true' ? `o.numero_fattura IS NOT NULL` : `o.numero_fattura IS NULL`); }
   if (sub_id) { where.push(`o.sub_id=$${p++}`); params.push(sub_id); }
   if (inquilino_id) { where.push(`o.inquilino_id=$${p++}`); params.push(inquilino_id); }
   try {
