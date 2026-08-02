@@ -825,6 +825,7 @@ async function renderSubDetTab(tab) {
       </div>
     </div></div>`
     +_subDocFolder('🏢 Spese condominiali','condominiale','Carica qui riparti, verbali assemblea e rendiconti condominiali (con importo e scadenza).');
+    if(typeof wowNumbers==='function')wowNumbers(el);
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
   }else if(tab==='interventi'){
@@ -1218,22 +1219,22 @@ function renderTabEconomico(data) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px;">
       <div class="card" style="padding:13px 15px;margin:0;">
         <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Entrate ${annoCorr}</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--success);">${eur0(entAnno)}</div>
+        <div class="wow-num" style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--success);">${eur0(entAnno)}</div>
         <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${canoneMese?'canone '+eur0(canoneMese)+'/mese':'canone non impostato'}</div>
       </div>
       <div class="card" style="padding:13px 15px;margin:0;">
         <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Uscite ${annoCorr}</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--terra,#c2542e);">${eur0(usciteAnno)}</div>
+        <div class="wow-num" style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:var(--terra,#c2542e);">${eur0(usciteAnno)}</div>
         <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">interventi + manutenzioni + bollette</div>
       </div>
       <div class="card" style="padding:13px 15px;margin:0;">
         <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Netto ${annoCorr}</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${nettoAnno>=0?'var(--success)':'var(--danger)'};">${nettoAnno>=0?'+':''}${eur0(nettoAnno)}</div>
+        <div class="wow-num" style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${nettoAnno>=0?'var(--success)':'var(--danger)'};">${nettoAnno>=0?'+':''}${eur0(nettoAnno)}</div>
         <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">storico: ${ec.profittoNetto>=0?'+':''}${eur0(ec.profittoNetto)}</div>
       </div>
       <div class="card" style="padding:13px 15px;margin:0;">
         <div style="font-size:9.5px;color:var(--muted-2);text-transform:uppercase;letter-spacing:1.6px;font-weight:700;margin-bottom:6px;">Da incassare</div>
-        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${insoluti.length?'var(--danger)':'var(--success)'};">${eur0(insTot)}</div>
+        <div class="wow-num" style="font-family:'Fraunces',serif;font-size:22px;font-weight:600;color:${insoluti.length?'var(--danger)':'var(--success)'};">${eur0(insTot)}</div>
         <div style="font-size:10.5px;color:var(--muted);margin-top:3px;">${insoluti.length?insoluti.length+' canoni insoluti':'tutto in regola ✓'}</div>
       </div>
     </div>

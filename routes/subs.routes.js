@@ -204,15 +204,15 @@ router.post('/api/subs/import-bulk', authMiddleware, async (req, res) => {
         const existing = await client.query('SELECT id FROM subs WHERE codice=$1', [codice]);
         if (existing.rows.length) {
           await client.query(
-            'UPDATE subs SET sede_id=COALESCE($1,sede_id),piano=COALESCE($2,piano),indirizzo_completo=COALESCE($3,indirizzo_completo),foglio=COALESCE($4,foglio),particella=COALESCE($5,particella),subalterno=COALESCE($6,subalterno),categoria_cat=COALESCE($7,categoria_cat),mq_commerciali=COALESCE($8::numeric,mq_commerciali),mq_calpestabili=COALESCE($9::numeric,mq_calpestabili),rendita=COALESCE($10::numeric,rendita),stato_occupazione=COALESCE($11,stato_occupazione),classe_energetica=COALESCE($12,classe_energetica),anno_costruzione=COALESCE($13::int,anno_costruzione),millesimi=COALESCE($14::numeric,millesimi) WHERE id=$15',
-            [sede_id,row.piano||null,row.indirizzo_completo||null,row.foglio||null,row.particella||null,row.subalterno||null,row.categoria_cat||null,row.mq_commerciali||null,row.mq_calpestabili||null,row.rendita||null,row.stato_occupazione||null,row.classe_energetica||null,row.anno_costruzione||null,row.millesimi||null,existing.rows[0].id]
+            'UPDATE subs SET ex_sub=COALESCE($16,ex_sub),sede_id=COALESCE($1,sede_id),piano=COALESCE($2,piano),indirizzo_completo=COALESCE($3,indirizzo_completo),foglio=COALESCE($4,foglio),particella=COALESCE($5,particella),subalterno=COALESCE($6,subalterno),categoria_cat=COALESCE($7,categoria_cat),mq_commerciali=COALESCE($8::numeric,mq_commerciali),mq_calpestabili=COALESCE($9::numeric,mq_calpestabili),rendita=COALESCE($10::numeric,rendita),stato_occupazione=COALESCE($11,stato_occupazione),classe_energetica=COALESCE($12,classe_energetica),anno_costruzione=COALESCE($13::int,anno_costruzione),millesimi=COALESCE($14::numeric,millesimi) WHERE id=$15',
+            [sede_id,row.piano||null,row.indirizzo_completo||null,row.foglio||null,row.particella||null,row.subalterno||null,row.categoria_cat||null,row.mq_commerciali||null,row.mq_calpestabili||null,row.rendita||null,row.stato_occupazione||null,row.classe_energetica||null,row.anno_costruzione||null,row.millesimi||null,existing.rows[0].id,row.ex_sub||null]
           );
           updated++;
         } else {
           const nr = await client.query(
-            `INSERT INTO subs (codice,ex_sub,sede_id,piano,indirizzo_completo,foglio,particella,subalterno,categoria_cat,mq_commerciali,mq_calpestabili,rendita,stato_occupazione,classe_energetica,anno_costruzione,note)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
-            [codice,row.ex_sub||null,sede_id,row.piano||null,row.indirizzo_completo||null,row.foglio||null,row.particella||null,row.subalterno||null,row.categoria_cat||null,row.mq_commerciali||null,row.mq_calpestabili||null,row.rendita||null,row.stato_occupazione||'libero',row.classe_energetica||null,row.anno_costruzione||null,row.note||null]
+            `INSERT INTO subs (codice,ex_sub,sede_id,piano,indirizzo_completo,foglio,particella,subalterno,categoria_cat,mq_commerciali,mq_calpestabili,rendita,millesimi,stato_occupazione,classe_energetica,anno_costruzione,note)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`,
+            [codice,row.ex_sub||null,sede_id,row.piano||null,row.indirizzo_completo||null,row.foglio||null,row.particella||null,row.subalterno||null,row.categoria_cat||null,row.mq_commerciali||null,row.mq_calpestabili||null,row.rendita||null,row.millesimi||null,row.stato_occupazione||'libero',row.classe_energetica||null,row.anno_costruzione||null,row.note||null]
           );
           await client.query('INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
             [nr.rows[0].id,'creazione','SUB importato',`Import bulk — ${codice}`,req.user.id]);

@@ -125,6 +125,8 @@ async function perTeTutteLette() {
   _perteRender();
 }
 
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePerTe(); });
+
 function startPerTePolling() {
   if (_perteInterval) clearInterval(_perteInterval);
   _perteFirstPoll = true;

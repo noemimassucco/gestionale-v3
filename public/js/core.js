@@ -161,3 +161,27 @@ function appConfirm(message, opts) {
     setTimeout(()=>ov.querySelector('#app-confirm-no')?.focus(),50);
   });
 }
+
+// ═══════ WOW: contatore animato sui numeri dei KPI ═══════
+function wowNumbers(root){
+  if(!root)return;
+  try{ if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; }catch(e){}
+  root.querySelectorAll('.wow-num').forEach(el=>{
+    if(el.dataset.wowDone)return;
+    el.dataset.wowDone='1';
+    const txt=el.textContent.trim();
+    const m=txt.match(/^([^0-9\-]*)(-?[\d.,]+)(.*)$/);
+    if(!m)return;
+    const target=parseFloat(m[2].replace(/\./g,'').replace(',','.'));
+    if(isNaN(target)||!isFinite(target))return;
+    const dec=/,\d/.test(m[2])?2:0;
+    const dur=Math.min(900,450+Math.abs(target)/10);
+    const t0=performance.now();
+    function step(t){
+      const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3);
+      el.textContent=m[1]+(target*e).toLocaleString('it-IT',{minimumFractionDigits:dec,maximumFractionDigits:dec})+m[3];
+      if(p<1)requestAnimationFrame(step); else el.textContent=txt;
+    }
+    requestAnimationFrame(step);
+  });
+}

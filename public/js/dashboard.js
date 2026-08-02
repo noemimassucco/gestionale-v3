@@ -50,16 +50,17 @@ async function loadDashboard(){
   if(kpiEl)kpiEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px;">'
     +hero.map(k=>`<div class="card" onclick="showSection('${k.s}')" style="cursor:pointer;padding:16px 18px;">
       <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted-2);font-weight:700;margin-bottom:8px;">${k.l}</div>
-      <div style="font-family:'Fraunces',serif;font-size:29px;font-weight:600;color:${k.col};line-height:1;margin-bottom:8px;">${k.v}</div>
+      <div class="wow-num" style="font-family:'Fraunces',serif;font-size:29px;font-weight:600;color:${k.col};line-height:1;margin-bottom:8px;">${k.v}</div>
       <div style="font-size:11px;color:var(--muted);">${k.st}</div>
     </div>`).join('')+'</div>';
+  if(kpiEl&&typeof wowNumbers==='function')wowNumbers(kpiEl);
 
   // ═══ DA FARE ADESSO: scadenze + insoluti + SUB da attenzionare, in un'unica lista azionabile ═══
   const todoEl=document.getElementById('dash-todo');
   if(todoEl){
     const voci=[];
     insoluti.slice(0,4).forEach(p=>voci.push({ico:'💶',t:'Canone insoluto — '+(p.sub_codice?'SUB '+p.sub_codice:'')+(p.inquilino_nome?' · '+p.inquilino_nome:''),d:eur(parseFloat(p.importo)||0),urg:2,run:`showSection('affitti')`}));
-    scad7.slice(0,5).forEach(e=>{const g=Math.floor((new Date(e.scadenza)-new Date())/86400000);voci.push({ico:e.icon||'📅',t:e.titolo||'Scadenza',d:g===0?'oggi':'tra '+g+'g',urg:g<=2?2:1,run:`showSection('calendario')`});});
+    scad7.filter(e=>e.tipo!=='bolletta').slice(0,5).forEach(e=>{const g=Math.floor((new Date(e.scadenza)-new Date())/86400000);voci.push({ico:e.icon||'📅',t:e.titolo||'Scadenza',d:g===0?'oggi':'tra '+g+'g',urg:g<=2?2:1,run:`showSection('calendario')`});});
     (dash.subsCritici||[]).slice(0,3).forEach(c=>voci.push({ico:'🔧',t:'Da attenzionare — '+c.codice+(c.sede?' · '+c.sede:''),d:(c.urgenze||0)+' urgenze',urg:1,run:`openSubDetail(${c.id})`}));
     (notifiche||[]).filter(n=>n.tipo==='bolletta').slice(0,4).forEach(n=>{
       const g=n.giorni==null?null:parseInt(n.giorni);

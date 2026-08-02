@@ -20,7 +20,6 @@ async function initDB() {
       CREATE TABLE IF NOT EXISTS documenti (id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id), sede_id INTEGER REFERENCES sedi(id), fornitore_id INTEGER REFERENCES fornitori(id), tipo VARCHAR(80) DEFAULT 'documento', nome VARCHAR(300), url TEXT, cloudinary_id VARCHAR(300), data_documento DATE, scadenza DATE, importo DECIMAL(12,2), descrizione TEXT, note TEXT, tags TEXT[], created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS documenti_files (documento_id INTEGER PRIMARY KEY REFERENCES documenti(id) ON DELETE CASCADE, mime VARCHAR(150), size INTEGER, data BYTEA);
       CREATE TABLE IF NOT EXISTS sub_impianti (sub_id INTEGER REFERENCES subs(id) ON DELETE CASCADE, impianto VARCHAR(30), dati JSONB DEFAULT '{}', updated_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(sub_id, impianto));
-      CREATE TABLE IF NOT EXISTS bollette_files (bolletta_id INTEGER PRIMARY KEY REFERENCES bollette(id) ON DELETE CASCADE, mime VARCHAR(150), size INTEGER, data BYTEA);
       CREATE TABLE IF NOT EXISTS team_messaggi (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id), testo TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS team_menzioni (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, messaggio_id INTEGER REFERENCES team_messaggi(id) ON DELETE CASCADE, letto BOOLEAN DEFAULT false, created_at TIMESTAMP DEFAULT NOW());
       CREATE TABLE IF NOT EXISTS notifiche_utente (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tipo VARCHAR(40) DEFAULT 'info', titolo VARCHAR(300), testo TEXT, link VARCHAR(120), letto BOOLEAN DEFAULT false, created_at TIMESTAMP DEFAULT NOW());
@@ -92,6 +91,7 @@ async function initDB() {
         url TEXT, cloudinary_id VARCHAR(300), note TEXT,
         created_by INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS bollette_files (bolletta_id INTEGER PRIMARY KEY REFERENCES bollette(id) ON DELETE CASCADE, mime VARCHAR(150), size INTEGER, data BYTEA);
       CREATE TABLE IF NOT EXISTS ticket (
         id SERIAL PRIMARY KEY, sub_id INTEGER REFERENCES subs(id),
         inquilino_id INTEGER REFERENCES inquilini(id),

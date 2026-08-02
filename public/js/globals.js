@@ -65,17 +65,17 @@ const MESI_NOMI = ['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott
 // ── ZUCCHETTI COLUMN MAPPING (ZM) ──
 // Chiavi = campo interno, Valori = nomi colonna possibili nel file Excel
 const ZM = {
-  codice_zuc:      ['codice','cod.','cod ','code'],
-  ragione_sociale: ['ragione sociale','ragione soc','rag.soc','ragsoc','nome cognome','nome/cognome','denominazione'],
-  piva:            ['partita iva','p.iva','piva','p iva','partita_iva'],
-  cf:              ['codice fiscale','c.f.','cf ','codfis','cod.fis'],
-  indirizzo:       ['indirizzo','via','indirizzo completo','address'],
-  cap:             ['cap'],
-  citta:           ['città','citta','comune','city'],
-  provincia:       ['provincia','prov.','prov '],
-  tel:             ['telefono','tel.','tel ','cellulare','cell','phone'],
-  email:           ['email','e-mail','posta elettronica'],
-  spec:            ['specializzazione','spec.','specialità','categoria','tipo'],
+  codice_zuc:      ['codice','cod.','cod ','code','id'],
+  ragione_sociale: ['ragione sociale','ragione soc','rag.soc','ragsoc','nome cognome','nome/cognome','denominazione','nominativo','cliente','fornitore','intestatario','ditta','societa','società','nome'],
+  piva:            ['partita iva','p.iva','piva','p iva','partita_iva','vat'],
+  cf:              ['codice fiscale','c.f.','cf ','codfis','cod.fis','cod fiscale'],
+  indirizzo:       ['indirizzo','via','indirizzo completo','residenza','domicilio','address'],
+  cap:             ['cap','c.a.p'],
+  citta:           ['città','citta','comune','localita','località','city'],
+  provincia:       ['provincia','prov.','prov ','pr'],
+  tel:             ['telefono','tel.','tel ','cellulare','cell','mobile','phone'],
+  email:           ['email','e-mail','mail','posta elettronica'],
+  spec:            ['specializzazione','spec.','specialità','categoria','settore','attivita','attività','tipo'],
 };
 
 let subImportMap = {};

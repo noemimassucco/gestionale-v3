@@ -2,8 +2,113 @@
 // MODULE: import_module.js
 // =======================================================
 
+// ═══════ PARSER EXCEL ROBUSTO ═══════
+// Legge anche file "non impostati come vuole lui": titoli sopra la tabella,
+// righe vuote, intestazioni con accenti/maiuscole diverse, numeri formato € 1.234,56.
+
+const SUB_MAP_X = {
+  codice:             ['codice sub','codice','cod sub','cod','sub','n sub','numero sub','unita','unità','n unita','id sub','identificativo'],
+  ex_sub:             ['ex sub','ex','vecchio sub','sub ex','vecchio codice','cod precedente','sub precedente'],
+  sede:               ['sede','immobile','edificio','stabile','fabbricato','building','palazzo','condominio'],
+  piano:              ['piano','floor','livello'],
+  indirizzo_completo: ['indirizzo completo','indirizzo','via','ubicazione','address'],
+  foglio:             ['foglio','fg','fog'],
+  particella:         ['particella','part','mappale','p.lla','plla'],
+  subalterno:         ['subalterno','sub.','subalternato','subalt'],
+  categoria_cat:      ['categoria catastale','categoria','cat catastale','cat','ctg'],
+  mq_commerciali:     ['mq commerciali','mq comm','sup commerciale','superficie commerciale','mq lordi'],
+  mq_calpestabili:    ['mq calpestabili','mq calp','sup calpestabile','superficie calpestabile','mq netti','mq','metri quadri','superficie'],
+  rendita:            ['rendita catastale','rendita','rendita €','rendita eur'],
+  millesimi:          ['millesimi','millesimi proprieta','tabella a','‰'],
+  stato_occupazione:  ['stato occupazione','stato occ','occupazione','occupato libero','situazione'],
+  classe_energetica:  ['classe energetica','classe en','ape','classe'],
+  anno_costruzione:   ['anno costruzione','anno costr','anno di costruzione','costruito nel','anno'],
+  note:               ['note','note aggiuntive','osservazioni','annotazioni'],
+};
+
+function _xNorm(s){return String(s??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+
+// Numeri italiani/strani → numero JS ("€ 1.234,56" → 1234.56)
+function _xNum(v){
+  if(v==null||v==='')return '';
+  if(typeof v==='number')return v;
+  let s=String(v).replace(/[€\s]/g,'').trim();
+  if(!s)return '';
+  if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');
+  else s=s.replace(/,/g,'');
+  const n=parseFloat(s);
+  return isNaN(n)?'':n;
+}
+
+function _xlsSynSet(){
+  const set=new Set();
+  [SUB_MAP_X, (typeof ZM!=='undefined'?ZM:{})].forEach(M=>Object.values(M).forEach(vs=>vs.forEach(v=>set.add(_xNorm(v)))));
+  return set;
+}
+
+// Legge il primo foglio trovando DA SOLO la riga delle intestazioni
+function _xlsSmartRows(arrayBuffer){
+  const wb=XLSX.read(arrayBuffer,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const grid=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  const dict=[..._xlsSynSet()];
+  let best=0,bestScore=-1;
+  for(let i=0;i<Math.min(grid.length,15);i++){
+    const cells=(grid[i]||[]).map(_xNorm).filter(Boolean);
+    if(cells.length<2)continue;
+    let score=0;
+    cells.forEach(c=>{
+      if(dict.some(s=>c===s||c.includes(s)||s.includes(c)))score+=2;
+      else if(isNaN(parseFloat(c)))score+=0.25;
+    });
+    if(score>bestScore){bestScore=score;best=i;}
+  }
+  const headerRaw=(grid[best]||[]).map(h=>String(h??'').trim());
+  const seen={};
+  const header=headerRaw.map((h,i)=>{let n=h||('Colonna '+(i+1));if(seen[n]!=null){seen[n]++;n=n+' ('+seen[n]+')';}else seen[n]=1;return n;});
+  const rows=[];
+  for(let i=best+1;i<grid.length;i++){
+    const r=grid[i]||[];
+    if(!r.some(c=>String(c??'').trim()!==''))continue;               // riga vuota
+    const obj={};header.forEach((h,j)=>obj[h]=r[j]??'');
+    if(_xNorm(Object.values(obj).join(' '))===_xNorm(headerRaw.join(' ')))continue; // intestazione ripetuta
+    rows.push(obj);
+  }
+  return {rows,cols:header,headerRow:best};
+}
+
+// Mappa colonne → campi: match esatto batte match parziale, sinonimo più lungo vince
+function _xMapCols(cols,MAP){
+  const m={};const low=cols.map(_xNorm);const usati=new Set();
+  Object.entries(MAP).forEach(([field,variants])=>{
+    let bi=-1,bScore=-1;
+    variants.forEach(v=>{
+      const nv=_xNorm(v);
+      low.forEach((c,i)=>{
+        if(usati.has(i)||!c)return;
+        let score=-1;
+        if(c===nv)score=1000+nv.length;
+        else if(c.includes(nv)||nv.includes(c))score=nv.length;
+        if(score>bScore){bScore=score;bi=i;}
+      });
+    });
+    if(bi>=0&&bScore>=0){m[field]=cols[bi];usati.add(bi);}
+  });
+  return m;
+}
+
+// "2 ADESSO 730-731" / "730-731 EX 2" / "SUB 5" → { codice, ex_sub }
+function _xParseCodice(raw){
+  let codice=String(raw||'').trim().replace(/^sub\.?\s*/i,'');
+  let ex='';
+  let m=codice.match(/^(.+?)\s+adesso\s+(.+)$/i);
+  if(m){ex=m[1].trim();codice=m[2].trim();}
+  else{m=codice.match(/^(.+?)\s+ex\.?\s+(.+)$/i);if(m){codice=m[1].trim();ex=m[2].trim();}}
+  return {codice,ex_sub:ex};
+}
+
 function loadZuc(input,type){
-  if(type)zucType=type;const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];zucRows=XLSX.utils.sheet_to_json(ws,{defval:''});if(!zucRows.length){toast('Nessun dato','error');return;}const cols=Object.keys(zucRows[0]);zucMap=autoMapZ(cols);const found=Object.entries(zucMap).filter(([k,v])=>v);document.getElementById(zucType==='fornitori'?'zuc-info':'zuc-info-inq').innerHTML=`<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:12px;"><div style="color:var(--green);font-weight:600;margin-bottom:7px;">✓ ${found.length} colonne riconosciute</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${found.map(([k,v])=>`<span style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--success);">${k}→<strong>${v}</strong></span>`).join('')}</div></div>`;const arr=zucType==='fornitori'?DB.fornitori:DB.inquilini;const ex=new Set(arr.map(x=>(x.ragione_sociale||'').toLowerCase().trim()));const nc=zucRows.filter(r=>{const rag=(String(r[zucMap.ragione_sociale]||'')).trim().toLowerCase();return rag&&!ex.has(rag);}).length;document.getElementById(zucType==='fornitori'?'zuc-stats':'zuc-stats-inq').innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${zucRows.length}</strong>Righe</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${nc}</strong>Nuovi</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--accent);font-size:15px;display:block;">${zucRows.length-nc}</strong>Già presenti</div>`;// Mostra il panel corretto per il tipo (fornitori o inquilini)
+  if(type)zucType=type;const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){const parsed=_xlsSmartRows(e.target.result);zucRows=parsed.rows;if(!zucRows.length){toast('Nessun dato nel file','error');return;}const cols=parsed.cols;zucMap=_xMapCols(cols,ZM);if(parsed.headerRow>0)toast('ℹ Intestazioni trovate alla riga '+(parsed.headerRow+1));const found=Object.entries(zucMap).filter(([k,v])=>v);document.getElementById(zucType==='fornitori'?'zuc-info':'zuc-info-inq').innerHTML=`<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:12px;"><div style="color:var(--green);font-weight:600;margin-bottom:7px;">✓ ${found.length} colonne riconosciute</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${found.map(([k,v])=>`<span style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:4px;padding:2px 7px;font-size:10px;color:var(--success);">${k}→<strong>${v}</strong></span>`).join('')}</div></div>`;const arr=zucType==='fornitori'?DB.fornitori:DB.inquilini;const ex=new Set(arr.map(x=>(x.ragione_sociale||'').toLowerCase().trim()));const nc=zucRows.filter(r=>{const rag=(String(r[zucMap.ragione_sociale]||'')).trim().toLowerCase();return rag&&!ex.has(rag);}).length;document.getElementById(zucType==='fornitori'?'zuc-stats':'zuc-stats-inq').innerHTML=`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${zucRows.length}</strong>Righe</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--green);font-size:15px;display:block;">${nc}</strong>Nuovi</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;font-size:11px;"><strong style="color:var(--accent);font-size:15px;display:block;">${zucRows.length-nc}</strong>Già presenti</div>`;// Mostra il panel corretto per il tipo (fornitori o inquilini)
   const _panel = zucType==='fornitori' ? 'zuc-fornitori-panel' : 'zuc-inquilini-panel';
   document.getElementById('zuc-fornitori-panel').style.display='none';
   document.getElementById('zuc-inquilini-panel').style.display='none';
@@ -15,45 +120,18 @@ function loadSubImport(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
-    const wb = XLSX.read(e.target.result, { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    subImportRows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const parsed = _xlsSmartRows(e.target.result);
+    subImportRows = parsed.rows;
     if (!subImportRows.length) { toast('File vuoto', 'error'); return; }
-
-    const cols = Object.keys(subImportRows[0]);
-
-    // Auto-map using flexible matching
-    const SUB_MAP = {
-      codice:             ['codice sub','codice','cod sub','cod.','sub'],
-      sede:               ['sede','immobile','building'],
-      piano:              ['piano','floor'],
-      indirizzo_completo: ['indirizzo completo','indirizzo','address'],
-      foglio:             ['foglio'],
-      particella:         ['particella'],
-      subalterno:         ['subalterno','sub.','subalternato'],
-      categoria_cat:      ['categoria catastale','categoria','cat.','cat '],
-      mq_commerciali:     ['mq commerciali','mq comm','sup comm'],
-      mq_calpestabili:    ['mq calpestabili','mq calc','sup calc','mq'],
-      rendita:            ['rendita','rendita €','rendita eur'],
-      stato_occupazione:  ['stato occupazione','stato occ','stato'],
-      classe_energetica:  ['classe energetica','classe en','ape'],
-      anno_costruzione:   ['anno costruzione','anno costr','anno'],
-      note:               ['note','note aggiuntive','note/osservazioni'],
-    };
-    const lowCols = cols.map(c => c.toLowerCase().trim());
-    subImportMap = {};
-    Object.entries(SUB_MAP).forEach(([field, variants]) => {
-      for (const v of variants) {
-        const i = lowCols.findIndex(c => c.includes(v) || v.includes(c));
-        if (i >= 0) { subImportMap[field] = cols[i]; break; }
-      }
-    });
+    const cols = parsed.cols;
+    subImportMap = _xMapCols(cols, SUB_MAP_X);
+    if (parsed.headerRow > 0) toast('ℹ Intestazioni trovate alla riga ' + (parsed.headerRow + 1));
 
     const mapped = Object.values(subImportMap).filter(Boolean).length;
     const info = document.getElementById('sub-import-info');
     const prev = document.getElementById('sub-import-prev');
     if (info) info.innerHTML = `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:7px;padding:10px 12px;margin-bottom:8px;">
-      <div style="color:var(--green);font-weight:600;margin-bottom:6px;">✅ ${subImportRows.length} SUB trovati · ${mapped}/${Object.keys(SUB_MAP).length} colonne mappate</div>
+      <div style="color:var(--green);font-weight:600;margin-bottom:6px;">✅ ${subImportRows.length} SUB trovati · ${mapped}/${Object.keys(SUB_MAP_X).length} colonne riconosciute</div>
       <div style="font-size:10px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;">
         ${Object.entries(subImportMap).map(([k,v]) => v ? `<span style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:3px;padding:1px 6px;">${k}→<strong>${v}</strong></span>` : '').filter(Boolean).join('')}
       </div></div>`;
@@ -107,24 +185,30 @@ async function commitSubImport() {
 
   const get = (row, field) => subImportMap[field] ? String(row[subImportMap[field]]||'').trim() : '';
   const items = subImportRows
-    .map(row => ({
-      codice:             get(row,'codice'),
-      sede:               get(row,'sede'),
-      piano:              get(row,'piano'),
-      indirizzo_completo: get(row,'indirizzo_completo'),
-      foglio:             get(row,'foglio'),
-      particella:         get(row,'particella'),
-      subalterno:         get(row,'subalterno'),
-      categoria_cat:      get(row,'categoria_cat'),
-      mq_commerciali:     get(row,'mq_commerciali'),
-      mq_calpestabili:    get(row,'mq_calpestabili'),
-      rendita:            get(row,'rendita'),
-      stato_occupazione:  get(row,'stato_occupazione'),
-      classe_energetica:  get(row,'classe_energetica'),
-      anno_costruzione:   get(row,'anno_costruzione'),
-      note:               get(row,'note'),
-    }))
-    .filter(r => r.codice);
+    .map(row => {
+      // Codice: capisce anche "2 ADESSO 730-731" e "730-731 EX 2"
+      const pc = _xParseCodice(get(row,'codice'));
+      return {
+        codice:             pc.codice,
+        ex_sub:             get(row,'ex_sub') || pc.ex_sub,
+        sede:               get(row,'sede'),
+        piano:              get(row,'piano'),
+        indirizzo_completo: get(row,'indirizzo_completo'),
+        foglio:             get(row,'foglio'),
+        particella:         get(row,'particella'),
+        subalterno:         get(row,'subalterno'),
+        categoria_cat:      get(row,'categoria_cat'),
+        mq_commerciali:     _xNum(subImportMap.mq_commerciali ? row[subImportMap.mq_commerciali] : ''),
+        mq_calpestabili:    _xNum(subImportMap.mq_calpestabili ? row[subImportMap.mq_calpestabili] : ''),
+        rendita:            _xNum(subImportMap.rendita ? row[subImportMap.rendita] : ''),
+        millesimi:          _xNum(subImportMap.millesimi ? row[subImportMap.millesimi] : ''),
+        stato_occupazione:  get(row,'stato_occupazione'),
+        classe_energetica:  get(row,'classe_energetica'),
+        anno_costruzione:   parseInt(_xNum(subImportMap.anno_costruzione ? row[subImportMap.anno_costruzione] : ''))||'',
+        note:               get(row,'note'),
+      };
+    })
+    .filter(r => r.codice && !/^(tot|totale|somma)/i.test(r.codice));
 
   if (!items.length) { toast('Nessun SUB valido (colonna Codice vuota?)', 'error'); return; }
 
@@ -150,7 +234,7 @@ async function commitSubImport() {
 
 
 
-function loadStorico(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];storicoRows=XLSX.utils.sheet_to_json(ws,{defval:''});if(!storicoRows.length){toast('Nessun dato','error');return;}showStoricoStep(Object.keys(storicoRows[0]));};r.readAsArrayBuffer(file);}
+function loadStorico(input){const file=input.files[0];if(!file)return;const r=new FileReader();r.onload=function(e){const parsed=_xlsSmartRows(e.target.result);storicoRows=parsed.rows;if(!storicoRows.length){toast('Nessun dato','error');return;}showStoricoStep(parsed.cols);};r.readAsArrayBuffer(file);}
 
 function showStoricoStep(cols){const cs=(id,lbl)=>`<div class="field"><label>${lbl}</label><select id="${id}"><option value="">— Non presente —</option>${cols.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>`;const aS=(id,vs)=>{const l=cols.map(c=>c.toLowerCase().trim());for(const v of vs){const i=l.findIndex(c=>c.includes(v)||v.includes(c));if(i>=0){setTimeout(()=>{const el=document.getElementById(id);if(el)el.value=cols[i];},80);break;}}};document.getElementById('storico-wiz').innerHTML=`<h3 style="font-size:13px;color:#0f172a;margin-bottom:11px;">${storicoRows.length} righe trovate — Mappa le colonne:</h3><div class="form-grid">${cs('ss-sub','SUB *')}${cs('ss-loc','Sede')}${cs('ss-forn','Fornitore *')}${cs('ss-inq','Inquilino')}${cs('ss-pr','N° Protocollo')}${cs('ss-nf','N° Fattura')}${cs('ss-di','Data Intervento')}${cs('ss-df','Data Fattura')}${cs('ss-p','Prezzo')}${cs('ss-desc','Descrizione *')}${cs('ss-note','Note')}</div><div style="margin-top:12px;"><button class="btn btn-orange" onclick="analizzaS()">🔍 Analizza →</button></div>`;document.getElementById('storico-wiz').style.display='block';aS('ss-sub',['sub','unità imm','unita imm','codice sub']);aS('ss-loc',['sede','location']);aS('ss-forn',['fornitore','ditta','ditta esecutrice']);aS('ss-inq',['inquilino','conduttore']);aS('ss-pr',['protocollo','prot','n. prot']);aS('ss-nf',['fattura','num ft','rif. fattura','n fattura']);aS('ss-di',['data lavori','data interv','data lav']);aS('ss-df',['data fattura','data doc']);aS('ss-p',['prezzo','importo','importo €','importo€','totale']);aS('ss-desc',['descrizione','oggetto','oggetto lavori']);aS('ss-note',['note','annotaz']);}
 

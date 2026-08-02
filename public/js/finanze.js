@@ -51,9 +51,10 @@ async function loadFinanze(){
   if(kEl)kEl.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:13px;">'
     +kpi.map(k=>`<div class="card" style="padding:16px 18px;">
       <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:1.7px;color:var(--muted-2);font-weight:700;margin-bottom:8px;">${k.l}</div>
-      <div style="font-family:'Fraunces',serif;font-size:29px;font-weight:600;color:${k.col};line-height:1;margin-bottom:8px;">${k.v}</div>
+      <div class="wow-num" style="font-family:'Fraunces',serif;font-size:29px;font-weight:600;color:${k.col};line-height:1;margin-bottom:8px;">${k.v}</div>
       <div style="font-size:11px;color:var(--muted);">${k.st}</div>
     </div>`).join('')+'</div>';
+  if(kEl&&typeof wowNumbers==='function')wowNumbers(kEl);
 
   // ── GRAFICO MENSILE (barre affiancate entrate/uscite) ──
   const cEl=document.getElementById('fin-chart');
@@ -68,8 +69,8 @@ async function loadFinanze(){
           const [y,mm]=m.split('-');
           return `<div style="flex:1;min-width:46px;display:flex;flex-direction:column;align-items:center;gap:5px;height:100%;justify-content:flex-end;" title="Entrate ${_finEur(e)} — Uscite ${_finEur(u)}">
             <div style="display:flex;align-items:flex-end;gap:4px;height:120px;">
-              <div style="width:16px;border-radius:4px 4px 0 0;background:var(--success);height:${Math.max(Math.round(e/max*120),e>0?3:0)}px;"></div>
-              <div style="width:16px;border-radius:4px 4px 0 0;background:var(--terra,#c2542e);height:${Math.max(Math.round(u/max*120),u>0?3:0)}px;"></div>
+              <div class="fin-bar" style="width:16px;border-radius:4px 4px 0 0;background:var(--success);height:${Math.max(Math.round(e/max*120),e>0?3:0)}px;"></div>
+              <div class="fin-bar" style="width:16px;border-radius:4px 4px 0 0;background:var(--terra,#c2542e);height:${Math.max(Math.round(u/max*120),u>0?3:0)}px;animation-delay:.08s;"></div>
             </div>
             <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;">${_MESI_IT[parseInt(mm,10)-1]} ${y.slice(2)}</div>
             <div style="font-size:10px;font-weight:600;color:${e-u>=0?'var(--success)':'var(--danger)'};white-space:nowrap;">${_finEur(e-u)}</div>
