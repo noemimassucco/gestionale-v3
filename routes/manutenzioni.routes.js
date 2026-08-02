@@ -39,6 +39,17 @@ router.get('/api/manutenzioni', authMiddleware, async (req, res) => {
 
 router.post('/api/manutenzioni', authMiddleware, async (req, res) => {
   const v = req.body;
+  // Stessa regola già applicata alle bollette: su un SUB fuso/scisso/chiuso non si
+  // dovrebbero programmare nuove manutenzioni — prima qui non c'era alcun controllo.
+  if (v.sub_id) {
+    const subCheck = await pool.query('SELECT stato_sub FROM subs WHERE id=$1', [v.sub_id]);
+    if (subCheck.rows.length && subCheck.rows[0].stato_sub && subCheck.rows[0].stato_sub !== 'attivo') {
+      return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
+    }
+  }
+  if (v.costo !== undefined && v.costo !== null && v.costo !== '' && parseFloat(v.costo) < 0) {
+    return res.status(400).json({ error: 'Costo non può essere negativo' });
+  }
   // Calcola prossima scadenza in base alla ricorrenza
   let prossima = v.data_programmata || null;
   if (v.data_eseguita && v.ricorrenza) {
@@ -64,6 +75,9 @@ router.post('/api/manutenzioni', authMiddleware, async (req, res) => {
 
 router.put('/api/manutenzioni/:id', authMiddleware, async (req, res) => {
   const v = req.body;
+  if (v.costo !== undefined && v.costo !== null && v.costo !== '' && parseFloat(v.costo) < 0) {
+    return res.status(400).json({ error: 'Costo non può essere negativo' });
+  }
   let prossima = v.prossima_scadenza || null;
   if (v.data_eseguita && v.ricorrenza) {
     const base = new Date(v.data_eseguita);

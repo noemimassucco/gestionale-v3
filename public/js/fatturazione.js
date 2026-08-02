@@ -296,8 +296,10 @@ async function exportFatturazione() {
 
   const wb = XLSX.utils.book_new();
 
-  // Headers row
-  const headers = ['Cliente','Servizio','Tipo','SUB','Importo €','Periodicità',
+  // Headers row — la colonna ID è necessaria per far funzionare il reimport (vedi
+  // routes/fatturazione.routes.js REIMPORT_HEADER_MAP): senza, il sistema non riesce
+  // a far corrispondere le righe modificate dalla contabile e nulla viene salvato.
+  const headers = ['ID','Cliente','Servizio','Tipo','SUB','Importo €','Periodicità',
     'Mese','Anno','N° Fattura','Data Fatturazione','Stato Pagamento',
     'Data Pagamento','Contabilizzato','Note'];
 
@@ -306,7 +308,7 @@ async function exportFatturazione() {
 
   rows.forEach(r => {
     wsData.push([
-      r.cliente||'', r.servizio||'', r.tipo_servizio||'', r.sub||'',
+      r.id||'', r.cliente||'', r.servizio||'', r.tipo_servizio||'', r.sub||'',
       r.importo ? parseFloat(r.importo) : '', r.periodicita||'',
       r.mese||'', r.anno||'', r.numero_fattura||'', r.data_fatturazione||'',
       r.stato_pagamento||'', r.data_pagamento||'', r.contabilizzato||'NO', r.note||''
@@ -342,9 +344,9 @@ async function exportFatturazione() {
     };
   }
 
-  // Column widths
+  // Column widths (la prima è la colonna ID)
   ws['!cols'] = [
-    {wch:28},{wch:24},{wch:16},{wch:10},{wch:12},{wch:12},
+    {wch:6},{wch:28},{wch:24},{wch:16},{wch:10},{wch:12},{wch:12},
     {wch:6},{wch:6},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:24}
   ];
 
@@ -380,7 +382,9 @@ async function fattReimport(input) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
       const result = await api('/api/fatturazione/reimport', { method: 'POST', body: JSON.stringify({ rows }) });
-      statusEl.textContent = `✅ ${result?.updated || 0} aggiornati${result?.errors?.length ? `, ${result.errors.length} errori` : ''}`;
+      statusEl.textContent = `✅ ${result?.updated || 0} aggiornati` +
+        (result?.notFound ? `, ${result.notFound} righe non trovate` : '') +
+        (result?.errors?.length ? `, ${result.errors.length} errori` : '');
       loadFatturazione();
     } catch (e) { statusEl.textContent = '❌ Errore: ' + e.message; }
   };

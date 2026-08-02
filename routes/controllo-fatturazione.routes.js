@@ -125,9 +125,14 @@ async function _syncOrdineFatturazione(pool, cf, userId) {
       inquilino_id = sr?.rows[0]?.inquilino_id || null;
     }
     const importo = cf.modalita === 'parziale' ? (cf.quota_rifatturabile || cf.importo) : cf.importo;
-    const attribLabel = cf.attribuito_a_tipo === 'condominio' ? 'condominio/sede'
-      : cf.attribuito_a_tipo === 'commessa' ? `commessa: ${cf.attribuito_a_testo || ''}`
+    let attribLabel = cf.attribuito_a_tipo === 'commessa' ? `commessa: ${cf.attribuito_a_testo || ''}`
       : cf.attribuito_a_tipo === 'centro_costo' ? `centro di costo: ${cf.attribuito_a_testo || ''}` : '';
+    if (cf.attribuito_a_tipo === 'condominio' && cf.attribuito_a_id) {
+      // Prima si scriveva il testo fisso "condominio/sede": l'ordine generato non
+      // mostrava a nessuno a quale condominio/sede si riferisse davvero.
+      const sedeR = await pool.query('SELECT nome FROM sedi WHERE id=$1', [cf.attribuito_a_id]).catch(() => null);
+      attribLabel = 'condominio: ' + (sedeR?.rows[0]?.nome || `#${cf.attribuito_a_id}`);
+    }
     const nomeServizio = `Rifatturazione: ${(cf.fornitore_nome || cf.descrizione || 'spesa').slice(0, 80)}`;
     const _dsRaw = cf.data_documento instanceof Date ? cf.data_documento.toISOString().slice(0, 10) : (cf.data_documento ? String(cf.data_documento).slice(0, 10) : null);
     const dataSpesaLabel = _dsRaw ? `spesa del ${_dsRaw}` : null;
@@ -214,8 +219,15 @@ router.post('/api/controllo-fatturazione/reimport', authMiddleware, async (req, 
       if (row.note_contabili) updates.note = row.note_contabili;
       if (!Object.keys(updates).length) continue;
       const sets = Object.keys(updates).map((k,i)=>`${k}=$${i+2}`).join(',');
-      await pool.query(`UPDATE controllo_fatturazione SET ${sets}, updated_at=NOW() WHERE id=$1`, [id, ...Object.values(updates)]);
-      updated++;
+      const r = await pool.query(`UPDATE controllo_fatturazione SET ${sets}, updated_at=NOW() WHERE id=$1 RETURNING *`, [id, ...Object.values(updates)]);
+      if (r.rows.length) {
+        // Come nel PUT manuale: se lo stato cambia via reimport, lo Schema Fatturazione
+        // deve restare sincronizzato (crea/aggiorna/rimuove l'ordine collegato). Prima
+        // di questo fix, cambiare stato dal file della contabile non aveva alcun effetto
+        // sullo Schema Fatturazione — bisognava rifarlo a mano dalla schermata.
+        await _syncOrdineFatturazione(pool, r.rows[0], req.user.id);
+        updated++;
+      }
     } catch(e) { errors.push({ row: row.id, error: e.message }); }
   }
   res.json({ updated, errors });

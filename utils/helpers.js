@@ -95,8 +95,22 @@ function parseDate(d) {
 
 function parsePrice(v) {
   if (!v) return null;
-  const str = String(v).replace(/[€$£\s]/g,'').replace(',','.');
-  const n = parseFloat(str);
+  if (typeof v === 'number') return v;
+  let s = String(v).replace(/[€$£\s]/g,'').trim();
+  if (!s) return null;
+  const hasComma = s.includes(','), hasDot = s.includes('.');
+  if (hasComma && hasDot) {
+    // Formato italiano "1.234,56" → 1234.56 (punto=migliaia, virgola=decimali)
+    s = s.replace(/\./g,'').replace(',','.');
+  } else if (hasComma) {
+    s = s.replace(',','.');
+  } else if (hasDot) {
+    // Solo punto: se dopo l'ultimo punto ci sono 3 cifre è il separatore delle migliaia
+    // italiano ("1.500" = 1500), non un decimale.
+    const parts = s.split('.');
+    if (parts.length > 1 && parts[parts.length-1].length === 3) s = parts.join('');
+  }
+  const n = parseFloat(s);
   return isNaN(n) ? null : n;
 }
 

@@ -62,13 +62,17 @@ router.post('/api/spese-condominiali/import-bulk', authMiddleware, async (req, r
     const normalize = s => (s || '').toString().toLowerCase().trim();
     const findSede = nome => sedi.find(s => normalize(s.nome) === normalize(nome)) ||
       sedi.find(s => normalize(s.nome).includes(normalize(nome)) || normalize(nome).includes(normalize(s.nome)));
+    // Ritorna { tabella, fallback } — fallback=true se il nome era specificato ma non è stato
+    // trovato ed è stata usata la tabella di default: prima questo caso passava inosservato,
+    // ripartendo la spesa con i millesimi sbagliati senza nessun avviso.
     const findTabella = nome => {
       if (nome) {
         const t = tabelle.find(t => normalize(t.nome) === normalize(nome)) ||
           tabelle.find(t => normalize(t.nome).includes(normalize(nome)) || normalize(nome).includes(normalize(t.nome)));
-        if (t) return t;
+        if (t) return { tabella: t, fallback: false };
       }
-      return tabelle.find(t => normalize(t.nome).includes('proprieta')) || tabelle[0] || null;
+      const def = tabelle.find(t => normalize(t.nome).includes('proprieta')) || tabelle[0] || null;
+      return { tabella: def, fallback: !!nome };
     };
 
     for (const [idx, row] of rows.entries()) {
@@ -76,7 +80,7 @@ router.post('/api/spese-condominiali/import-bulk', authMiddleware, async (req, r
         await client.query('BEGIN');
         const sede = findSede(row.sede);
         if (!sede) { throw new Error(`Sede "${row.sede}" non trovata`); }
-        const tabella = findTabella(row.tabella_millesimale);
+        const { tabella, fallback: tabellaFallback } = findTabella(row.tabella_millesimale);
         if (!tabella) { throw new Error('Nessuna tabella millesimale disponibile — creane una prima di importare'); }
         const importoTotale = parseFloat(row.importo_totale);
         if (!importoTotale || isNaN(importoTotale)) { throw new Error('Importo totale mancante o non valido'); }
@@ -88,14 +92,17 @@ router.post('/api/spese-condominiali/import-bulk', authMiddleware, async (req, r
            row.protocollo || null, importoTotale, req.user.id]);
         const spesaId = scr.rows[0].id;
 
-        // Millesimi correnti (ultimo valore con data_validita <= oggi) per ogni SUB della sede
+        // Millesimi in vigore alla DATA DELLA SPESA, non quelli di oggi — se un SUB è stato
+        // frazionato/fuso dopo la data della spesa ma prima che venisse importata, usare i
+        // millesimi odierni ripartirebbe la quota sui SUB sbagliati per quel periodo.
+        const dataRiferimentoMillesimi = row.data_spesa || new Date().toISOString().slice(0, 10);
         const valori = await client.query(`
           SELECT DISTINCT ON (mv.sub_id) mv.sub_id, mv.valore
           FROM millesimi_valori mv
           JOIN subs s ON mv.sub_id=s.id
-          WHERE mv.tabella_id=$1 AND s.sede_id=$2 AND mv.data_validita <= CURRENT_DATE
+          WHERE mv.tabella_id=$1 AND s.sede_id=$2 AND mv.data_validita <= $3
           ORDER BY mv.sub_id, mv.data_validita DESC, mv.updated_at DESC, mv.id DESC`,
-          [tabella.id, sede.id]);
+          [tabella.id, sede.id, dataRiferimentoMillesimi]);
         const tuttiSub = await client.query('SELECT id, codice FROM subs WHERE sede_id=$1', [sede.id]);
 
         let importoRipartito = 0, subSenzaMillesimi = 0;
@@ -130,6 +137,21 @@ router.post('/api/spese-condominiali/import-bulk', authMiddleware, async (req, r
           warnings.push({
             riga: idx + 1, descrizione: row.descrizione || '',
             messaggio: `${subSenzaMillesimi} SUB di ${sede.nome} senza millesimi impostati — quota non ripartita per quei SUB (€ ${(importoTotale - importoRipartito).toFixed(2)} non attribuiti)`,
+          });
+        }
+        if (tabellaFallback) {
+          warnings.push({
+            riga: idx + 1, descrizione: row.descrizione || '',
+            messaggio: `Tabella millesimale "${row.tabella_millesimale}" non trovata — usata la tabella di default "${tabella.nome}". Controlla che sia quella giusta.`,
+          });
+        }
+        // Scarto da arrotondamento (ogni quota è arrotondata singolarmente ai centesimi):
+        // segnalarlo sempre, non solo quando mancano millesimi a qualche SUB.
+        const scartoArrotondamento = subSenzaMillesimi === 0 ? +(importoTotale - importoRipartito).toFixed(2) : 0;
+        if (Math.abs(scartoArrotondamento) >= 0.01) {
+          warnings.push({
+            riga: idx + 1, descrizione: row.descrizione || '',
+            messaggio: `Scarto di arrotondamento: € ${scartoArrotondamento.toFixed(2)} di differenza tra importo totale e somma delle quote ripartite (normale con più SUB, arrotondando ogni quota ai centesimi).`,
           });
         }
       } catch (e) {

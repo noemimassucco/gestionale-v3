@@ -36,6 +36,9 @@ router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, 
       return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
     }
   }
+  if (f.importo !== undefined && f.importo !== null && f.importo !== '' && parseFloat(f.importo) < 0) {
+    return res.status(400).json({ error: 'Importo non può essere negativo' });
+  }
   let url=null,cloudinary_id=null,salvaInDb=false;
   if(req.file){
     if(process.env.CLOUDINARY_CLOUD_NAME){
@@ -71,6 +74,9 @@ router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, 
 
 router.put('/api/bollette/:id', authMiddleware, async (req, res) => {
   const f=req.body;
+  if (f.importo !== undefined && f.importo !== null && f.importo !== '' && parseFloat(f.importo) < 0) {
+    return res.status(400).json({ error: 'Importo non può essere negativo' });
+  }
   const r=await pool.query(
     `UPDATE bollette SET tipo=COALESCE($1,tipo),fornitore_nome=COALESCE($2,fornitore_nome),numero=COALESCE($3,numero),importo=COALESCE($4::numeric,importo),periodo_dal=COALESCE($5::date,periodo_dal),periodo_al=COALESCE($6::date,periodo_al),scadenza=COALESCE($7::date,scadenza),data_pagamento=COALESCE($8::date,data_pagamento),stato=COALESCE($9,stato),note=COALESCE($10,note) WHERE id=$11 RETURNING *`,
     [f.tipo||null,f.fornitore_nome||null,f.numero||null,f.importo||null,f.periodo_dal||null,f.periodo_al||null,f.scadenza||null,f.data_pagamento||null,f.stato||null,f.note||null,req.params.id]);

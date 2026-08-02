@@ -103,7 +103,7 @@ router.get('/api/fatturazione/export', authMiddleware, async (req, res) => {
   if(da){where.push(`o.data_fatturazione>=$${p++}`);params.push(da);}
   if(a){where.push(`o.data_fatturazione<=$${p++}`);params.push(a);}
   const r=await pool.query(`
-    SELECT i.ragione_sociale as cliente,o.nome_servizio as servizio,o.tipo_servizio,
+    SELECT o.id,i.ragione_sociale as cliente,o.nome_servizio as servizio,o.tipo_servizio,
       s.codice as sub,o.importo,o.periodicita,o.data_fatturazione,o.numero_fattura,
       o.stato_pagamento,o.data_pagamento,o.importo_pagato,
       CASE WHEN o.flag_contabilizzato THEN 'SI' ELSE 'NO' END as contabilizzato,
@@ -114,26 +114,47 @@ router.get('/api/fatturazione/export', authMiddleware, async (req, res) => {
   res.json(r.rows);
 });
 
+// Le intestazioni Excel sono in italiano (vedi headers in fattExport, public/js/fatturazione.js);
+// XLSX.sheet_to_json restituisce le chiavi con il testo esatto della colonna, non i nomi dei
+// campi del DB — senza questa mappa il reimport non trovava MAI corrispondenza su nessun campo
+// (compreso il numero fattura, che restava sempre vuoto anche dopo un reimport "riuscito").
+const REIMPORT_HEADER_MAP = {
+  'ID': 'id',
+  'N° Fattura': 'numero_fattura',
+  'Data Fatturazione': 'data_fatturazione',
+  'Stato Pagamento': 'stato_pagamento',
+  'Data Pagamento': 'data_pagamento',
+  'Contabilizzato': 'flag_contabilizzato',
+  'Note': 'note_contabili',
+};
+
 router.post('/api/fatturazione/reimport', authMiddleware, async (req, res) => {
   const {rows}=req.body;
-  if(!rows?.length)return res.json({updated:0,errors:[]});
-  let updated=0,errors=[];
-  for(const row of rows){
+  if(!rows?.length)return res.json({updated:0,notFound:0,errors:[]});
+  let updated=0,notFound=0,errors=[];
+  for(const rawRow of rows){
+    const row={};
+    for(const [k,v] of Object.entries(rawRow)){
+      const mapped=REIMPORT_HEADER_MAP[String(k).trim()];
+      if(mapped && v!=='' && v!==undefined && v!==null) row[mapped]=v;
+    }
     try{
       const key=row.id||row.numero_fattura; if(!key)continue;
       const field=row.id?'id':'numero_fattura';
       const updates={};
+      if(row.numero_fattura)updates.numero_fattura=String(row.numero_fattura);
+      if(row.data_fatturazione)updates.data_fatturazione=row.data_fatturazione;
       if(row.stato_pagamento)updates.stato_pagamento=row.stato_pagamento;
       if(row.data_pagamento)updates.data_pagamento=row.data_pagamento;
       if(row.flag_contabilizzato!==undefined)updates.flag_contabilizzato=(row.flag_contabilizzato==='SI'||row.flag_contabilizzato===true);
       if(row.note_contabili)updates.note_contabili=row.note_contabili;
       if(!Object.keys(updates).length)continue;
       const sets=Object.entries(updates).map(([k],i)=>`${k}=$${i+2}`).join(',');
-      await pool.query(`UPDATE ordini_fatturazione SET ${sets},updated_at=NOW() WHERE ${field}=$1`,[key,...Object.values(updates)]);
-      updated++;
+      const r=await pool.query(`UPDATE ordini_fatturazione SET ${sets},updated_at=NOW() WHERE ${field}=$1`,[key,...Object.values(updates)]);
+      if(r.rowCount>0) updated++; else notFound++;
     }catch(e){errors.push({row:row.numero_fattura||row.id,error:e.message});}
   }
-  res.json({updated,errors});
+  res.json({updated,notFound,errors});
 });
 
 router.get('/api/fatturazione/istat-alert', authMiddleware, async (req, res) => {

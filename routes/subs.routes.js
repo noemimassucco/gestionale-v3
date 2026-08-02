@@ -229,7 +229,7 @@ router.post('/api/subs/import-bulk', authMiddleware, async (req, res) => {
 router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
   const id = req.params.id;
   try {
-    const [subR, interventiR, documentiR, manutenzioniR, storiaR, pagamentiR, storInqR, contrattiR] = await Promise.all([
+    const [subR, interventiR, documentiR, manutenzioniR, storiaR, pagamentiR, storInqR, contrattiR, bolletteEconR] = await Promise.all([
       pool.query(`SELECT s.*,sd.nome as sede_nome,i.ragione_sociale as inquilino_nome,i.tel as inquilino_tel,i.email as inquilino_email,
         (SELECT COUNT(*) FROM interventi WHERE sub_id=s.id) as num_interventi,
         (SELECT COALESCE(SUM(prezzo),0) FROM interventi WHERE sub_id=s.id) as totale_spese,
@@ -245,6 +245,10 @@ router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
       pool.query(`SELECT p.*,i.ragione_sociale as inquilino_nome FROM pagamenti_affitto p LEFT JOIN inquilini i ON p.inquilino_id=i.id WHERE p.sub_id=$1 ORDER BY p.anno DESC, p.mese DESC`, [id]),
       pool.query(`SELECT si.*,i.ragione_sociale as inquilino_nome,i.tel,i.email FROM storico_inquilini si LEFT JOIN inquilini i ON si.inquilino_id=i.id WHERE si.sub_id=$1 ORDER BY si.data_inizio DESC NULLS LAST`, [id]),
       pool.query(`SELECT c.*,f.ragione_sociale as fornitore_nome FROM contratti c LEFT JOIN fornitori f ON c.fornitore_id=f.id WHERE c.sub_id=$1 ORDER BY c.data_inizio DESC NULLS LAST`, [id]),
+      // Bollette pagate: prima mancavano dal calcolo delle uscite/profitto netto qui sotto,
+      // mostrando un utile più alto di quello reale (la tab "Costi" della scheda, calcolata
+      // lato pagina, le includeva già — le due cifre nella stessa scheda non coincidevano).
+      pool.query(`SELECT COALESCE(SUM(importo),0) as totale FROM bollette WHERE sub_id=$1 AND stato='pagato'`, [id]),
     ]);
     if (!subR.rows.length) return res.status(404).json({ error: 'SUB non trovato' });
 
@@ -274,7 +278,7 @@ router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
 
     const pagamenti = pagamentiR.rows;
     const totEntrate = pagamenti.reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
-    const totUscite = parseFloat(subR.rows[0].totale_spese||0) + manutenzioniR.rows.reduce((s,m)=>s+(parseFloat(m.costo)||0),0);
+    const totUscite = parseFloat(subR.rows[0].totale_spese||0) + manutenzioniR.rows.reduce((s,m)=>s+(parseFloat(m.costo)||0),0) + parseFloat(bolletteEconR.rows[0]?.totale||0);
     const entratePerAnno = {};
     pagamenti.forEach(p=>{if(!entratePerAnno[p.anno])entratePerAnno[p.anno]=0;entratePerAnno[p.anno]+=parseFloat(p.importo)||0;});
 

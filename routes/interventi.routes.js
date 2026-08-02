@@ -98,6 +98,17 @@ router.get('/api/interventi/:id', authMiddleware, async (req, res) => {
 
 router.post('/api/interventi', authMiddleware, async (req, res) => {
   const v = req.body;
+  // Stessa regola già applicata alle bollette: su un SUB fuso/scisso/chiuso non si
+  // dovrebbero registrare nuovi costi — prima qui non c'era alcun controllo.
+  if (v.sub_id) {
+    const subCheck = await pool.query('SELECT stato_sub FROM subs WHERE id=$1', [v.sub_id]);
+    if (subCheck.rows.length && subCheck.rows[0].stato_sub && subCheck.rows[0].stato_sub !== 'attivo') {
+      return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
+    }
+  }
+  if (v.prezzo !== undefined && v.prezzo !== null && v.prezzo !== '' && parseFloat(v.prezzo) < 0) {
+    return res.status(400).json({ error: 'Prezzo non può essere negativo' });
+  }
   const { tags, hasNotifica } = generateTags(v.descrizione, v.note);
   const r = await pool.query(`
     INSERT INTO interventi (sub_id,sede_id,fornitore_id,inquilino_id,categoria_id,protocollo,num_fattura,
@@ -115,6 +126,9 @@ router.post('/api/interventi', authMiddleware, async (req, res) => {
 
 router.put('/api/interventi/:id', authMiddleware, async (req, res) => {
   const v = req.body;
+  if (v.prezzo !== undefined && v.prezzo !== null && v.prezzo !== '' && parseFloat(v.prezzo) < 0) {
+    return res.status(400).json({ error: 'Prezzo non può essere negativo' });
+  }
   const { tags, hasNotifica } = generateTags(v.descrizione, v.note);
   const r = await pool.query(`
     UPDATE interventi SET sub_id=$1,sede_id=$2,fornitore_id=$3,inquilino_id=$4,categoria_id=$5,
@@ -194,7 +208,11 @@ router.post('/api/interventi/import-storico', authMiddleware, async (req, res) =
     const findOrCreate=async(table,arr,nome)=>{
       if(!nome?.trim())return null;
       const n=norm(nome);
-      let found=arr.find(x=>norm(x.ragione_sociale)===n)||arr.find(x=>norm(x.ragione_sociale).includes(n)||n.includes(norm(x.ragione_sociale)));
+      // Solo corrispondenza esatta: un match per sottostringa (es. "Costruzioni" agganciato
+      // a "Rossi Costruzioni SRL") rischiava di accreditare spese/interventi al fornitore o
+      // inquilino sbagliato senza alcun avviso. Se non c'è un nome identico si crea un nuovo
+      // record (eventualmente da fondere a mano dopo) invece di indovinare.
+      let found=arr.find(x=>norm(x.ragione_sociale)===n);
       if(found)return found.id;
       const r=await client.query(`INSERT INTO ${table} (ragione_sociale) VALUES ($1) ON CONFLICT DO NOTHING RETURNING *`,[nome.trim()]);
       if(r.rows.length){arr.push(r.rows[0]);return r.rows[0].id;}
@@ -215,10 +233,18 @@ router.post('/api/interventi/import-storico', authMiddleware, async (req, res) =
       if(typeof v==='number')return v;
       let s=String(v).replace(/[€$£\s]/g,'').trim();
       if(!s)return null;
-      // Formato italiano "1.234,56" → 1234.56 (punto=migliaia, virgola=decimali);
-      // altrimenti tratta il punto come separatore decimale normale (es. "1234.56")
-      if(/,\d{1,2}$/.test(s)) s=s.replace(/\./g,'').replace(',','.');
-      else s=s.replace(/,/g,'');
+      const hasComma=s.includes(','), hasDot=s.includes('.');
+      if(hasComma&&hasDot){
+        // Formato italiano "1.234,56" → 1234.56 (punto=migliaia, virgola=decimali)
+        s=s.replace(/\./g,'').replace(',','.');
+      }else if(hasComma){
+        s=s.replace(',','.');
+      }else if(hasDot){
+        // Solo punto: se dopo l'ultimo punto ci sono 3 cifre è quasi certo il separatore delle
+        // migliaia ("1.500" = 1500), non un decimale — prima veniva letto 1000 volte più piccolo.
+        const parts=s.split('.');
+        if(parts.length>1 && parts[parts.length-1].length===3) s=parts.join('');
+      }
       const n=parseFloat(s);
       return isNaN(n)?null:n;
     };

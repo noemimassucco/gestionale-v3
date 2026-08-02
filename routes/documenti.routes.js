@@ -98,7 +98,16 @@ router.get('/api/documenti/:id/file', async (req, res) => {
 router.delete('/api/documenti/:id', authMiddleware, async (req, res) => {
   const r = await pool.query('SELECT cloudinary_id FROM documenti WHERE id=$1', [req.params.id]);
   if (r.rows[0]?.cloudinary_id && process.env.CLOUDINARY_CLOUD_NAME) {
-    try { await cloudinary.uploader.destroy(r.rows[0].cloudinary_id, { resource_type: 'raw' }); } catch(e) {}
+    // L'upload usa resource_type:'auto', e Cloudinary classifica i PDF come 'image' (non 'raw') —
+    // cancellare sempre con resource_type:'raw' falliva silenzioso per la maggior parte dei
+    // documenti (PDF/immagini), lasciando il file online a consumare spazio anche dopo
+    // l'eliminazione dall'app. Si prova ogni tipo finché uno non riesce davvero.
+    for (const resourceType of ['image', 'raw', 'video']) {
+      try {
+        const result = await cloudinary.uploader.destroy(r.rows[0].cloudinary_id, { resource_type: resourceType });
+        if (result?.result === 'ok') break;
+      } catch(e) {}
+    }
   }
   await pool.query('DELETE FROM documenti WHERE id=$1', [req.params.id]);
   await rimuoviUscita(pool, 'documento', req.params.id);

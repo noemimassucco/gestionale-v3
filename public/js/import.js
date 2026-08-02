@@ -34,8 +34,21 @@ function _xNum(v){
   if(typeof v==='number')return v;
   let s=String(v).replace(/[€\s]/g,'').trim();
   if(!s)return '';
-  if(/,\d{1,2}$/.test(s))s=s.replace(/\./g,'').replace(',','.');
-  else s=s.replace(/,/g,'');
+  const hasComma=s.includes(','), hasDot=s.includes('.');
+  if(hasComma&&hasDot){
+    // Formato italiano completo "1.234,56": il punto è delle migliaia, la virgola è decimale
+    s=s.replace(/\./g,'').replace(',','.');
+  }else if(hasComma){
+    // Solo virgola → è il separatore decimale ("1234,56")
+    s=s.replace(',','.');
+  }else if(hasDot){
+    // Solo punto, nessuna virgola: se il gruppo dopo l'ULTIMO punto ha 3 cifre è quasi certo
+    // il separatore delle migliaia italiano ("1.500" = milleecinquecento), non un decimale —
+    // prima "1.500" veniva letto 1,5, un importo 1000 volte più piccolo, senza nessun errore.
+    const parts=s.split('.');
+    if(parts.length>1 && parts[parts.length-1].length===3) s=parts.join('');
+    // altrimenti (1-2 cifre dopo il punto, es. "2.50") resta un normale decimale
+  }
   const n=parseFloat(s);
   return isNaN(n)?'':n;
 }
@@ -258,13 +271,28 @@ function analizzaS(){
     const subC=String(row[m.sub]||'').trim(),fornN=String(row[m.forn]||'').trim(),descV=String(row[m.desc]||'').trim();
     const locV=m.loc?String(row[m.loc]||'').trim():'',inqN=m.inq?String(row[m.inq]||'').trim():'';
     const subM=DB.subs.find(s=>nr(s.codice)===nr(subC)||nr(s.ex_sub||'')===nr(subC));
-    const fornM=DB.fornitori.find(f=>nr(f.ragione_sociale)===nr(fornN))||DB.fornitori.find(f=>nr(f.ragione_sociale).includes(nr(fornN))||nr(fornN).includes(nr(f.ragione_sociale)));
+    // Solo corrispondenza esatta (case/spazi a parte): un match "per sottostringa" tipo
+    // "Costruzioni" → "Rossi Costruzioni SRL" rischiava di accreditare la spesa al fornitore
+    // sbagliato senza nessun avviso. Se il nome non combacia esattamente, si crea un nuovo
+    // fornitore (evitabile in seguito con una fusione manuale) invece di indovinare.
+    const fornM=DB.fornitori.find(f=>nr(f.ragione_sociale)===nr(fornN));
     const inqM=inqN?(DB.inquilini.find(i=>nr(i.ragione_sociale)===nr(inqN))||DB.inquilini.find(i=>nr(i.ragione_sociale).includes(nr(inqN)))):null;
+    // Prima, il secondo controllo sovrascriveva sempre lo stato del primo: una riga con
+    // "SUB non trovato" + "fornitore nuovo" perdeva l'avviso sul SUB e veniva importata
+    // come se fosse tutto ok, scollegata da qualunque immobile senza che si notasse.
+    // Ora si tiene il problema più grave (errore > avviso > novità) e si elencano tutti.
     let status='ok',note='';
-    if(!subM&&subC){status='warn';note='SUB non trovato';}
-    if(!fornN){status='err';note='Fornitore mancante';}
-    else if(!fornM){status='new';note='Nuovo fornitore → creato';}
-    if(inqN&&!inqM&&status==='ok'){status='new';note='Nuovo inquilino → creato';}
+    const problemi=[];
+    if(!subM&&subC)problemi.push({s:'warn',n:'SUB non trovato'});
+    if(!fornN)problemi.push({s:'err',n:'Fornitore mancante'});
+    else if(!fornM)problemi.push({s:'new',n:'Nuovo fornitore → creato'});
+    if(inqN&&!inqM)problemi.push({s:'new',n:'Nuovo inquilino → creato'});
+    if(problemi.length){
+      const ordine={err:3,warn:2,new:1};
+      problemi.sort((a,b)=>ordine[b.s]-ordine[a.s]);
+      status=problemi[0].s;
+      note=problemi.map(p=>p.n).join(' · ');
+    }
     return{row,m,subC,fornN,descV,locV,inqN,subM,fornM,inqM,status,note,protocollo:m.pr?String(row[m.pr]||'').trim():'',num_fattura:m.nf?String(row[m.nf]||'').trim():'',data_intervento:m.di?String(row[m.di]||'').trim():'',data_fattura:m.df?String(row[m.df]||'').trim():'',prezzo:m.p?String(row[m.p]||'').trim():'',note_txt:m.note?String(row[m.note]||'').trim():'',};
   });
   window._an=an;
