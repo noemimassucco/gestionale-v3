@@ -2,6 +2,19 @@
 const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
+const { registraUscita, rimuoviUscita } = require('../utils/controlloFatturazione');
+
+async function _registraUscitaManutenzione(m){
+  if (!m) return;
+  let fornNome = null;
+  if (m.fornitore_id) {
+    const fr = await pool.query('SELECT ragione_sociale FROM fornitori WHERE id=$1', [m.fornitore_id]).catch(()=>null);
+    fornNome = fr?.rows[0]?.ragione_sociale || null;
+  }
+  await registraUscita(pool, { origine_tipo:'manutenzione', origine_id:m.id, sub_id:m.sub_id||null,
+    sede_id:m.sede_id||null, fornitore_nome:fornNome, descrizione:m.descrizione||m.tipo,
+    importo:m.costo, data_documento:m.data_eseguita||m.data_programmata, created_by:m.created_by });
+}
 
 router.get('/api/manutenzioni', authMiddleware, async (req, res) => {
   const { sub_id, sede_id, stato, priorita } = req.query;
@@ -45,6 +58,7 @@ router.post('/api/manutenzioni', authMiddleware, async (req, res) => {
   if (v.sub_id) await pool.query(
     'INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
     [v.sub_id, 'manutenzione', `Manutenzione: ${v.tipo}`, v.descrizione||'', req.user.id]);
+  await _registraUscitaManutenzione(r.rows[0]);
   res.json(r.rows[0]);
 });
 
@@ -68,11 +82,13 @@ router.put('/api/manutenzioni/:id', authMiddleware, async (req, res) => {
     [v.sub_id||null, v.sede_id||null, v.fornitore_id||null, v.tipo||null, v.descrizione||null,
      v.priorita||null, v.stato||null, v.data_programmata||null, v.data_eseguita||null,
      v.ricorrenza||null, prossima||null, v.costo||null, v.note||null, req.params.id]);
+  await _registraUscitaManutenzione(r.rows[0]);
   res.json(r.rows[0]);
 });
 
 router.delete('/api/manutenzioni/:id', authMiddleware, async (req, res) => {
   await pool.query('DELETE FROM manutenzioni WHERE id=$1', [req.params.id]);
+  await rimuoviUscita(pool, 'manutenzione', req.params.id);
   res.json({ ok: true });
 });
 

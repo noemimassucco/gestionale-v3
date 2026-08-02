@@ -38,6 +38,7 @@ app.use('/', require('./routes/solleciti.routes'));
 app.use('/', require('./routes/smartzip.routes'));
 app.use('/', require('./routes/aimail.routes'));
 app.use('/', require('./routes/user-notifiche.routes'));
+app.use('/', require('./routes/controllo-fatturazione.routes'));
 
 // ── 404 API ──
 app.use('/api', (req, res) => {

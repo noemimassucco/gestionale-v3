@@ -124,53 +124,113 @@ router.delete('/api/millesimi/tabelle/:id', authMiddleware, async (req, res) => 
   res.json({ ok: true });
 });
 
-// Millesimi di un SUB (tutti i valori per tutte le tabelle)
+// Helper: normalizza una colonna DATE di Postgres (torna un oggetto Date, non una stringa)
+// in 'YYYY-MM-DD' — String(dateObject) NON produce quel formato.
+function _dOnly(v){
+  if (v instanceof Date) return v.toISOString().slice(0,10);
+  return v == null ? null : String(v).slice(0,10);
+}
+
+// Millesimi di un SUB — dato strutturale permanente: un blocco per ogni tabella millesimale,
+// con il valore corrente (ultima variazione con data_validita <= oggi), eventuali variazioni
+// future già programmate, e lo storico completo di quella tabella per quel SUB.
 router.get('/api/millesimi/:sub_id', authMiddleware, async (req, res) => {
   try {
-    const r = await pool.query(
-      `SELECT mv.*, mt.nome as tabella_nome, mt.descrizione as tabella_desc
-       FROM millesimi_valori mv
-       JOIN millesimi_tabelle mt ON mv.tabella_id=mt.id
-       WHERE mv.sub_id=$1 ORDER BY mt.nome`,
+    const tabelle = (await pool.query('SELECT * FROM millesimi_tabelle ORDER BY nome')).rows;
+    const valoriR = await pool.query(
+      `SELECT mv.*, u.nome as autore_nome
+       FROM millesimi_valori mv LEFT JOIN users u ON mv.created_by=u.id
+       WHERE mv.sub_id=$1 ORDER BY mv.data_validita DESC, mv.updated_at DESC, mv.id DESC`,
       [req.params.sub_id]);
-    res.json(r.rows);
+    const oggi = new Date().toISOString().slice(0,10);
+
+    const out = tabelle.map(t => {
+      const vals = valoriR.rows
+        .filter(v => v.tabella_id === t.id)
+        .map(v => ({ ...v, data_validita: _dOnly(v.data_validita) }))
+        .sort((a,b) => (a.data_validita < b.data_validita ? 1 : a.data_validita > b.data_validita ? -1 : b.id - a.id));
+      const passate = vals.filter(v => v.data_validita <= oggi);
+      const future  = vals.filter(v => v.data_validita > oggi).reverse();
+      return {
+        tabella_id: t.id,
+        tabella_nome: t.nome,
+        tabella_descrizione: t.descrizione,
+        corrente: passate[0] || null,
+        prossime: future,
+        storico: passate.slice(1),
+      };
+    });
+    res.json(out);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Imposta valore millesimale per un SUB + tabella
-router.put('/api/millesimi/:sub_id', authMiddleware, async (req, res) => {
-  const { tabella_id, valore, note } = req.body;
+// Storico completo dei millesimi di un SUB (facoltativo filtro per tabella)
+router.get('/api/millesimi/:sub_id/storico', authMiddleware, async (req, res) => {
+  try {
+    const { tabella_id } = req.query;
+    const params = [req.params.sub_id];
+    let where = 'mv.sub_id=$1';
+    if (tabella_id) { params.push(tabella_id); where += ` AND mv.tabella_id=$${params.length}`; }
+    const r = await pool.query(
+      `SELECT mv.*, mt.nome as tabella_nome, u.nome as autore_nome
+       FROM millesimi_valori mv
+       JOIN millesimi_tabelle mt ON mv.tabella_id=mt.id
+       LEFT JOIN users u ON mv.created_by=u.id
+       WHERE ${where}
+       ORDER BY mv.data_validita DESC, mv.updated_at DESC, mv.id DESC`, params);
+    res.json(r.rows.map(v => ({ ...v, data_validita: _dOnly(v.data_validita) })));
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Registra un nuovo valore millesimale per un SUB + tabella (storicizzato, non sovrascrive
+// il passato: ogni variazione è una nuova riga con la propria data di validità).
+router.post('/api/millesimi/:sub_id', authMiddleware, async (req, res) => {
+  const { tabella_id, valore, data_validita, note } = req.body;
   if (!tabella_id) return res.status(400).json({ error: 'tabella_id obbligatorio' });
+  if (valore === undefined || valore === null || valore === '') return res.status(400).json({ error: 'valore obbligatorio' });
   try {
     const r = await pool.query(
-      `INSERT INTO millesimi_valori (sub_id, tabella_id, valore, note, updated_at)
-       VALUES ($1,$2,$3,$4,NOW())
-       ON CONFLICT (sub_id, tabella_id) DO UPDATE
-         SET valore=$3, note=$4, updated_at=NOW()
+      `INSERT INTO millesimi_valori (sub_id, tabella_id, valore, data_validita, note, created_by, updated_at)
+       VALUES ($1,$2,$3,COALESCE($4::date,CURRENT_DATE),$5,$6,NOW())
        RETURNING *`,
-      [req.params.sub_id, tabella_id, valore || 0, note || null]);
-    // Also update the main millesimi field if it's the first/default table
-    await pool.query('UPDATE subs SET millesimi=$1 WHERE id=$2', [valore, req.params.sub_id])
-      .catch(() => {});
+      [req.params.sub_id, tabella_id, valore, data_validita || null, note || null, req.user.id]);
+    // Se il nuovo valore è già efficace oggi, allinea anche il campo scalare subs.millesimi
+    // (usato come scorciatoia in alcuni punti dell'app, es. tabella riepilogativa per sede).
+    const oggi = new Date().toISOString().slice(0,10);
+    if ((data_validita || oggi) <= oggi) {
+      await pool.query('UPDATE subs SET millesimi=$1 WHERE id=$2', [valore, req.params.sub_id]).catch(() => {});
+    }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Tutti i millesimi per tutti i SUB (per calcolo ripartizione)
+// Elimina una voce di storico millesimale
+router.delete('/api/millesimi/valori/:id', authMiddleware, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM millesimi_valori WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// Tutti i millesimi correnti per tutti i SUB di una tabella (per calcolo ripartizione) —
+// con più righe storicizzate per SUB, prendiamo solo l'ultimo valore efficace ad oggi.
 router.get('/api/millesimi/tabelle/:tabella_id/valori', authMiddleware, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT mv.*, s.codice as sub_codice, s.piano,
-              sd.nome as sede, i.ragione_sociale as inquilino,
-              (mv.valore * 100.0 / NULLIF(SUM(mv.valore) OVER(),0))::numeric(6,2) as percentuale
+      `SELECT DISTINCT ON (mv.sub_id) mv.*, s.codice as sub_codice, s.piano,
+              sd.nome as sede, i.ragione_sociale as inquilino
        FROM millesimi_valori mv
        JOIN subs s ON mv.sub_id=s.id
        LEFT JOIN sedi sd ON s.sede_id=sd.id
        LEFT JOIN inquilini i ON s.inquilino_id=i.id
-       WHERE mv.tabella_id=$1
-       ORDER BY mv.valore DESC`,
+       WHERE mv.tabella_id=$1 AND mv.data_validita <= CURRENT_DATE
+       ORDER BY mv.sub_id, mv.data_validita DESC, mv.updated_at DESC, mv.id DESC`,
       [req.params.tabella_id]);
-    res.json(r.rows);
+    const tot = r.rows.reduce((a,v) => a + parseFloat(v.valore||0), 0);
+    const out = r.rows
+      .map(v => ({ ...v, percentuale: tot ? +(parseFloat(v.valore)*100/tot).toFixed(2) : 0 }))
+      .sort((a,b) => parseFloat(b.valore) - parseFloat(a.valore));
+    res.json(out);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

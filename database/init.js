@@ -296,11 +296,86 @@ async function initDB() {
       ALTER TABLE subs ADD COLUMN IF NOT EXISTS millesimi DECIMAL(10,4);
     `).catch(()=>{});
 
+    // Migrazione: millesimi_valori diventa storicizzata (più righe per sub+tabella,
+    // ciascuna con la propria data di validità) invece di un unico valore sovrascritto.
+    await client.query(`ALTER TABLE millesimi_valori DROP CONSTRAINT IF EXISTS millesimi_valori_sub_id_tabella_id_key;`).catch(()=>{});
+    await client.query(`ALTER TABLE millesimi_valori ADD COLUMN IF NOT EXISTS data_validita DATE DEFAULT CURRENT_DATE;`).catch(()=>{});
+    await client.query(`ALTER TABLE millesimi_valori ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);`).catch(()=>{});
+    await client.query(`UPDATE millesimi_valori SET data_validita=updated_at::date WHERE data_validita IS NULL;`).catch(()=>{});
+
     // Tabella millesimale default
     await client.query(`
       INSERT INTO millesimi_tabelle (nome, descrizione)
       VALUES ('Millesimi di proprietà','Tabella millesimale generale per ripartizione spese')
       ON CONFLICT (nome) DO NOTHING;
+    `).catch(()=>{});
+
+    // ── Controllo Fatturazione: ogni "uscita" (bolletta/intervento/manutenzione/documento
+    // con un importo) confluisce automaticamente in un unico flusso di controllo verso la
+    // fatturazione, anche quando non è ancora deciso se/come rifatturarla. ────────────────
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS controllo_fatturazione (
+        id SERIAL PRIMARY KEY,
+        origine_tipo VARCHAR(30) NOT NULL,
+        origine_id INTEGER NOT NULL,
+        sub_id INTEGER REFERENCES subs(id) ON DELETE SET NULL,
+        sede_id INTEGER REFERENCES sedi(id) ON DELETE SET NULL,
+        fornitore_nome VARCHAR(300),
+        descrizione TEXT,
+        importo DECIMAL(12,2),
+        data_documento DATE,
+        protocollo VARCHAR(100),
+        rifatturabile VARCHAR(20) NOT NULL DEFAULT 'da_decidere',
+        modalita VARCHAR(20),
+        quota_rifatturabile DECIMAL(12,2),
+        attribuito_a_tipo VARCHAR(20),
+        attribuito_a_id INTEGER,
+        attribuito_a_testo VARCHAR(300),
+        criterio_riparto VARCHAR(200),
+        millesimi_tabella_id INTEGER REFERENCES millesimi_tabelle(id) ON DELETE SET NULL,
+        stato_decisione VARCHAR(30) NOT NULL DEFAULT 'da_decidere',
+        fattura_id INTEGER REFERENCES ordini_fatturazione(id) ON DELETE SET NULL,
+        note TEXT,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(origine_tipo, origine_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_cf_stato ON controllo_fatturazione(stato_decisione);
+      CREATE INDEX IF NOT EXISTS idx_cf_rifatt ON controllo_fatturazione(rifatturabile);
+      CREATE INDEX IF NOT EXISTS idx_cf_sub ON controllo_fatturazione(sub_id);
+      CREATE INDEX IF NOT EXISTS idx_cf_origine ON controllo_fatturazione(origine_tipo, origine_id);
+    `).catch(()=>{});
+
+    // Backfill: registra nel flusso di controllo tutte le uscite già esistenti con un importo,
+    // così nessuna spesa già caricata resta fuori dal flusso unico verso la fatturazione.
+    await client.query(`
+      INSERT INTO controllo_fatturazione (origine_tipo, origine_id, sub_id, sede_id, fornitore_nome, descrizione, importo, data_documento, protocollo, created_by)
+      SELECT 'bolletta', b.id, b.sub_id, s.sede_id, b.fornitore_nome, b.tipo, b.importo, COALESCE(b.data_pagamento, b.scadenza), b.numero, b.created_by
+      FROM bollette b LEFT JOIN subs s ON b.sub_id=s.id
+      WHERE b.importo IS NOT NULL AND b.importo <> 0
+      ON CONFLICT (origine_tipo, origine_id) DO NOTHING;
+    `).catch(()=>{});
+    await client.query(`
+      INSERT INTO controllo_fatturazione (origine_tipo, origine_id, sub_id, sede_id, fornitore_nome, descrizione, importo, data_documento, protocollo, created_by)
+      SELECT 'intervento', i.id, i.sub_id, i.sede_id, f.ragione_sociale, i.descrizione, i.prezzo, COALESCE(i.data_intervento, i.data_fattura), i.protocollo, i.created_by
+      FROM interventi i LEFT JOIN fornitori f ON i.fornitore_id=f.id
+      WHERE i.prezzo IS NOT NULL AND i.prezzo <> 0
+      ON CONFLICT (origine_tipo, origine_id) DO NOTHING;
+    `).catch(()=>{});
+    await client.query(`
+      INSERT INTO controllo_fatturazione (origine_tipo, origine_id, sub_id, sede_id, fornitore_nome, descrizione, importo, data_documento, created_by)
+      SELECT 'manutenzione', m.id, m.sub_id, m.sede_id, f.ragione_sociale, COALESCE(m.descrizione, m.tipo), m.costo, COALESCE(m.data_eseguita, m.data_programmata), m.created_by
+      FROM manutenzioni m LEFT JOIN fornitori f ON m.fornitore_id=f.id
+      WHERE m.costo IS NOT NULL AND m.costo <> 0
+      ON CONFLICT (origine_tipo, origine_id) DO NOTHING;
+    `).catch(()=>{});
+    await client.query(`
+      INSERT INTO controllo_fatturazione (origine_tipo, origine_id, sub_id, sede_id, fornitore_nome, descrizione, importo, data_documento, created_by)
+      SELECT 'documento', d.id, d.sub_id, d.sede_id, f.ragione_sociale, d.descrizione, d.importo, d.data_documento, d.created_by
+      FROM documenti d LEFT JOIN fornitori f ON d.fornitore_id=f.id
+      WHERE d.importo IS NOT NULL AND d.importo <> 0
+      ON CONFLICT (origine_tipo, origine_id) DO NOTHING;
     `).catch(()=>{});
 
     // Step 5: Indici DB per performance

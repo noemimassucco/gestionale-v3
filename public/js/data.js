@@ -466,7 +466,7 @@ async function loadClienti(stato = 'attivo') {
       <td>${m?`<span class="pill-stato" style="background:var(--danger-bg);color:var(--danger);">⚠ € ${m.tot.toLocaleString('it-IT',{maximumFractionDigits:0})} · ${m.n} canoni</span>`
              :(i.sub_attivi>0?'<span class="pill-stato" style="background:var(--success-bg);color:var(--success);">In regola</span>':'<span style="font-size:11px;color:var(--muted-2);">—</span>')}</td>
       <td style="font-size:11px;color:var(--muted);">${prox&&prox.titolo?esc(String(prox.titolo).slice(0,26))+(prox.data_evento?' · '+fmt(prox.data_evento):''):'—'}</td>
-      <td>${BADGE[i.stato_calcolato] || BADGE.ex}</td>
+      <td>${BADGE[i.stato_calcolato] || BADGE.ex}${i.incoerente?` <span title="Collegato a un SUB il cui stato risulta ancora libero/dismesso — apri la scheda del SUB e correggi lo stato occupazione" style="cursor:help;">⚠️</span>`:''}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn btn-xs btn-gray" onclick="openAssegnaSub(${i.id})" title="Assegna SUB">🏠</button>
         <button class="btn btn-xs btn-gray" onclick="delAna('inquilini',${i.id})" title="Elimina">🗑</button>

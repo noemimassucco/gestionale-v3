@@ -18,11 +18,17 @@ router.post('/api/bulk-delete', authMiddleware, async (req, res) => {
   const intIds = ids.map(id => parseInt(id)).filter(id => !isNaN(id) && id > 0);
   if (!intIds.length) return res.status(400).json({ error: 'Nessun ID valido' });
 
+  // Tabelle le cui righe alimentano il flusso di controllo fatturazione — quando una viene
+  // eliminata, la corrispondente riga di controllo va rimossa con lei (mai lasciarla orfana).
+  const ORIGINE_MAP = { interventi:'intervento', documenti:'documento', manutenzioni:'manutenzione', bollette:'bolletta' };
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     // For tables with FK deps, clear them first
     if (table === 'subs') {
+      const bollIds = (await client.query('SELECT id FROM bollette WHERE sub_id=ANY($1)', [intIds])).rows.map(r => r.id);
+      const manIds  = (await client.query('SELECT id FROM manutenzioni WHERE sub_id=ANY($1)', [intIds])).rows.map(r => r.id);
       await client.query('DELETE FROM pagamenti_affitto WHERE sub_id=ANY($1)', [intIds]);
       await client.query('DELETE FROM storico_inquilini WHERE sub_id=ANY($1)', [intIds]);
       await client.query('DELETE FROM bollette WHERE sub_id=ANY($1)', [intIds]);
@@ -33,6 +39,9 @@ router.post('/api/bulk-delete', authMiddleware, async (req, res) => {
       await client.query('DELETE FROM sub_storia WHERE sub_id=ANY($1)', [intIds]);
       await client.query('DELETE FROM sub_relazioni WHERE sub_padre=ANY($1) OR sub_figlio=ANY($1)', [intIds]);
       await client.query('UPDATE ordini_fatturazione SET sub_id=NULL WHERE sub_id=ANY($1)', [intIds]);
+      if (bollIds.length) await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['bolletta', bollIds]);
+      if (manIds.length)  await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['manutenzione', manIds]);
+      await client.query('UPDATE controllo_fatturazione SET sub_id=NULL WHERE sub_id=ANY($1)', [intIds]);
     }
     if (table === 'fornitori') {
       await client.query('UPDATE interventi SET fornitore_id=NULL WHERE fornitore_id=ANY($1)', [intIds]);
@@ -46,6 +55,10 @@ router.post('/api/bulk-delete', authMiddleware, async (req, res) => {
       await client.query('UPDATE pagamenti_affitto SET inquilino_id=NULL WHERE inquilino_id=ANY($1)', [intIds]);
       await client.query('UPDATE ticket SET inquilino_id=NULL WHERE inquilino_id=ANY($1)', [intIds]);
       await client.query('UPDATE ordini_fatturazione SET inquilino_id=NULL WHERE inquilino_id=ANY($1)', [intIds]);
+      await client.query('UPDATE controllo_fatturazione SET attribuito_a_id=NULL WHERE attribuito_a_tipo=$1 AND attribuito_a_id=ANY($2)', ['cliente', intIds]);
+    }
+    if (ORIGINE_MAP[table]) {
+      await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', [ORIGINE_MAP[table], intIds]);
     }
     const result = await client.query(`DELETE FROM ${table} WHERE id=ANY($1) RETURNING id`, [intIds]);
     await client.query('COMMIT');

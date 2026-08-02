@@ -3,6 +3,7 @@ const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { registraUscita, rimuoviUscita } = require('../utils/controlloFatturazione');
 
 // ── Cloudinary v2 ──
 const cloudinary = require('cloudinary').v2;
@@ -65,6 +66,12 @@ router.post('/api/documenti', authMiddleware, upload.single('file'), async (req,
     await pool.query('INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
       [sub_id,'documento',`Nuovo documento: ${nomeFile}`,`Tipo: ${tipo||'documento'}`,req.user.id]);
   }
+  if (importo) {
+    let fornNome = null;
+    if (fornitore_id) { const fr = await pool.query('SELECT ragione_sociale FROM fornitori WHERE id=$1', [fornitore_id]).catch(()=>null); fornNome = fr?.rows[0]?.ragione_sociale || null; }
+    await registraUscita(pool, { origine_tipo:'documento', origine_id:r.rows[0].id, sub_id:sub_id||null, sede_id:sede_id||null,
+      fornitore_nome:fornNome, descrizione:descrizione||nomeFile, importo, data_documento:data_documento||null, created_by:req.user.id });
+  }
   res.json(r.rows[0]);
 });
 
@@ -94,6 +101,7 @@ router.delete('/api/documenti/:id', authMiddleware, async (req, res) => {
     try { await cloudinary.uploader.destroy(r.rows[0].cloudinary_id, { resource_type: 'raw' }); } catch(e) {}
   }
   await pool.query('DELETE FROM documenti WHERE id=$1', [req.params.id]);
+  await rimuoviUscita(pool, 'documento', req.params.id);
   res.json({ ok: true });
 });
 

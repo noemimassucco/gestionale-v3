@@ -1015,6 +1015,7 @@ input,select,textarea{border-radius:8px;}
       <div class="sb-group">
         <div class="sb-group-title">Economico</div>
         <button class="sb-item" id="sb-finanze" onclick="showSection('finanze')"><span class="sb-ico">💶</span><span class="sb-lbl">Incassi &amp; Uscite</span></button>
+        <button class="sb-item" id="sb-controllofatt" onclick="showSection('controllofatt')"><span class="sb-ico">🔄</span><span class="sb-lbl">Controllo Fatturazione</span></button>
         <button class="sb-item" id="sb-fatturazione" onclick="showSection('fatturazione')"><span class="sb-ico">🧾</span><span class="sb-lbl">Schema Fatturazione</span></button>
         <button class="sb-item" id="sb-riepilogo" onclick="showSection('riepilogo')"><span class="sb-ico">📊</span><span class="sb-lbl">Riepilogo</span></button>
       </div>
@@ -1918,6 +1919,111 @@ input,select,textarea{border-radius:8px;}
       </div>
     </div>
 
+    <!-- SEZIONE CONTROLLO FATTURAZIONE -->
+    <div id="sec-controllofatt" class="section">
+      <div class="flex-between mb-16" style="flex-wrap:wrap;gap:10px;">
+        <div>
+          <h2 class="page-title">🔄 Controllo Fatturazione</h2>
+          <p class="page-sub">Ogni uscita registrata (bollette, interventi, manutenzioni, documenti con importo) passa da qui: decidi se e come va rifatturata, oppure segnala che non lo è — nessuna spesa resta fuori dal flusso.</p>
+        </div>
+        <div class="flex" style="gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-gray" onclick="document.getElementById('cf-reimport-file').click()">📥 Ricarica da contabile</button>
+          <input type="file" id="cf-reimport-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="cfReimport(this)">
+          <button class="btn btn-primary" onclick="cfExport()">⬇️ Esporta per la contabilità</button>
+        </div>
+      </div>
+
+      <div id="cf-riepilogo" style="margin-bottom:16px;"></div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="form-grid">
+          <div class="field"><label>Rifatturabile</label>
+            <select id="cf-f-rifatt" onchange="loadControlloFatt()">
+              <option value="">Tutti</option>
+              <option value="si">Sì</option>
+              <option value="no">No</option>
+              <option value="da_decidere">Da decidere</option>
+            </select>
+          </div>
+          <div class="field"><label>Stato</label>
+            <select id="cf-f-stato" onchange="loadControlloFatt()">
+              <option value="">Tutti</option>
+              <option value="da_decidere">Da decidere</option>
+              <option value="da_fatturare">Da fatturare</option>
+              <option value="fatturata">Fatturata</option>
+              <option value="sospesa">Sospesa</option>
+              <option value="non_rifatturabile">Non rifatturabile</option>
+            </select>
+          </div>
+          <div class="field"><label>Origine</label>
+            <select id="cf-f-origine" onchange="loadControlloFatt()">
+              <option value="">Tutte</option>
+              <option value="bolletta">Bolletta</option>
+              <option value="intervento">Intervento</option>
+              <option value="manutenzione">Manutenzione</option>
+              <option value="documento">Documento</option>
+            </select>
+          </div>
+          <div class="field"><label>Cerca</label><input id="cf-f-search" placeholder="fornitore, descrizione, protocollo…" onkeydown="if(event.key==='Enter')loadControlloFatt()"></div>
+        </div>
+      </div>
+
+      <div id="cf-list"></div>
+    </div>
+
+    <!-- MODAL DECISIONE CONTROLLO FATTURAZIONE -->
+    <div id="modal-cf" class="overlay">
+      <div class="modal">
+        <div class="modal-title">Decisione di rifatturazione</div>
+        <div id="cf-modal-info" style="font-size:12px;color:var(--muted);margin-bottom:14px;"></div>
+        <div class="form-grid">
+          <div class="field"><label>Rifatturabile</label>
+            <select id="cf-rifatturabile" onchange="cfToggleCampi()">
+              <option value="da_decidere">Da decidere</option>
+              <option value="si">Sì</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+          <div class="field" id="cf-campo-modalita"><label>Modalità</label>
+            <select id="cf-modalita">
+              <option value="intera">Interamente</option>
+              <option value="parziale">Solo in parte</option>
+            </select>
+          </div>
+          <div class="field" id="cf-campo-quota"><label>Quota da rifatturare (€)</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="cf-quota" step="0.01" min="0" placeholder="0.00"></div></div>
+          <div class="field" id="cf-campo-attrib-tipo"><label>Attribuita a</label>
+            <select id="cf-attrib-tipo" onchange="cfToggleAttrib()">
+              <option value="">—</option>
+              <option value="cliente">Cliente</option>
+              <option value="sub">SUB</option>
+              <option value="condominio">Condominio / Sede</option>
+              <option value="commessa">Commessa</option>
+              <option value="centro_costo">Centro di costo</option>
+            </select>
+          </div>
+          <div class="field" id="cf-campo-attrib-select"><label>Seleziona</label><select id="cf-attrib-id"><option value="">—</option></select></div>
+          <div class="field" id="cf-campo-attrib-testo"><label>Nome commessa / centro di costo</label><input id="cf-attrib-testo"></div>
+          <div class="field" id="cf-campo-criterio"><label>Criterio di ripartizione <span style="font-weight:400;color:var(--muted);">(se necessario)</span></label>
+            <input id="cf-criterio" placeholder="es. millesimi, quota fissa, per SUB…">
+          </div>
+          <div class="field"><label>Stato</label>
+            <select id="cf-stato">
+              <option value="da_decidere">Da decidere</option>
+              <option value="da_fatturare">Da fatturare</option>
+              <option value="fatturata">Fatturata</option>
+              <option value="sospesa">Sospesa — in attesa di verifica</option>
+              <option value="non_rifatturabile">Non rifatturabile</option>
+            </select>
+          </div>
+          <div class="field form-full"><label>Note / anomalie</label><textarea id="cf-note" rows="2" placeholder="Note per la contabile, anomalie da verificare…"></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-gray" onclick="closeM('modal-cf')">Annulla</button>
+          <button class="btn btn-success" onclick="cfSalvaDecisione()">✓ Salva decisione</button>
+        </div>
+      </div>
+    </div>
+
     <!-- SEZIONE FATTURAZIONE -->
     <div id="sec-fatturazione" class="section">
 
@@ -2160,6 +2266,7 @@ input,select,textarea{border-radius:8px;}
           <button class="tab-btn" onclick="setSubDetTab('interventi',this)"><span class="sn-ico">🛠️</span>Interventi</button>
           <div class="subdet-nav-title">Amministrazione</div>
           <button class="tab-btn" onclick="setSubDetTab('economico',this)"><span class="sn-ico">💰</span>Economico</button>
+          <button class="tab-btn" onclick="setSubDetTab('millesimi',this)"><span class="sn-ico">📐</span>Millesimi</button>
           <button class="tab-btn" onclick="setSubDetTab('timeline',this)"><span class="sn-ico">📜</span>Storico</button>
         </nav>
         <div id="sub-det-content" style="min-height:300px;">
@@ -2522,11 +2629,11 @@ input,select,textarea{border-radius:8px;}
     </div>
     <div class="form-grid">
       <div class="field"><label>Sede *</label><select id="fi-sede" onchange="filterSubBySede()"><option value="">—</option></select></div>
-      <div class="field"><label>SUB *</label><select id="fi-sub"><option value="">—</option></select></div>
-      <div class="field"><label>Inquilino</label><select id="fi-inq"><option value="">—</option></select></div>
-      <div class="field"><label>Fornitore *</label><select id="fi-forn"><option value="">—</option></select></div>
+      <div class="field"><label>SUB *</label><div style="display:flex;gap:6px;"><select id="fi-sub" style="flex:1;"><option value="">—</option></select><button type="button" class="btn btn-xs btn-gray" title="Crea SUB al volo" onclick="quickCreateAna('sub','fi-sub')">➕</button></div></div>
+      <div class="field"><label>Inquilino</label><div style="display:flex;gap:6px;"><select id="fi-inq" style="flex:1;"><option value="">—</option></select><button type="button" class="btn btn-xs btn-gray" title="Crea inquilino al volo" onclick="quickCreateAna('inquilino','fi-inq')">➕</button></div></div>
+      <div class="field"><label>Fornitore *</label><div style="display:flex;gap:6px;"><select id="fi-forn" style="flex:1;"><option value="">—</option></select><button type="button" class="btn btn-xs btn-gray" title="Crea fornitore al volo" onclick="quickCreateAna('fornitore','fi-forn', window.__fiFornSuggerito||'')">➕</button></div></div>
       <div class="field"><label>Categoria</label><select id="fi-cat"><option value="">—</option></select></div>
-      <div class="field"><label>N° Protocollo *</label><input id="fi-prot" placeholder="es. 2024/012"></div>
+      <div class="field"><label>N° Protocollo <span style="font-weight:400;color:var(--muted);">(quando disponibile)</span></label><input id="fi-prot" placeholder="es. 2024/012 — puoi aggiungerlo anche più tardi"></div>
       <div class="field"><label>N° Fattura</label><input id="fi-nf" placeholder="es. FT-2024-045"></div>
       <div class="field"><label>Anno fattura</label><input type="number" id="fi-anno" placeholder="2024"></div>
       <div class="field"><label>Data Intervento *</label><input type="date" id="fi-di"></div>
@@ -2589,7 +2696,7 @@ input,select,textarea{border-radius:8px;}
     <div class="modal-title" id="m-ana-ttl">Nuovo elemento</div>
     <div id="m-ana-body" class="form-grid"></div>
     <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeM('modal-ana')">Annulla</button>
+      <button class="btn btn-gray" onclick="cancelAna()">Annulla</button>
       <button class="btn btn-success" onclick="saveAna()">✓ Salva</button>
     </div>
   </div>
@@ -3172,6 +3279,7 @@ input,select,textarea{border-radius:8px;}
   <script src="js/calendar.js?v=10"></script>
   <script src="js/analytics.js?v=10"></script>
   <script src="js/finanze.js?v=10"></script>
+  <script src="js/controllo-fatturazione.js?v=1"></script>
   <script src="js/misc.js?v=10"></script>
   <script src="js/cmdk.js?v=10"></script>
   <!-- app.js — init entry point (loaded last) -->

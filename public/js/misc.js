@@ -396,8 +396,11 @@ async function runOCR(input) {
       if (fornM) {
         document.getElementById('fi-forn').value = fornM.id;
         status.textContent += ` Fornitore trovato: ${fornM.ragione_sociale}.`;
+        window.__fiFornSuggerito = '';
       } else {
-        status.textContent += ` ⚠️ Fornitore "${d.fornitore}" non trovato in anagrafica — aggiungilo prima.`;
+        // Non blocca l'import: propone di creare il fornitore al volo, senza perdere il resto del form già compilato
+        window.__fiFornSuggerito = d.fornitore;
+        status.innerHTML += ` ⚠️ Fornitore "${esc(d.fornitore)}" non trovato in anagrafica — <a href="#" onclick="event.preventDefault();quickCreateAna('fornitore','fi-forn',window.__fiFornSuggerito)" style="color:var(--accent);font-weight:600;">crealo ora ➕</a>`;
       }
     }
     // Prova a matchare SUB
@@ -812,20 +815,23 @@ async function renderSubDetTab(tab) {
       <div class="flex-between" style="margin-bottom:8px;flex-wrap:wrap;gap:8px;">
         <div style="font-size:12px;font-weight:700;">📐 Millesimi di proprietà</div>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input id="sub-millesimi-inp" type="number" step="0.01" value="${s.millesimi||''}" placeholder="es. 125.50" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;">
-          <span style="font-size:11px;color:var(--muted);">‰</span>
-          <button class="btn btn-xs btn-primary" onclick="saveMillesimiSub()">Salva</button>
+          <span style="font-size:14px;font-weight:700;color:var(--accent);font-family:monospace;">${s.millesimi?parseFloat(s.millesimi)+'‰':'non impostati'}</span>
+          <button class="btn btn-xs btn-gray" onclick="setSubDetTab('millesimi',_subTabBtn('millesimi'))">✏️ Gestisci →</button>
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;">
         <span style="color:var(--muted);">Calcola la tua quota:</span>
         <span>spesa totale condominio €</span>
-        <input id="sub-mill-spesa" type="number" step="0.01" value="${s.spesa_cond_totale||''}" placeholder="0.00" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="calcQuotaMillesimi()" onchange="saveMillesimiSub()">
+        <input id="sub-mill-spesa" type="number" step="0.01" value="${s.spesa_cond_totale||''}" placeholder="0.00" style="width:110px;background:var(--card);border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:12px;" oninput="calcQuotaMillesimi()" onchange="saveMillesimiSpesa()">
         <span>→ quota SUB: <strong id="sub-mill-quota" style="color:var(--accent);font-family:monospace;">${(s.millesimi&&s.spesa_cond_totale)?('€ '+(parseFloat(s.spesa_cond_totale)*parseFloat(s.millesimi)/1000).toLocaleString('it-IT',{minimumFractionDigits:2})+' ('+parseFloat(s.millesimi)+'‰)'):'—'}</strong></span>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">I millesimi sono un dato strutturale del SUB: si gestiscono nella scheda dedicata, con storico delle variazioni.</div>
     </div></div>`
     +_subDocFolder('🏢 Spese condominiali','condominiale','Carica qui riparti, verbali assemblea e rendiconti condominiali (con importo e scadenza).');
     if(typeof wowNumbers==='function')wowNumbers(el);
+  }else if(tab==='millesimi'){
+    el.innerHTML='<div class="empty">Caricamento millesimi…</div>';
+    await renderTabMillesimi(s);
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
   }else if(tab==='interventi'){
@@ -1719,23 +1725,130 @@ async function subIstatApplica(){
 }
 
 // ═══ Millesimi (tab Economico) ═══
-async function saveMillesimiSub(){
-  const val=document.getElementById('sub-millesimi-inp')?.value||'';
+// Salva SOLO la spesa condominiale simulata per il calcolo rapido quota — i millesimi veri e propri
+// (dato strutturale) si gestiscono ora nella scheda dedicata "Millesimi", non da qui.
+async function saveMillesimiSpesa(){
   const spesa=document.getElementById('sub-mill-spesa')?.value||'';
-  const r=await api('/api/subs/'+currentSubId+'/millesimi',{method:'PUT',body:JSON.stringify({millesimi:val||null,spesa_cond_totale:spesa||null})});
+  const r=await api('/api/subs/'+currentSubId+'/millesimi',{method:'PUT',body:JSON.stringify({millesimi:null,spesa_cond_totale:spesa||null})});
   if(!r||r.error){toast('Errore: '+(r?.error||'salvataggio fallito'),'error');return;}
-  if(currentSubData?.sub){currentSubData.sub.millesimi=r.millesimi;currentSubData.sub.spesa_cond_totale=r.spesa_cond_totale;}
-  toast('📐 Millesimi e spesa salvati ✓');
+  if(currentSubData?.sub){currentSubData.sub.spesa_cond_totale=r.spesa_cond_totale;}
+  toast('📐 Spesa condominio salvata ✓');
   calcQuotaMillesimi();
 }
 function calcQuotaMillesimi(){
-  const mill=parseFloat(document.getElementById('sub-millesimi-inp')?.value||currentSubData?.sub?.millesimi||0);
+  const mill=parseFloat(currentSubData?.sub?.millesimi||0);
   const tot=parseFloat(document.getElementById('sub-mill-spesa')?.value||0);
   const out=document.getElementById('sub-mill-quota');
   if(!out)return;
   out.textContent=(mill&&tot)?('€ '+(tot*mill/1000).toLocaleString('it-IT',{minimumFractionDigits:2}))+' ('+mill+'‰)':'—';
 }
 
+// ═══════════════════════════════════════════════════════════
+// MILLESIMI CONDOMINIALI — sezione dedicata sulla scheda SUB
+// Dato strutturale permanente: tabella millesimale di riferimento, valore corrente per il SUB,
+// data di validità, storico delle variazioni nel tempo. Più tabelle = criteri diversi per tipo di spesa.
+// ═══════════════════════════════════════════════════════════
+async function renderTabMillesimi(s){
+  const el=document.getElementById('sub-det-content');
+  const millData=await api('/api/millesimi/'+currentSubId)||[];
+  if(currentSubData)currentSubData._millesimi=millData;
+  const card=(t)=>{
+    const cor=t.corrente;
+    const prox=(t.prossime||[])[0];
+    return `<div class="card" style="margin-bottom:12px;">
+      <div class="flex-between" style="flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">${esc(t.tabella_nome)}</div>
+          ${t.tabella_descrizione?`<div style="font-size:11px;color:var(--muted);">${esc(t.tabella_descrizione)}</div>`:''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:22px;font-weight:700;color:var(--accent);font-family:monospace;">${cor?parseFloat(cor.valore)+'‰':'—'}</div>
+          <div style="font-size:11px;color:var(--muted);">${cor?'valido dal '+fmt(cor.data_validita):'nessun valore impostato'}</div>
+        </div>
+      </div>
+      ${cor?.note?`<div style="font-size:12px;color:var(--muted);margin-top:6px;">📝 ${esc(cor.note)}</div>`:''}
+      ${prox?`<div style="margin-top:8px;background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.25);border-radius:8px;padding:8px 12px;font-size:12px;">📅 Variazione già programmata: <strong>${parseFloat(prox.valore)}‰</strong> a partire dal <strong>${fmt(prox.data_validita)}</strong></div>`:''}
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-xs btn-primary" onclick="apriNuovoValoreMillesimi(${t.tabella_id})">➕ Nuovo valore / variazione</button>
+        ${t.storico.length?`<button class="btn btn-xs btn-gray" onclick="toggleStoricoMillesimi(${t.tabella_id})">🕐 Storico (${t.storico.length})</button>`:''}
+      </div>
+      <div id="mill-storico-${t.tabella_id}" class="hidden" style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+        ${t.storico.map(v=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border);">
+          <span>${fmt(v.data_validita)} → <strong style="font-family:monospace;">${parseFloat(v.valore)}‰</strong>${v.note?' · '+esc(v.note):''}${v.autore_nome?' · <span style=\"color:var(--muted);\">'+esc(v.autore_nome)+'</span>':''}</span>
+          <button class="btn btn-xs btn-danger" onclick="delValoreMillesimi(${v.id})" title="Elimina questa voce di storico">✕</button>
+        </div>`).join('')||'<div style="font-size:12px;color:var(--muted);">Nessuna variazione precedente.</div>'}
+      </div>
+    </div>`;
+  };
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:11px;color:var(--muted);">I millesimi sono un dato strutturale del SUB: restano salvati qui, con la data da cui sono validi. Puoi avere più tabelle per criteri diversi (es. proprietà, riscaldamento, ascensore).</div>
+      <button class="btn btn-sm btn-gray" onclick="nuovaTabellaMillesimi()">➕ Nuova tabella millesimale</button>
+    </div>
+    <div id="mill-nuovo-form" class="hidden card" style="margin-bottom:14px;background:var(--card-alt);"></div>
+    ${millData.length?millData.map(card).join(''):'<div class="empty">Nessuna tabella millesimale configurata. Creane una per iniziare.</div>'}
+  `;
+}
+
+function apriNuovoValoreMillesimi(tabellaId){
+  const wrap=document.getElementById('mill-nuovo-form');
+  if(!wrap)return;
+  const oggi=new Date().toISOString().slice(0,10);
+  wrap.innerHTML=`
+    <div style="font-size:12px;font-weight:700;margin-bottom:8px;">Nuovo valore millesimale</div>
+    <div class="form-grid">
+      <div class="field"><label>Valore ‰</label><input type="number" step="0.0001" min="0" max="1000" id="mv-valore" placeholder="es. 128.5000"></div>
+      <div class="field"><label>Valido dal</label><input type="date" id="mv-data" value="${oggi}"></div>
+      <div class="field form-full"><label>Note (opzionale)</label><input id="mv-note" placeholder="es. dopo variazione catastale, delibera assemblea…"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-sm btn-gray" onclick="document.getElementById('mill-nuovo-form').classList.add('hidden')">Annulla</button>
+      <button class="btn btn-sm btn-success" onclick="salvaValoreMillesimi(${tabellaId})">✓ Salva</button>
+    </div>`;
+  wrap.classList.remove('hidden');
+  wrap.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>document.getElementById('mv-valore')?.focus(),100);
+}
+
+async function salvaValoreMillesimi(tabellaId){
+  const v=id=>document.getElementById(id)?.value||'';
+  if(!v('mv-valore')){toast('Inserisci il valore','error');return;}
+  const r=await api('/api/millesimi/'+currentSubId,{method:'POST',body:JSON.stringify({
+    tabella_id:tabellaId, valore:v('mv-valore'), data_validita:v('mv-data')||null, note:v('mv-note')||null
+  })});
+  if(!r||r.error){toast('Errore: '+(r?.error||'salvataggio fallito'),'error');return;}
+  toast('📐 Millesimi salvati ✓');
+  document.getElementById('mill-nuovo-form')?.classList.add('hidden');
+  // Aggiorna anche subs.millesimi in cache locale se è la tabella di default e il valore è già efficace
+  if(currentSubData?.sub){
+    const oggi=new Date().toISOString().slice(0,10);
+    if((v('mv-data')||oggi)<=oggi) currentSubData.sub.millesimi=v('mv-valore');
+  }
+  renderTabMillesimi(currentSubData.sub);
+}
+
+async function delValoreMillesimi(id){
+  if(!await appConfirm('Eliminare questa voce di storico? L\'operazione non è reversibile.',{icon:'🗑',title:'Elimina voce'}))return;
+  const r=await api('/api/millesimi/valori/'+id,{method:'DELETE'});
+  if(r?.error){toast('Errore: '+r.error,'error');return;}
+  toast('🗑 Voce eliminata');
+  renderTabMillesimi(currentSubData.sub);
+}
+
+function toggleStoricoMillesimi(tabellaId){
+  document.getElementById('mill-storico-'+tabellaId)?.classList.toggle('hidden');
+}
+
+async function nuovaTabellaMillesimi(){
+  const nome=prompt('Nome della nuova tabella millesimale (es. "Riscaldamento", "Ascensore"):');
+  if(!nome?.trim())return;
+  const descrizione=prompt('Descrizione (opzionale):')||null;
+  const r=await api('/api/millesimi/tabelle',{method:'POST',body:JSON.stringify({nome:nome.trim(),descrizione})});
+  if(r?.error){toast('Errore: '+r.error,'error');return;}
+  toast('✅ Tabella millesimale creata');
+  _cache._millDefTab=null; // forza ricalcolo se cambia la tabella di default
+  renderTabMillesimi(currentSubData.sub);
+}
 
 // ═══ Email: sollecito affitto + test configurazione ═══
 async function sollecitoAffitto(pagamentoId){

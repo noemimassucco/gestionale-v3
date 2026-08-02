@@ -36,6 +36,7 @@ router.get('/api/clienti', authMiddleware, async (req, res) => {
         s_int.codice AS ricerca_sub_codice,
         COUNT(DISTINCT s.id) FILTER (WHERE s.stato_occupazione NOT IN ('libero','dismesso')) AS sub_attivi,
         COUNT(DISTINCT s.id) AS sub_totale,
+        COUNT(DISTINCT s.id) FILTER (WHERE s.stato_occupazione IN ('libero','dismesso')) AS sub_incoerenti,
         (SELECT COUNT(*) FROM promemoria p
           WHERE p.entita_tipo IN ('cliente','lead') AND p.entita_id = i.id
             AND p.completato = false) AS promemoria_attivi,
@@ -56,7 +57,10 @@ router.get('/api/clienti', authMiddleware, async (req, res) => {
     `, params)).rows;
 
     // Calcola stato runtime + filtro attivo/ex
-    const enriched = rows.map(r => ({ ...r, stato_calcolato: statoRuntime(r) }));
+    // sub_incoerenti > 0 = il cliente è ancora collegato (inquilino_id) a un SUB il cui
+    // stato_occupazione è rimasto 'libero'/'dismesso' (dato più vecchio, da correggere a mano
+    // dalla scheda del SUB) — la si segnala pur senza bloccare nulla.
+    const enriched = rows.map(r => ({ ...r, stato_calcolato: statoRuntime(r), incoerente: parseInt(r.sub_incoerenti) > 0 }));
     const filtered = stato === 'all' ? enriched
       : stato === 'attivo' ? enriched.filter(r => r.stato_calcolato === 'attivo')
       : stato === 'ex'     ? enriched.filter(r => r.stato_calcolato === 'ex')

@@ -3,6 +3,19 @@ const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const { updateSaluteImmobile, generateTags, extractPriceFromText, parseDate, parsePrice } = require('../utils/helpers');
+const { registraUscita, rimuoviUscita } = require('../utils/controlloFatturazione');
+
+async function _registraUscitaIntervento(i){
+  if (!i) return;
+  let fornNome = null;
+  if (i.fornitore_id) {
+    const fr = await pool.query('SELECT ragione_sociale FROM fornitori WHERE id=$1', [i.fornitore_id]).catch(()=>null);
+    fornNome = fr?.rows[0]?.ragione_sociale || null;
+  }
+  await registraUscita(pool, { origine_tipo:'intervento', origine_id:i.id, sub_id:i.sub_id||null,
+    sede_id:i.sede_id||null, fornitore_nome:fornNome, descrizione:i.descrizione,
+    importo:i.prezzo, data_documento:i.data_intervento||i.data_fattura, protocollo:i.protocollo, created_by:i.created_by });
+}
 
 router.get('/api/interventi', authMiddleware, async (req, res) => {
   const { sub_id, sede_id, fornitore_id, categoria_id, anno, search, tags, data_da, data_a, importo_min, importo_max } = req.query;
@@ -96,6 +109,7 @@ router.post('/api/interventi', authMiddleware, async (req, res) => {
   );
   // Ricalcola salute SUB
   if (v.sub_id) await updateSaluteImmobile(v.sub_id);
+  await _registraUscitaIntervento(r.rows[0]);
   res.json(r.rows[0]);
 });
 
@@ -112,6 +126,7 @@ router.put('/api/interventi/:id', authMiddleware, async (req, res) => {
      v.anno_fattura||null, v.prezzo||null, v.descrizione||null, v.note||null, tags, hasNotifica, req.user.id, req.params.id]
   );
   if (v.sub_id) await updateSaluteImmobile(v.sub_id);
+  await _registraUscitaIntervento(r.rows[0]);
   res.json(r.rows[0]);
 });
 
@@ -119,6 +134,7 @@ router.delete('/api/interventi/:id', authMiddleware, async (req, res) => {
   const inv = await pool.query('SELECT sub_id FROM interventi WHERE id=$1', [req.params.id]);
   await pool.query('DELETE FROM interventi WHERE id=$1', [req.params.id]);
   if (inv.rows[0]?.sub_id) await updateSaluteImmobile(inv.rows[0].sub_id);
+  await rimuoviUscita(pool, 'intervento', req.params.id);
   res.json({ ok: true });
 });
 
@@ -127,6 +143,7 @@ router.post('/api/interventi/delete-bulk', authMiddleware, async (req, res) => {
   if (!ids?.length) return res.json({ deleted: 0 });
   const subIds = (await pool.query('SELECT DISTINCT sub_id FROM interventi WHERE id=ANY($1)', [ids])).rows.map(r => r.sub_id).filter(Boolean);
   await pool.query('DELETE FROM interventi WHERE id=ANY($1)', [ids]);
+  await pool.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['intervento', ids]).catch(()=>{});
   for (const subId of subIds) await updateSaluteImmobile(subId);
   res.json({ deleted: ids.length });
 });

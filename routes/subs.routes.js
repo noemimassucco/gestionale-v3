@@ -338,8 +338,12 @@ router.post('/api/subs/:id/cambia-inquilino', authMiddleware, async (req, res) =
   if (s.inquilino_id) {
     await pool.query('UPDATE storico_inquilini SET data_fine=$1 WHERE sub_id=$2 AND data_fine IS NULL', [data_cambio, req.params.id]);
   }
-  // Aggiorna SUB
-  await pool.query('UPDATE subs SET inquilino_id=$1 WHERE id=$2', [nuovo_inquilino_id||null, req.params.id]);
+  // Aggiorna SUB — allinea anche stato_occupazione, altrimenti il cliente resta erroneamente
+  // in "ex clienti" pur essendo ricollegato a un SUB attivo (stato attivo/ex è calcolato da questo campo)
+  await pool.query(
+    'UPDATE subs SET inquilino_id=$1, stato_occupazione=$2 WHERE id=$3',
+    [nuovo_inquilino_id||null, nuovo_inquilino_id ? 'occupato' : 'libero', req.params.id]
+  );
   // Crea nuovo record storico
   if (nuovo_inquilino_id) {
     await pool.query('INSERT INTO storico_inquilini (sub_id,inquilino_id,data_inizio,canone_mensile,tipo_contratto,note,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',

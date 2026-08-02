@@ -3,6 +3,7 @@ const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { registraUscita, rimuoviUscita } = require('../utils/controlloFatturazione');
 
 // ── Cloudinary v2 ──
 const cloudinary = require('cloudinary').v2;
@@ -60,6 +61,11 @@ router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, 
   }
   if(f.sub_id) await pool.query('INSERT INTO sub_storia (sub_id,tipo,titolo,descrizione,created_by) VALUES ($1,$2,$3,$4,$5)',
     [f.sub_id,'bolletta',`Bolletta ${f.tipo||'altro'} ${f.fornitore_nome||''}`,`€ ${f.importo||'—'} — Scadenza: ${f.scadenza||'—'}`,req.user.id]);
+  let sedeId = null;
+  if (f.sub_id) { const sr = await pool.query('SELECT sede_id FROM subs WHERE id=$1', [f.sub_id]).catch(()=>null); sedeId = sr?.rows[0]?.sede_id || null; }
+  await registraUscita(pool, { origine_tipo:'bolletta', origine_id:r.rows[0].id, sub_id:f.sub_id||null, sede_id:sedeId,
+    fornitore_nome:f.fornitore_nome, descrizione:f.tipo, importo:f.importo, data_documento:f.data_pagamento||f.scadenza,
+    protocollo:f.numero, created_by:req.user.id });
   res.json(r.rows[0]);
 });
 
@@ -68,6 +74,14 @@ router.put('/api/bollette/:id', authMiddleware, async (req, res) => {
   const r=await pool.query(
     `UPDATE bollette SET tipo=COALESCE($1,tipo),fornitore_nome=COALESCE($2,fornitore_nome),numero=COALESCE($3,numero),importo=COALESCE($4::numeric,importo),periodo_dal=COALESCE($5::date,periodo_dal),periodo_al=COALESCE($6::date,periodo_al),scadenza=COALESCE($7::date,scadenza),data_pagamento=COALESCE($8::date,data_pagamento),stato=COALESCE($9,stato),note=COALESCE($10,note) WHERE id=$11 RETURNING *`,
     [f.tipo||null,f.fornitore_nome||null,f.numero||null,f.importo||null,f.periodo_dal||null,f.periodo_al||null,f.scadenza||null,f.data_pagamento||null,f.stato||null,f.note||null,req.params.id]);
+  const b = r.rows[0];
+  if (b) {
+    let sedeId = null;
+    if (b.sub_id) { const sr = await pool.query('SELECT sede_id FROM subs WHERE id=$1', [b.sub_id]).catch(()=>null); sedeId = sr?.rows[0]?.sede_id || null; }
+    await registraUscita(pool, { origine_tipo:'bolletta', origine_id:b.id, sub_id:b.sub_id||null, sede_id:sedeId,
+      fornitore_nome:b.fornitore_nome, descrizione:b.tipo, importo:b.importo, data_documento:b.data_pagamento||b.scadenza,
+      protocollo:b.numero, created_by:req.user.id });
+  }
   res.json(r.rows[0]);
 });
 
@@ -86,7 +100,9 @@ router.get('/api/bollette/:id/file', async (req, res) => {
 });
 
 router.delete('/api/bollette/:id', authMiddleware, async (req, res) => {
-  await pool.query('DELETE FROM bollette WHERE id=$1',[req.params.id]);res.json({ok:true});
+  await pool.query('DELETE FROM bollette WHERE id=$1',[req.params.id]);
+  await rimuoviUscita(pool, 'bolletta', req.params.id);
+  res.json({ok:true});
 });
 
 module.exports = router;

@@ -133,7 +133,7 @@ function filterSubBySede() {
 
 async function saveInt(){
   const v=id=>document.getElementById(id)?.value||'';
-  if(!v('fi-sede')||!v('fi-sub')||!v('fi-forn')||!v('fi-prot')||!v('fi-desc')){toast('Campi obbligatori mancanti (*)','error');return;}
+  if(!v('fi-sede')||!v('fi-sub')||!v('fi-forn')||!v('fi-desc')){toast('Campi obbligatori mancanti (*)','error');return;}
   const data=getIntData();
   if(!data.prezzo){pending=data;closeM('modal-int');document.getElementById('pr-quick').value='';document.getElementById('modal-pr').classList.add('open');setTimeout(()=>document.getElementById('pr-quick').focus(),150);return;}
   await checkDup(data);

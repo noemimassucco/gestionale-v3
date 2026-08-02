@@ -108,9 +108,82 @@ function openAna(type,obj=null){
   document.getElementById('modal-ana').classList.add('open');
 }
 
+// ═══════════════════════════════════════════════════════════
+// QUICK-CREATE ANAGRAFICA — permette di creare al volo un fornitore/sub/inquilino
+// da dentro un altro form (es. intervento) senza perdere i dati già inseriti lì.
+// Al salvataggio, il nuovo record viene ricollegato automaticamente al campo di origine.
+// ═══════════════════════════════════════════════════════════
+let anaQuickCtx = null;
+
+function quickCreateAna(type, targetSelectId, prefillName){
+  anaQuickCtx = { targetSelectId };
+  openAna(type);
+  if(prefillName){
+    const fieldId = type==='sub' ? 'a-cod' : 'a-rag';
+    const el = document.getElementById(fieldId);
+    if(el) el.value = prefillName;
+  }
+  const ov = document.getElementById('modal-ana');
+  if(ov) ov.style.zIndex = 3200;
+}
+
+function cancelAna(){
+  closeM('modal-ana');
+  anaQuickCtx = null;
+  const ov = document.getElementById('modal-ana');
+  if(ov) ov.style.zIndex = '';
+}
+
+function _anaNorm(s){ return String(s||'').toLowerCase().trim().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim(); }
+
+function _anaFindSimilar(list, field, val){
+  const n = _anaNorm(val);
+  if(!n || n.length<2) return null;
+  return (list||[]).find(x=>{
+    const xn=_anaNorm(x[field]);
+    return xn && (xn===n || xn.includes(n) || n.includes(xn));
+  }) || null;
+}
+
+function _anaQuickResolve(id, label){
+  const ctx = anaQuickCtx; anaQuickCtx = null;
+  if(!ctx) return;
+  closeM('modal-ana');
+  const ov = document.getElementById('modal-ana');
+  if(ov) ov.style.zIndex = '';
+  const sel = document.getElementById(ctx.targetSelectId);
+  if(sel){
+    if(![...sel.options].some(o=>String(o.value)===String(id))){
+      const opt=document.createElement('option'); opt.value=id; opt.textContent=label||('#'+id);
+      sel.appendChild(opt);
+    }
+    sel.value = id;
+  }
+  toast('✅ Collegato: ' + (label||''));
+}
+
 async function saveAna(){
   let data,url,method='POST';
   const v=id=>document.getElementById(id)?.value||'';
+  // Controllo duplicati: se esiste già un'anagrafica molto simile, chiedi conferma prima
+  // di crearne una nuova (evita doppioni per un refuso o una piccola variazione di nome).
+  if(!anaEditId && ['sub','fornitore','inquilino'].includes(anaType)){
+    const nameField = anaType==='sub' ? 'a-cod' : 'a-rag';
+    const dbField    = anaType==='sub' ? 'codice' : 'ragione_sociale';
+    const list       = anaType==='sub' ? DB.subs : (anaType==='fornitore' ? DB.fornitori : DB.inquilini);
+    const nameVal    = v(nameField);
+    const simile = nameVal ? _anaFindSimilar(list, dbField, nameVal) : null;
+    if(simile){
+      const label = simile[dbField];
+      const usa = await appConfirm(`Esiste già "${esc(label)}" in anagrafica. Vuoi usare quello esistente invece di crearne uno nuovo?`,
+        {danger:false, okText:'Usa questo esistente', icon:'🔎', title:'Possibile duplicato'});
+      if(usa){
+        if(anaQuickCtx){ _anaQuickResolve(simile.id, label); }
+        else { closeM('modal-ana'); toast('Elemento esistente selezionato — nessun duplicato creato'); }
+        return;
+      }
+    }
+  }
   if(anaType==='sub'){if(!v('a-cod')||!v('a-sede')){toast('Codice e Sede obbligatori','error');return;}data={
       codice:v('a-cod'),ex_sub:v('a-ex')||null,sede_id:parseInt(v('a-sede'))||null,piano:v('a-piano')||null,
       inquilino_id:parseInt(v('a-inq'))||null,indirizzo_completo:v('a-ind')||null,
@@ -135,6 +208,12 @@ async function saveAna(){
   if(anaEditId){url+='/'+anaEditId;method='PUT';}
   const r = await api(url,{method,body:JSON.stringify(data)});
   if (!r || r.error) { toast('Errore: ' + (r?.error || 'risposta vuota'), 'error'); return; }
+  if(anaQuickCtx){
+    const label = r.ragione_sociale || r.codice || r.nome || '';
+    _anaQuickResolve(r.id, label);
+    loadDD();
+    return;
+  }
   closeM('modal-ana');
   toast('✅ Salvato');
   // Non-blocking: aggiorna UI subito, reload in background
