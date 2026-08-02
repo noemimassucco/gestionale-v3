@@ -88,6 +88,14 @@ router.get('/api/subs', authMiddleware, async (req, res) => {
 router.post('/api/subs', authMiddleware, async (req, res) => {
   const f = req.body;
   try {
+    // L'import in blocco già controllava i duplicati di codice, la creazione singola no:
+    // si potevano creare due SUB con lo stesso codice dalla scheda normale.
+    if (f.codice) {
+      const dup = await pool.query('SELECT id FROM subs WHERE codice=$1', [f.codice]);
+      if (dup.rows.length) {
+        return res.status(400).json({ error: `Esiste già un SUB con codice "${f.codice}" (id ${dup.rows[0].id})` });
+      }
+    }
     const r = await pool.query(
       `INSERT INTO subs (codice,ex_sub,sede_id,piano,inquilino_id,indirizzo_completo,foglio,particella,subalterno,
         categoria_cat,mq_commerciali,mq_calpestabili,rendita,stato_occupazione,classe_energetica,
@@ -137,6 +145,12 @@ router.put('/api/subs/:id/millesimi', authMiddleware, async (req, res) => {
 router.put('/api/subs/:id', authMiddleware, async (req, res) => {
   const f = req.body;
   try {
+    if (f.codice) {
+      const dup = await pool.query('SELECT id FROM subs WHERE codice=$1 AND id!=$2', [f.codice, req.params.id]);
+      if (dup.rows.length) {
+        return res.status(400).json({ error: `Esiste già un SUB con codice "${f.codice}" (id ${dup.rows[0].id})` });
+      }
+    }
     const r = await pool.query(
       `UPDATE subs SET codice=$1,ex_sub=$2,sede_id=$3,piano=$4,inquilino_id=$5,indirizzo_completo=$6,
         foglio=$7,particella=$8,subalterno=$9,categoria_cat=$10,mq_commerciali=$11,mq_calpestabili=$12,
@@ -159,6 +173,19 @@ router.delete('/api/subs/:id', authMiddleware, async (req, res) => {
   try {
     await client.query('BEGIN');
     const id = req.params.id;
+    // Prima bollette e pagamenti affitto (storico economico reale) venivano cancellati per
+    // sempre senza alcun avviso — ora si blocca la cancellazione se ce ne sono ancora.
+    const storico = await client.query(`
+      SELECT
+        (SELECT COUNT(*) FROM bollette WHERE sub_id=$1) AS n_bollette,
+        (SELECT COUNT(*) FROM pagamenti_affitto WHERE sub_id=$1) AS n_pagamenti`, [id]);
+    const nBoll = parseInt(storico.rows[0]?.n_bollette || 0), nPag = parseInt(storico.rows[0]?.n_pagamenti || 0);
+    if (nBoll > 0 || nPag > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        error: `Impossibile eliminare: questo SUB ha ${nBoll} bollette e ${nPag} pagamenti affitto collegati. Eliminali prima singolarmente se vuoi procedere comunque.`,
+      });
+    }
     await client.query('DELETE FROM pagamenti_affitto WHERE sub_id=$1', [id]);
     await client.query('DELETE FROM storico_inquilini WHERE sub_id=$1', [id]);
     await client.query('DELETE FROM bollette WHERE sub_id=$1', [id]);
@@ -229,26 +256,36 @@ router.post('/api/subs/import-bulk', authMiddleware, async (req, res) => {
 router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
   const id = req.params.id;
   try {
+    // Se questo SUB è nato da una fusione, i SUB "genitori" (marcati 'fuso' e nascosti dalle
+    // viste normali) restano titolari di tutto lo storico precedente (interventi, documenti,
+    // bollette, contratti, movimenti...). Prima aprendo il SUB risultante non si vedeva NULLA
+    // del passato — bisognava tornare manualmente sui vecchi SUB disattivati. Ora lo storico dei
+    // genitori viene incluso qui (non spostato: i record restano correttamente sul SUB fisico a
+    // cui si riferivano davvero, solo "letti insieme" quando si guarda l'unità risultante).
+    const genR = await pool.query(`SELECT sub_padre FROM sub_relazioni WHERE sub_figlio=$1 AND tipo='fusione'`, [id]);
+    const padriIds = genR.rows.map(r => r.sub_padre);
+    const idsStorico = [parseInt(id), ...padriIds];
+
     const [subR, interventiR, documentiR, manutenzioniR, storiaR, pagamentiR, storInqR, contrattiR, bolletteEconR] = await Promise.all([
       pool.query(`SELECT s.*,sd.nome as sede_nome,i.ragione_sociale as inquilino_nome,i.tel as inquilino_tel,i.email as inquilino_email,
-        (SELECT COUNT(*) FROM interventi WHERE sub_id=s.id) as num_interventi,
-        (SELECT COALESCE(SUM(prezzo),0) FROM interventi WHERE sub_id=s.id) as totale_spese,
-        (SELECT COUNT(*) FROM manutenzioni WHERE sub_id=s.id AND stato='programmata') as manutenzioni_aperte,
-        (SELECT COUNT(*) FROM documenti WHERE sub_id=s.id) as num_documenti
-        FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id LEFT JOIN inquilini i ON s.inquilino_id=i.id WHERE s.id=$1`, [id]),
+        (SELECT COUNT(*) FROM interventi WHERE sub_id=ANY($2)) as num_interventi,
+        (SELECT COALESCE(SUM(prezzo),0) FROM interventi WHERE sub_id=ANY($2)) as totale_spese,
+        (SELECT COUNT(*) FROM manutenzioni WHERE sub_id=ANY($2) AND stato='programmata') as manutenzioni_aperte,
+        (SELECT COUNT(*) FROM documenti WHERE sub_id=ANY($2)) as num_documenti
+        FROM subs s LEFT JOIN sedi sd ON s.sede_id=sd.id LEFT JOIN inquilini i ON s.inquilino_id=i.id WHERE s.id=$1`, [id, idsStorico]),
       pool.query(`SELECT i.*,f.ragione_sociale as fornitore_nome,cat.nome as categoria_nome,cat.icona,u.nome as autore
         FROM interventi i LEFT JOIN fornitori f ON i.fornitore_id=f.id LEFT JOIN categorie cat ON i.categoria_id=cat.id
-        LEFT JOIN users u ON i.created_by=u.id WHERE i.sub_id=$1 ORDER BY COALESCE(i.data_intervento,'1900-01-01') DESC`, [id]),
-      pool.query(`SELECT d.*,f.ragione_sociale as fornitore_nome FROM documenti d LEFT JOIN fornitori f ON d.fornitore_id=f.id WHERE d.sub_id=$1 ORDER BY d.created_at DESC`, [id]),
-      pool.query(`SELECT m.*,f.ragione_sociale as fornitore_nome FROM manutenzioni m LEFT JOIN fornitori f ON m.fornitore_id=f.id WHERE m.sub_id=$1 ORDER BY m.prossima_scadenza ASC NULLS LAST`, [id]),
-      pool.query(`SELECT ss.*,u.nome as autore FROM sub_storia ss LEFT JOIN users u ON ss.created_by=u.id WHERE ss.sub_id=$1 ORDER BY ss.created_at DESC LIMIT 50`, [id]),
-      pool.query(`SELECT p.*,i.ragione_sociale as inquilino_nome FROM pagamenti_affitto p LEFT JOIN inquilini i ON p.inquilino_id=i.id WHERE p.sub_id=$1 ORDER BY p.anno DESC, p.mese DESC`, [id]),
-      pool.query(`SELECT si.*,i.ragione_sociale as inquilino_nome,i.tel,i.email FROM storico_inquilini si LEFT JOIN inquilini i ON si.inquilino_id=i.id WHERE si.sub_id=$1 ORDER BY si.data_inizio DESC NULLS LAST`, [id]),
-      pool.query(`SELECT c.*,f.ragione_sociale as fornitore_nome FROM contratti c LEFT JOIN fornitori f ON c.fornitore_id=f.id WHERE c.sub_id=$1 ORDER BY c.data_inizio DESC NULLS LAST`, [id]),
+        LEFT JOIN users u ON i.created_by=u.id WHERE i.sub_id=ANY($1) ORDER BY COALESCE(i.data_intervento,'1900-01-01') DESC`, [idsStorico]),
+      pool.query(`SELECT d.*,f.ragione_sociale as fornitore_nome FROM documenti d LEFT JOIN fornitori f ON d.fornitore_id=f.id WHERE d.sub_id=ANY($1) ORDER BY d.created_at DESC`, [idsStorico]),
+      pool.query(`SELECT m.*,f.ragione_sociale as fornitore_nome FROM manutenzioni m LEFT JOIN fornitori f ON m.fornitore_id=f.id WHERE m.sub_id=ANY($1) ORDER BY m.prossima_scadenza ASC NULLS LAST`, [idsStorico]),
+      pool.query(`SELECT ss.*,u.nome as autore FROM sub_storia ss LEFT JOIN users u ON ss.created_by=u.id WHERE ss.sub_id=ANY($1) ORDER BY ss.created_at DESC LIMIT 50`, [idsStorico]),
+      pool.query(`SELECT p.*,i.ragione_sociale as inquilino_nome FROM pagamenti_affitto p LEFT JOIN inquilini i ON p.inquilino_id=i.id WHERE p.sub_id=ANY($1) ORDER BY p.anno DESC, p.mese DESC`, [idsStorico]),
+      pool.query(`SELECT si.*,i.ragione_sociale as inquilino_nome,i.tel,i.email FROM storico_inquilini si LEFT JOIN inquilini i ON si.inquilino_id=i.id WHERE si.sub_id=ANY($1) ORDER BY si.data_inizio DESC NULLS LAST`, [idsStorico]),
+      pool.query(`SELECT c.*,f.ragione_sociale as fornitore_nome FROM contratti c LEFT JOIN fornitori f ON c.fornitore_id=f.id WHERE c.sub_id=ANY($1) ORDER BY c.data_inizio DESC NULLS LAST`, [idsStorico]),
       // Bollette pagate: prima mancavano dal calcolo delle uscite/profitto netto qui sotto,
       // mostrando un utile più alto di quello reale (la tab "Costi" della scheda, calcolata
       // lato pagina, le includeva già — le due cifre nella stessa scheda non coincidevano).
-      pool.query(`SELECT COALESCE(SUM(importo),0) as totale FROM bollette WHERE sub_id=$1 AND stato='pagato'`, [id]),
+      pool.query(`SELECT COALESCE(SUM(importo),0) as totale FROM bollette WHERE sub_id=ANY($1) AND stato='pagato'`, [idsStorico]),
     ]);
     if (!subR.rows.length) return res.status(404).json({ error: 'SUB non trovato' });
 
@@ -269,12 +306,12 @@ router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
     // Attach to interventi
     interventiR.rows.forEach(i => { i.allegati = allegatiMap[i.id] || []; });
 
-    const costiR = await pool.query(`SELECT anno_fattura as anno,COALESCE(SUM(prezzo),0) as totale,COUNT(*) as num FROM interventi WHERE sub_id=$1 AND anno_fattura IS NOT NULL GROUP BY anno_fattura ORDER BY anno DESC LIMIT 5`, [id]);
-    const costiFornR = await pool.query(`SELECT f.ragione_sociale as fornitore,COALESCE(SUM(i.prezzo),0) as totale,COUNT(i.id) as num FROM interventi i LEFT JOIN fornitori f ON i.fornitore_id=f.id WHERE i.sub_id=$1 GROUP BY f.ragione_sociale ORDER BY totale DESC LIMIT 5`, [id]);
+    const costiR = await pool.query(`SELECT anno_fattura as anno,COALESCE(SUM(prezzo),0) as totale,COUNT(*) as num FROM interventi WHERE sub_id=ANY($1) AND anno_fattura IS NOT NULL GROUP BY anno_fattura ORDER BY anno DESC LIMIT 5`, [idsStorico]);
+    const costiFornR = await pool.query(`SELECT f.ragione_sociale as fornitore,COALESCE(SUM(i.prezzo),0) as totale,COUNT(i.id) as num FROM interventi i LEFT JOIN fornitori f ON i.fornitore_id=f.id WHERE i.sub_id=ANY($1) GROUP BY f.ragione_sociale ORDER BY totale DESC LIMIT 5`, [idsStorico]);
     const scadenzeR = await pool.query(`
-      SELECT 'documento' as tipo,nome,scadenza,(scadenza-CURRENT_DATE) as giorni FROM documenti WHERE sub_id=$1 AND scadenza IS NOT NULL AND scadenza >= CURRENT_DATE
-      UNION ALL SELECT 'manutenzione',tipo,prossima_scadenza,(prossima_scadenza-CURRENT_DATE) FROM manutenzioni WHERE sub_id=$1 AND prossima_scadenza IS NOT NULL AND stato!='annullata' AND prossima_scadenza >= CURRENT_DATE
-      ORDER BY scadenza ASC LIMIT 10`, [id]);
+      SELECT 'documento' as tipo,nome,scadenza,(scadenza-CURRENT_DATE) as giorni FROM documenti WHERE sub_id=ANY($1) AND scadenza IS NOT NULL AND scadenza >= CURRENT_DATE
+      UNION ALL SELECT 'manutenzione',tipo,prossima_scadenza,(prossima_scadenza-CURRENT_DATE) FROM manutenzioni WHERE sub_id=ANY($1) AND prossima_scadenza IS NOT NULL AND stato!='annullata' AND prossima_scadenza >= CURRENT_DATE
+      ORDER BY scadenza ASC LIMIT 10`, [idsStorico]);
 
     const pagamenti = pagamentiR.rows;
     const totEntrate = pagamenti.reduce((s,p)=>s+(parseFloat(p.importo)||0),0);
@@ -335,26 +372,37 @@ router.post('/api/subs/:id/storia', authMiddleware, async (req, res) => {
 
 router.post('/api/subs/:id/cambia-inquilino', authMiddleware, async (req, res) => {
   const { nuovo_inquilino_id, data_cambio, canone_mensile, tipo_contratto, note } = req.body;
-  const sub = await pool.query('SELECT * FROM subs WHERE id=$1', [req.params.id]);
-  if (!sub.rows.length) return res.status(404).json({ error: 'SUB non trovato' });
-  const s = sub.rows[0];
-  // Chiude storico precedente se esiste
-  if (s.inquilino_id) {
-    await pool.query('UPDATE storico_inquilini SET data_fine=$1 WHERE sub_id=$2 AND data_fine IS NULL', [data_cambio, req.params.id]);
-  }
-  // Aggiorna SUB — allinea anche stato_occupazione, altrimenti il cliente resta erroneamente
-  // in "ex clienti" pur essendo ricollegato a un SUB attivo (stato attivo/ex è calcolato da questo campo)
-  await pool.query(
-    'UPDATE subs SET inquilino_id=$1, stato_occupazione=$2 WHERE id=$3',
-    [nuovo_inquilino_id||null, nuovo_inquilino_id ? 'occupato' : 'libero', req.params.id]
-  );
-  // Crea nuovo record storico
-  if (nuovo_inquilino_id) {
-    await pool.query('INSERT INTO storico_inquilini (sub_id,inquilino_id,data_inizio,canone_mensile,tipo_contratto,note,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [req.params.id, nuovo_inquilino_id, data_cambio||null, canone_mensile||null, tipo_contratto||null, note||null, req.user.id]);
-  }
-  const nuovaSub = await pool.query('SELECT * FROM subs WHERE id=$1', [req.params.id]);
-  res.json(nuovaSub.rows[0]);
+  // Prima erano 4 query separate non transazionali: un errore a metà (es. rete caduta dopo
+  // aver chiuso lo storico ma prima di aggiornare il SUB) poteva lasciare uno stato incoerente
+  // (vecchio inquilino "chiuso" in storico ma SUB non aggiornato, o viceversa).
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const sub = await client.query('SELECT * FROM subs WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!sub.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'SUB non trovato' }); }
+    const s = sub.rows[0];
+    // Chiude storico precedente se esiste
+    if (s.inquilino_id) {
+      await client.query('UPDATE storico_inquilini SET data_fine=$1 WHERE sub_id=$2 AND data_fine IS NULL', [data_cambio, req.params.id]);
+    }
+    // Aggiorna SUB — allinea anche stato_occupazione, altrimenti il cliente resta erroneamente
+    // in "ex clienti" pur essendo ricollegato a un SUB attivo (stato attivo/ex è calcolato da questo campo)
+    await client.query(
+      'UPDATE subs SET inquilino_id=$1, stato_occupazione=$2 WHERE id=$3',
+      [nuovo_inquilino_id||null, nuovo_inquilino_id ? 'occupato' : 'libero', req.params.id]
+    );
+    // Crea nuovo record storico
+    if (nuovo_inquilino_id) {
+      await client.query('INSERT INTO storico_inquilini (sub_id,inquilino_id,data_inizio,canone_mensile,tipo_contratto,note,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [req.params.id, nuovo_inquilino_id, data_cambio||null, canone_mensile||null, tipo_contratto||null, note||null, req.user.id]);
+    }
+    const nuovaSub = await client.query('SELECT * FROM subs WHERE id=$1', [req.params.id]);
+    await client.query('COMMIT');
+    res.json(nuovaSub.rows[0]);
+  } catch(e) {
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: e.message });
+  } finally { client.release(); }
 });
 
 router.post('/api/subs/fusione', authMiddleware, async (req, res) => {
@@ -381,12 +429,33 @@ router.post('/api/subs/fusione', authMiddleware, async (req, res) => {
     }
   }
 
+  const d = dati_nuovo_sub || {};
+
+  // Inquilino: prima la fusione non lo migrava mai — il nuovo SUB nasceva sempre "Libero",
+  // mentre l'inquilino restava agganciato al vecchio SUB ora nascosto/disattivato ("inquilino
+  // fantasma", ancora fatturato ma invisibile nelle viste operative). Se entrambi i SUB hanno
+  // un inquilino attivo DIVERSO non si può indovinare quale tenere: si blocca e si chiede di
+  // risolvere prima manualmente (es. liberare uno dei due SUB).
+  let inquilinoFinale = d.inquilino_id || null;
+  let statoOccFinale = d.stato_occupazione || null;
+  if (!inquilinoFinale) {
+    const inq1 = r1.rows[0].stato_occupazione === 'occupato' ? r1.rows[0].inquilino_id : null;
+    const inq2 = r2.rows[0].stato_occupazione === 'occupato' ? r2.rows[0].inquilino_id : null;
+    if (inq1 && inq2 && inq1 !== inq2) {
+      return res.status(400).json({
+        error: `${r1.rows[0].codice} e ${r2.rows[0].codice} hanno due inquilini attivi diversi — non si possono fondere automaticamente. Libera prima uno dei due SUB (o specifica tu quale inquilino tenere).`,
+      });
+    }
+    inquilinoFinale = inq1 || inq2 || null;
+    if (!statoOccFinale) statoOccFinale = inquilinoFinale ? 'occupato' : (d.stato_occupazione || 'libero');
+  }
+  if (!statoOccFinale) statoOccFinale = 'libero';
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
     // 1. Crea il nuovo SUB risultante
-    const d = dati_nuovo_sub || {};
     const nr = await client.query(`
       INSERT INTO subs (codice, sede_id, piano, inquilino_id,
         foglio, particella, subalterno, categoria_cat,
@@ -396,14 +465,70 @@ router.post('/api/subs/fusione', authMiddleware, async (req, res) => {
         stato_salute, stato_sub)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'verde','attivo')
       RETURNING *
-    `, [nuovoCodice, d.sede_id||r1.rows[0].sede_id, d.piano||null, d.inquilino_id||null,
+    `, [nuovoCodice, d.sede_id||r1.rows[0].sede_id, d.piano||null, inquilinoFinale,
         d.foglio||null, d.particella||null, d.subalterno||null, d.categoria_cat||null,
         d.mq_commerciali||null, d.mq_calpestabili||null, d.rendita||null,
-        d.stato_occupazione||'libero', d.classe_energetica||null, d.anno_costruzione||null,
+        statoOccFinale, d.classe_energetica||null, d.anno_costruzione||null,
         d.canone_annuo||null, d.tipo_contratto||null, d.indirizzo_completo||null,
         d.note||`Fusione di ${r1.rows[0].codice} + ${r2.rows[0].codice}`]);
 
     const nuovoId = nr.rows[0].id;
+
+    // 1b. Se l'inquilino è stato ereditato da un genitore, chiudi lo storico_inquilini aperto sul
+    // vecchio SUB e aprine uno nuovo sul SUB risultante — altrimenti lo storico resta "appeso" sul
+    // SUB ormai fuso e invisibile, e il nuovo SUB non avrebbe alcuna riga storico_inquilini attiva.
+    if (inquilinoFinale) {
+      await client.query(
+        `UPDATE storico_inquilini SET data_fine=CURRENT_DATE WHERE sub_id IN ($1,$2) AND inquilino_id=$3 AND data_fine IS NULL`,
+        [p1, p2, inquilinoFinale]);
+      await client.query(
+        `INSERT INTO storico_inquilini (sub_id, inquilino_id, data_inizio, created_by) VALUES ($1,$2,CURRENT_DATE,$3)`,
+        [nuovoId, inquilinoFinale, req.user.id]);
+    }
+
+    // 1c. Migra i contratti (con fornitori — es. manutenzione, assicurazione) sull'unità
+    // risultante: prima restavano agganciati ai vecchi SUB nascosti, sparendo dalla vista.
+    await client.query(`UPDATE contratti SET sub_id=$1 WHERE sub_id IN ($2,$3)`, [nuovoId, p1, p2]);
+
+    // 1d. Millesimi: somma i valori CORRENTI (validi oggi) dei due SUB genitori per ogni tabella
+    // millesimale e crea la riga per il nuovo SUB. Prima il nuovo SUB nasceva sempre a 0/NULL e i
+    // vecchi SUB (ormai fusi/nascosti) continuavano a "pesare" nella ripartizione delle spese
+    // condominiali al posto del SUB reale che li aveva sostituiti.
+    const millesimiPadri = await client.query(`
+      SELECT DISTINCT ON (mv.tabella_id, mv.sub_id) mv.tabella_id, mv.sub_id, mv.valore
+      FROM millesimi_valori mv
+      WHERE mv.sub_id IN ($1,$2) AND mv.data_validita <= CURRENT_DATE
+      ORDER BY mv.tabella_id, mv.sub_id, mv.data_validita DESC, mv.updated_at DESC, mv.id DESC
+    `, [p1, p2]);
+    const perTabella = {};
+    millesimiPadri.rows.forEach(row => {
+      if (!perTabella[row.tabella_id]) perTabella[row.tabella_id] = 0;
+      perTabella[row.tabella_id] += parseFloat(row.valore) || 0;
+    });
+    let millesimiScalare = null;
+    for (const [tabellaId, somma] of Object.entries(perTabella)) {
+      await client.query(
+        `INSERT INTO millesimi_valori (sub_id, tabella_id, valore, data_validita, note, created_by)
+         VALUES ($1,$2,$3,CURRENT_DATE,$4,$5)`,
+        [nuovoId, tabellaId, somma, `Somma automatica da fusione ${r1.rows[0].codice}+${r2.rows[0].codice}`, req.user.id]);
+      millesimiScalare = somma; // best-effort: se c'è una sola tabella coincide col valore giusto
+    }
+    if (millesimiScalare !== null) {
+      await client.query('UPDATE subs SET millesimi=$1 WHERE id=$2', [millesimiScalare, nuovoId]).catch(() => {});
+    }
+    // Azzera i millesimi dei SUB genitori D'ORA IN POI (nuova riga a 0 datata oggi) — le spese
+    // condominiali di PERIODI PASSATI continuano correttamente a usare i loro valori storici,
+    // ma senza questo azzeramento i vecchi SUB (ormai fusi/nascosti) avrebbero continuato a
+    // "pesare" per sempre nella ripartizione insieme al nuovo SUB, contando due volte le stesse
+    // quote millesimali.
+    for (const tabellaId of Object.keys(perTabella)) {
+      for (const padreId of [p1, p2]) {
+        await client.query(
+          `INSERT INTO millesimi_valori (sub_id, tabella_id, valore, data_validita, note, created_by)
+           VALUES ($1,$2,0,CURRENT_DATE,$3,$4)`,
+          [padreId, tabellaId, `Azzerato: fuso in ${nuovoCodice}`, req.user.id]);
+      }
+    }
 
     // 2. Marca i padri come FUSI
     await client.query(`
@@ -411,7 +536,8 @@ router.post('/api/subs/fusione', authMiddleware, async (req, res) => {
         sub_destinazione_id=$1 WHERE id IN ($2,$3)
     `, [nuovoId, p1, p2]);
 
-    // 3. sub_relazioni (padre → figlio)
+    // 3. sub_relazioni (padre → figlio) — usata anche per portare lo storico dei genitori
+    // nella scheda del SUB risultante (vedi GET /api/subs/:id/detail)
     await client.query(`
       INSERT INTO sub_relazioni (sub_padre, sub_figlio, tipo, note)
       VALUES ($1,$3,'fusione',$4), ($2,$3,'fusione',$4)

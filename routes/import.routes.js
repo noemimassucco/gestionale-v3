@@ -23,25 +23,39 @@ router.post('/api/bulk-delete', authMiddleware, async (req, res) => {
   const ORIGINE_MAP = { interventi:'intervento', documenti:'documento', manutenzioni:'manutenzione', bollette:'bolletta' };
 
   const client = await pool.connect();
+  let idsToDelete = intIds, skippedConStorico = [];
   try {
     await client.query('BEGIN');
     // For tables with FK deps, clear them first
     if (table === 'subs') {
-      const bollIds = (await client.query('SELECT id FROM bollette WHERE sub_id=ANY($1)', [intIds])).rows.map(r => r.id);
-      const manIds  = (await client.query('SELECT id FROM manutenzioni WHERE sub_id=ANY($1)', [intIds])).rows.map(r => r.id);
-      await client.query('DELETE FROM pagamenti_affitto WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('DELETE FROM storico_inquilini WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('DELETE FROM bollette WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('DELETE FROM ticket WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('DELETE FROM manutenzioni WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('UPDATE documenti SET sub_id=NULL WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('UPDATE interventi SET sub_id=NULL WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('DELETE FROM sub_storia WHERE sub_id=ANY($1)', [intIds]);
-      await client.query('DELETE FROM sub_relazioni WHERE sub_padre=ANY($1) OR sub_figlio=ANY($1)', [intIds]);
-      await client.query('UPDATE ordini_fatturazione SET sub_id=NULL WHERE sub_id=ANY($1)', [intIds]);
-      if (bollIds.length) await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['bolletta', bollIds]);
-      if (manIds.length)  await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['manutenzione', manIds]);
-      await client.query('UPDATE controllo_fatturazione SET sub_id=NULL WHERE sub_id=ANY($1)', [intIds]);
+      // Prima bollette e pagamenti affitto (storico economico reale, spesso l'unica prova di
+      // quanto incassato/pagato) venivano cancellati per sempre senza alcun avviso specifico —
+      // ora un SUB che ha ancora questi dati collegati viene saltato, non cancellato in blocco.
+      const conStorico = (await client.query(`
+        SELECT DISTINCT sub_id FROM (
+          SELECT sub_id FROM bollette WHERE sub_id=ANY($1)
+          UNION SELECT sub_id FROM pagamenti_affitto WHERE sub_id=ANY($1)
+        ) x WHERE sub_id IS NOT NULL`, [intIds])).rows.map(r => r.sub_id);
+      skippedConStorico = conStorico;
+      idsToDelete = intIds.filter(id => !conStorico.includes(id));
+
+      if (idsToDelete.length) {
+        const bollIds = (await client.query('SELECT id FROM bollette WHERE sub_id=ANY($1)', [idsToDelete])).rows.map(r => r.id);
+        const manIds  = (await client.query('SELECT id FROM manutenzioni WHERE sub_id=ANY($1)', [idsToDelete])).rows.map(r => r.id);
+        await client.query('DELETE FROM pagamenti_affitto WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('DELETE FROM storico_inquilini WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('DELETE FROM bollette WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('DELETE FROM ticket WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('DELETE FROM manutenzioni WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('UPDATE documenti SET sub_id=NULL WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('UPDATE interventi SET sub_id=NULL WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('DELETE FROM sub_storia WHERE sub_id=ANY($1)', [idsToDelete]);
+        await client.query('DELETE FROM sub_relazioni WHERE sub_padre=ANY($1) OR sub_figlio=ANY($1)', [idsToDelete]);
+        await client.query('UPDATE ordini_fatturazione SET sub_id=NULL WHERE sub_id=ANY($1)', [idsToDelete]);
+        if (bollIds.length) await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['bolletta', bollIds]);
+        if (manIds.length)  await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', ['manutenzione', manIds]);
+        await client.query('UPDATE controllo_fatturazione SET sub_id=NULL WHERE sub_id=ANY($1)', [idsToDelete]);
+      }
     }
     if (table === 'fornitori') {
       await client.query('UPDATE interventi SET fornitore_id=NULL WHERE fornitore_id=ANY($1)', [intIds]);
@@ -58,11 +72,18 @@ router.post('/api/bulk-delete', authMiddleware, async (req, res) => {
       await client.query('UPDATE controllo_fatturazione SET attribuito_a_id=NULL WHERE attribuito_a_tipo=$1 AND attribuito_a_id=ANY($2)', ['cliente', intIds]);
     }
     if (ORIGINE_MAP[table]) {
-      await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', [ORIGINE_MAP[table], intIds]);
+      await client.query('DELETE FROM controllo_fatturazione WHERE origine_tipo=$1 AND origine_id=ANY($2)', [ORIGINE_MAP[table], idsToDelete]);
     }
-    const result = await client.query(`DELETE FROM ${table} WHERE id=ANY($1) RETURNING id`, [intIds]);
+    const result = idsToDelete.length
+      ? await client.query(`DELETE FROM ${table} WHERE id=ANY($1) RETURNING id`, [idsToDelete])
+      : { rows: [] };
     await client.query('COMMIT');
-    res.json({ deleted: result.rows.length, ids: result.rows.map(r => r.id) });
+    res.json({
+      deleted: result.rows.length, ids: result.rows.map(r => r.id),
+      skipped: skippedConStorico.length,
+      skippedIds: skippedConStorico,
+      skippedReason: skippedConStorico.length ? 'Hanno bollette e/o pagamenti affitto collegati — elimina prima quelli dalla scheda del SUB se vuoi procedere comunque' : undefined,
+    });
   } catch(e) {
     await client.query('ROLLBACK');
     console.error('Bulk delete error:', e.message);

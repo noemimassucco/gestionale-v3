@@ -274,7 +274,14 @@ async function bulkDelete(table, cntId, reloadFn) {
   if (typeof reloadFn === 'function') await reloadFn();
   else await loadDD();
 
-  toast(`✅ ${r?.deleted || ids.length} ${table} eliminati`);
+  // Alcuni SUB possono essere stati saltati (non cancellati) se hanno ancora bollette o
+  // pagamenti affitto collegati — va detto chiaramente, altrimenti sembra che l'operazione
+  // sia riuscita del tutto quando in realtà una parte è stata volutamente preservata.
+  if (r?.skipped) {
+    toast(`✅ ${r?.deleted || 0} eliminati · ⚠️ ${r.skipped} saltati: ${r.skippedReason || 'hanno dati collegati'}`, 'error');
+  } else {
+    toast(`✅ ${r?.deleted || ids.length} ${table} eliminati`);
+  }
 }
 
 function toggleGenSel(type) {
