@@ -121,7 +121,7 @@ async function openSubTimeline(subId, codice) {
 
   if (!data.length) {
     if (container) container.innerHTML = '<div class="empty">Nessun evento registrato.</div>';
-    document.getElementById('modal-timeline').classList.add('open');
+    document.getElementById('modal-timeline-sub').classList.add('open');
     return;
   }
 
@@ -141,7 +141,7 @@ async function openSubTimeline(subId, codice) {
     </div>`;
   }).join('');
 
-  document.getElementById('modal-timeline').classList.add('open');
+  document.getElementById('modal-timeline-sub').classList.add('open');
 }
 
 // ── DUPLICA SUB ──

@@ -119,7 +119,7 @@ function renderTbSubs() {
     const rowOp  = attivo ? '' : ' style="opacity:.7;"';
 
     const checkCell = attivo
-      ? '<input type="checkbox" class="sel-check subs-chk" data-id="' + s.id + '" onchange="subToggle(' + s.id + ',this)">'
+      ? '<input type="checkbox" class="sel-check subs-chk" data-id="' + s.id + '"' + (subSelIds.has(s.id) ? ' checked' : '') + ' onchange="subToggle(' + s.id + ',this)">'
       : '';
 
     const destLink = s.sub_destinazione_codice
@@ -163,12 +163,23 @@ function renderTbCat(){const tb=document.getElementById('tb-cat');if(!DB.categor
 
 function renderTbByType(t) { if(t==="fornitori")renderTbForn(); else if(t==="inquilini")renderTbInq(); }
 
-function subToggle(id,chk) { if(chk.checked)subSelIds.add(id);else subSelIds.delete(id); document.getElementById('sub-mass-cnt').textContent=`${subSelIds.size} selezionati`; }
+function subToggle(id,chk) {
+  if(chk.checked)subSelIds.add(id);else subSelIds.delete(id);
+  document.querySelectorAll('[id="sub-mass-cnt"]').forEach(el => el.textContent = `${subSelIds.size} selezionati`);
+}
 
 function toggleSubSel() {
   subSelMode = !subSelMode; subSelIds.clear();
-  document.getElementById('sub-mass-bar').classList.toggle('hidden', !subSelMode);
-  document.getElementById('sub-sel-btn').style.background = subSelMode ? 'rgba(107,142,107,.2)' : '';
+  // "sub-mass-bar"/"sub-sel-btn" esistono 2 volte nel DOM (Anagrafiche + pagina SUB standalone):
+  // aggiorna tutte le occorrenze, altrimenti sulla pagina SUB il pulsante non mostra/nasconde nulla
+  // (perché document.getElementById prendeva sempre il primo, quello nascosto in Anagrafiche).
+  document.querySelectorAll('[id="sub-mass-bar"]').forEach(el => el.classList.toggle('hidden', !subSelMode));
+  document.querySelectorAll('[id="sub-sel-btn"]').forEach(el => el.style.background = subSelMode ? 'rgba(107,142,107,.2)' : '');
+  // Le card SUB non hanno checkbox: se la selezione si attiva mentre siamo in vista Schede,
+  // passa automaticamente alla vista Tabella, altrimenti non c'è nulla da selezionare.
+  if (subSelMode && document.getElementById('sv-table') && typeof setSubsView === 'function') {
+    setSubsView('table');
+  }
   renderTbSubs();
 }
 
@@ -235,8 +246,8 @@ async function bulkDelete(table, cntId, reloadFn) {
   // Reset selection for this table
   if (table === 'subs') {
     subSelIds.clear(); subSelMode = false;
-    document.getElementById('sub-mass-bar')?.classList.add('hidden');
-    document.querySelectorAll('#sec-subs .sel-check').forEach(el => el.checked = false);
+    document.querySelectorAll('[id="sub-mass-bar"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.subs-chk').forEach(el => el.checked = false);
   } else if (table === 'interventi') {
     selIds.clear(); getSelSet('interventi').clear();
     document.getElementById('mass-bar')?.classList.add('hidden');
@@ -299,14 +310,17 @@ function genSelAll(type) {
     arr.forEach(x => set.add(Number(x.id)));
   }
 
-  // Update counter + show Elimina button
-  const cnt = document.getElementById(type + '-mass-cnt');
-  if (cnt) { cnt.textContent = set.size + ' sel.'; cnt.style.display = set.size > 0 ? '' : 'none'; }
+  // Update counter + show Elimina button — "type-mass-cnt"/"type-mass-bar" possono esistere più
+  // volte nel DOM (es. fornitori/inquilini compaiono sia in Anagrafiche che in Clienti): aggiorna
+  // TUTTE le occorrenze, altrimenti quella effettivamente visibile non si aggiorna mai.
+  document.querySelectorAll('[id="' + type + '-mass-cnt"]').forEach(cnt => {
+    cnt.textContent = set.size + ' sel.'; cnt.style.display = set.size > 0 ? '' : 'none';
+  });
   const delBtn = document.getElementById('btn-del-' + type);
   if (delBtn) delBtn.style.display = set.size > 0 ? '' : 'none';
 
   // Legacy mass-bar
-  document.getElementById(type + '-mass-bar')?.classList.remove('hidden');
+  document.querySelectorAll('[id="' + type + '-mass-bar"]').forEach(bar => bar.classList.remove('hidden'));
 }
 
 // Dopo un re-render: se la selezione è attiva, rimostra i checkbox e ripristina i flag
@@ -323,8 +337,8 @@ function restoreSelUI(table){
 function genDeselAll(type) {
   getSelSet(type).clear();
   document.querySelectorAll('.' + type + '-chk').forEach(el => { el.checked = false; });
-  const cnt = document.getElementById(type + '-mass-cnt');
-  if (cnt) cnt.textContent = '0 selezionati';
+  document.querySelectorAll('[id="' + type + '-mass-cnt"]').forEach(cnt => { cnt.textContent = '0 selezionati'; cnt.style.display = 'none'; });
+  document.querySelectorAll('[id="' + type + '-mass-bar"]').forEach(bar => bar.classList.add('hidden'));
 }
 
 function fornSelAll(chk) {

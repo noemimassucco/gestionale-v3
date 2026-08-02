@@ -2111,15 +2111,22 @@ input,select,textarea{border-radius:8px;}
       <!-- KPI ROW -->
       <div id="fatt-kpi" class="home-kpi" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-bottom:14px;"></div>
 
-      <!-- ORDINI (card list) -->
-      <div class="flex-between" style="margin-bottom:10px;">
-        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer;user-select:none;">
-          <input type="checkbox" id="fatt-sel-all" onchange="fattSelAll(this)"> Seleziona tutti
-        </label>
-        <span id="fatt-count" style="font-size:11.5px;color:var(--muted);"></span>
+      <!-- TABELLA ORDINI -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:30px;"><input type="checkbox" id="fatt-sel-all" onchange="fattSelAll(this)"></th>
+                <th>Cliente</th><th>Servizio</th><th>SUB</th><th>Periodo</th>
+                <th>Importo</th><th>Fatturato</th><th>Pagamento</th><th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="fatt-tbody"><tr><td colspan="9" class="empty">Caricamento…</td></tr></tbody>
+          </table>
+        </div>
       </div>
-      <div id="fatt-cards-grid" class="cards-grid"><div class="empty" style="grid-column:1/-1;">Caricamento…</div></div>
-      <div id="fatt-bulk-bar" class="hidden" style="position:sticky;bottom:14px;margin-top:14px;padding:10px 14px;background:#fff;border:1px solid rgba(107,142,107,.25);border-radius:10px;box-shadow:0 6px 20px rgba(60,70,50,.14);display:flex;gap:8px;align-items:center;">
+      <div id="fatt-bulk-bar" class="hidden" style="padding:10px 14px;background:#e8f0e6;border-top:1px solid rgba(107,142,107,.15);display:flex;gap:8px;align-items:center;">
         <span id="fatt-bulk-cnt" style="font-size:12px;font-weight:600;color:var(--accent);">0 selezionati</span>
         <button class="btn btn-success btn-sm" onclick="fattBulkPaga()">✅ Segna pagati</button>
         <button class="btn btn-danger btn-sm" onclick="fattBulkElimina()">🗑 Elimina</button>
@@ -3024,8 +3031,8 @@ input,select,textarea{border-radius:8px;}
     <div class="form-grid">
       <div class="field"><label>SUB 1 *</label><select id="fus-sub1"><option value="">—</option></select></div>
       <div class="field"><label>SUB 2 *</label><select id="fus-sub2"><option value="">—</option></select></div>
-      <div class="field form-full"><label>Codice nuovo SUB *</label><input id="fus-codice" placeholder="es. OB-01-FUSO"></div>
-      <div class="field form-full"><label>Note fusione</label><textarea id="fus-note" rows="2" placeholder="Motivo, variazioni catastali…"></textarea></div>
+      <div class="field form-full"><label>Codice nuovo SUB *</label><input id="fus2-codice" placeholder="es. OB-01-FUSO"></div>
+      <div class="field form-full"><label>Note fusione</label><textarea id="fus2-note" rows="2" placeholder="Motivo, variazioni catastali…"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeM('modal-fusione')">Annulla</button>
@@ -3354,13 +3361,13 @@ input,select,textarea{border-radius:8px;}
   </div>
 </div>
 
-<!-- MODAL TIMELINE SUB -->
-<div id="modal-timeline" class="overlay">
+<!-- MODAL TIMELINE SUB (storico completo — riaccatastamento.js) -->
+<div id="modal-timeline-sub" class="overlay">
   <div class="modal modal-wide">
     <div class="modal-title" id="sub-timeline-title">📅 Storico completo SUB</div>
     <div id="sub-timeline-list" style="max-height:60vh;overflow-y:auto;padding-right:4px;"></div>
     <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeM('modal-timeline')">Chiudi</button>
+      <button class="btn btn-gray" onclick="closeM('modal-timeline-sub')">Chiudi</button>
     </div>
   </div>
 </div>

@@ -138,17 +138,17 @@ function openModalFusione(preselSubId=null){
   document.getElementById('fus-sub1').innerHTML=opts;
   document.getElementById('fus-sub2').innerHTML=opts;
   if(preselSubId){ document.getElementById('fus-sub1').value=preselSubId; }
-  document.getElementById('fus-codice').value='';
-  document.getElementById('fus-note').value='';
+  document.getElementById('fus2-codice').value='';
+  document.getElementById('fus2-note').value='';
   document.getElementById('modal-fusione').classList.add('open');
 }
 
 async function saveFusione(){
   const v=id=>document.getElementById(id)?.value||'';
-  const sub1=v('fus-sub1'),sub2=v('fus-sub2'),codice=v('fus-codice');
+  const sub1=v('fus-sub1'),sub2=v('fus-sub2'),codice=v('fus2-codice');
   if(!sub1||!sub2||!codice){toast('Tutti i campi obbligatori','error');return;}
   if(sub1===sub2){toast('I due SUB devono essere diversi','error');return;}
-  const r=await api('/api/subs/fusione',{method:'POST',body:JSON.stringify({sub_id_1:parseInt(sub1),sub_id_2:parseInt(sub2),nuovo_codice:codice,note_fusione:v('fus-note')})});
+  const r=await api('/api/subs/fusione',{method:'POST',body:JSON.stringify({sub_id_1:parseInt(sub1),sub_id_2:parseInt(sub2),nuovo_codice:codice,note_fusione:v('fus2-note')})});
   if(r?.error){toast('Errore: '+r.error,'error');return;}
   closeM('modal-fusione');await loadDD();
   toast(`✓ Fusione completata → SUB ${codice}`);

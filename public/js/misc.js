@@ -495,9 +495,19 @@ function calcolaIstat(){
   <div style="margin-top:10px;padding:9px 12px;background:rgba(184,134,11,.08);border:1px solid rgba(184,134,11,.2);border-radius:7px;font-size:11px;color:var(--muted);">⚠️ Verifica il valore ISTAT FOI aggiornato su <a href="https://www.istat.it" target="_blank" style="color:var(--accent);">istat.it</a></div>`;
 }
 
-function subSelAll(v) { if(v===false){subSelIds.clear();}else{DB.subs.forEach(s=>subSelIds.add(s.id));} document.getElementById('sub-mass-cnt').textContent=`${subSelIds.size} selezionati`; renderTbSubs(); }
+function subSelAll(v) {
+  if(v===false){subSelIds.clear();}else{DB.subs.forEach(s=>subSelIds.add(s.id));}
+  // "sub-mass-cnt" esiste 2 volte nel DOM (Anagrafiche + pagina SUB standalone): aggiorna entrambe,
+  // altrimenti chi guarda la pagina SUB vede sempre "0 selezionati" anche se la selezione è avvenuta.
+  document.querySelectorAll('[id="sub-mass-cnt"]').forEach(el => el.textContent = `${subSelIds.size} selezionati`);
+  renderTbSubs();
+}
 
-function subDeselAll() { subSelIds.clear(); document.getElementById('sub-mass-cnt').textContent='0 selezionati'; renderTbSubs(); }
+function subDeselAll() {
+  subSelIds.clear();
+  document.querySelectorAll('[id="sub-mass-cnt"]').forEach(el => el.textContent = '0 selezionati');
+  renderTbSubs();
+}
 
 function setSubDetTab(tab,btn){
   subDetTab=tab;
