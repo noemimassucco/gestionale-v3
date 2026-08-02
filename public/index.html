@@ -561,6 +561,9 @@ tr.row-click{transition:background .12s;}
 #lead-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;}
 #lead-cards-grid>div{transition:transform .16s,box-shadow .16s;}
 #lead-cards-grid>div:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,70,50,.12);}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;}
+.cards-grid>div{transition:transform .16s,box-shadow .16s;}
+.cards-grid>div:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(60,70,50,.12);}
 
 
 /* ═══════════ TEMA PROFESSIONALE (via l'effetto giocattolo) ═══════════ */
@@ -2091,26 +2094,19 @@ input,select,textarea{border-radius:8px;}
         <div id="fatt-nc-list" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>
       </div>
 
-      <!-- TABELLA ORDINI -->
-      <div class="card" style="padding:0;overflow:hidden;">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:30px;"><input type="checkbox" id="fatt-sel-all" onchange="fattSelAll(this)"></th>
-                <th>Cliente</th><th>Servizio</th><th>SUB</th><th>Periodo</th>
-                <th>Importo</th><th>Pagamento</th><th>Contab.</th><th>Azioni</th>
-              </tr>
-            </thead>
-            <tbody id="fatt-tbody"><tr><td colspan="9" class="empty">Caricamento…</td></tr></tbody>
-          </table>
-        </div>
-        <div id="fatt-bulk-bar" class="hidden" style="padding:10px 14px;background:#e8f0e6;border-top:1px solid rgba(107,142,107,.15);display:flex;gap:8px;align-items:center;">
-          <span id="fatt-bulk-cnt" style="font-size:12px;font-weight:600;color:var(--accent);">0 selezionati</span>
-          <button class="btn btn-success btn-sm" onclick="fattBulkPaga()">✅ Segna pagati</button>
-          <button class="btn btn-sm" style="background:#fef3c7;color:#7a5a08;" onclick="fattBulkContabilizza()">📋 Contabilizza</button>
-          <button class="btn btn-danger btn-sm" onclick="fattBulkElimina()">🗑 Elimina</button>
-        </div>
+      <!-- ORDINI (card list) -->
+      <div class="flex-between" style="margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer;user-select:none;">
+          <input type="checkbox" id="fatt-sel-all" onchange="fattSelAll(this)"> Seleziona tutti
+        </label>
+        <span id="fatt-count" style="font-size:11.5px;color:var(--muted);"></span>
+      </div>
+      <div id="fatt-cards-grid" class="cards-grid"><div class="empty" style="grid-column:1/-1;">Caricamento…</div></div>
+      <div id="fatt-bulk-bar" class="hidden" style="position:sticky;bottom:14px;margin-top:14px;padding:10px 14px;background:#fff;border:1px solid rgba(107,142,107,.25);border-radius:10px;box-shadow:0 6px 20px rgba(60,70,50,.14);display:flex;gap:8px;align-items:center;">
+        <span id="fatt-bulk-cnt" style="font-size:12px;font-weight:600;color:var(--accent);">0 selezionati</span>
+        <button class="btn btn-success btn-sm" onclick="fattBulkPaga()">✅ Segna pagati</button>
+        <button class="btn btn-sm" style="background:#fef3c7;color:#7a5a08;" onclick="fattBulkContabilizza()">📋 Contabilizza</button>
+        <button class="btn btn-danger btn-sm" onclick="fattBulkElimina()">🗑 Elimina</button>
       </div>
 
       <!-- REIMPORT CONTABILITÀ -->

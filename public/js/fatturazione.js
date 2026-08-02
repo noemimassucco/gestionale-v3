@@ -97,52 +97,61 @@ async function loadFatturazione() {
 }
 
 function renderFattTable(rows) {
-  const tbody = document.getElementById('fatt-tbody');
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">Nessun ordine per i filtri selezionati</td></tr>'; return; }
-  tbody.innerHTML = rows.map(o => {
+  const grid = document.getElementById('fatt-cards-grid');
+  const cnt = document.getElementById('fatt-count');
+  if (cnt) cnt.textContent = rows.length ? rows.length + ' ordini' : '';
+  if (!rows.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">Nessun ordine per i filtri selezionati</div>'; return; }
+  grid.innerHTML = rows.map(o => {
     const isNc = !o.flag_contabilizzato;
     const isPending = o.stato_pagamento === 'non_pagato';
     // "Da fatturare" evidenziato in giallo — sia le rifatturazioni arrivate dal Controllo
     // Fatturazione (uscite) sia, più in generale, qualunque ordine attivo non ancora fatturato/pagato,
     // stesso colore usato per gli alert ISTAT in scadenza.
     const isDaFatturare = o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato';
-    const rowBg = isDaFatturare ? 'background:rgba(250,204,21,.14);' : isNc ? 'background:rgba(239,68,68,.03);' : '';
-    return `<tr style="${rowBg}cursor:pointer;" onclick="openFattDetail(${o.id})" title="Clicca per aprire — doppio click per modificare" ondblclick="event.stopPropagation();openEditFatt(${o.id})">
-      <td><input type="checkbox" class="sel-check fatt-chk" data-id="${o.id}" onchange="fattChkChange(${o.id},this)"></td>
-      <td>
-        <div style="font-size:13px;font-weight:600;color:#0f172a;">${esc(o.cliente_nome||'—')}</div>
-        ${o.sede_nome ? `<div style="font-size:10px;color:var(--muted);">${esc(o.sede_nome)}</div>` : ''}
-      </td>
-      <td>
-        <div style="font-size:12px;">${TIPI_SERVIZIO[o.tipo_servizio]||o.tipo_servizio}${isDaFatturare?' <span style="font-size:9px;font-weight:700;color:#b8860b;background:rgba(250,204,21,.3);border-radius:8px;padding:1px 6px;">🟡 DA FATTURARE</span>':''}</div>
-        <div style="font-size:11px;color:var(--muted);">${esc(o.nome_servizio||'')}</div>
-      </td>
-      <td>${o.sub_codice ? `<span class="badge badge-sede">${esc(o.sub_codice)}</span>` : '—'}</td>
-      <td style="font-size:11px;color:var(--muted);">
-        ${o.mese_riferimento ? MESI_NOMI[o.mese_riferimento] : '—'} ${o.anno_riferimento || ''}
-        ${o.numero_fattura ? `<br><span style="font-size:10px;">n.${esc(o.numero_fattura)}</span>` : ''}
-      </td>
-      <td class="td-price">€ ${parseFloat(o.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</td>
-      <td>
-        ${o.stato_pagamento === 'pagato'
-          ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(16,185,129,.15);color:var(--green);">✅ Pagato</span><div style="font-size:10px;color:var(--muted);">${fmt(o.data_pagamento)}</div>`
-          : o.stato_pagamento === 'parziale'
-          ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(184,134,11,.15);color:var(--primary-dark);">⚠️ Parziale</span>`
-          : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--red);">⏳ Non pagato</span>`}
-      </td>
-      <td>
-        ${o.flag_contabilizzato
-          ? `<button class="btn btn-xs" style="background:rgba(16,185,129,.1);color:var(--green);" onclick="fattToggleContabilizza(${o.id})">✅ Sì</button>`
-          : `<button class="btn btn-xs btn-danger" onclick="fattToggleContabilizza(${o.id})" title="Non contabilizzato — clicca per contabilizzare">🔴 No</button>`}
-      </td>
-      <td>
-        <div style="display:flex;gap:4px;">
-          ${isPending ? `<button class="btn btn-success btn-xs" onclick="fattPaga(${o.id})" title="Segna pagato">💳</button>` : ''}
-          <button class="btn btn-edit btn-xs" onclick="openEditFatt(${o.id})" title="Modifica">✏️</button>
-          <button class="btn btn-danger btn-xs" onclick="delFatt(${o.id})" title="Elimina">✕</button>
+    const borderColor = isDaFatturare ? '#eab308' : isNc ? 'var(--red)' : o.stato_pagamento === 'pagato' ? 'var(--green)' : 'var(--border)';
+    const bg = isDaFatturare ? 'background:rgba(250,204,21,.08);' : '';
+    const pagamentoBadge = o.stato_pagamento === 'pagato'
+      ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(16,185,129,.15);color:var(--green);">✅ Pagato</span>`
+      : o.stato_pagamento === 'parziale'
+      ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(184,134,11,.15);color:var(--primary-dark);">⚠️ Parziale</span>`
+      : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--red);">⏳ Non pagato</span>`;
+    return `<div class="card" style="border-left:3px solid ${borderColor};padding:14px 16px;cursor:pointer;${bg}" onclick="openFattDetail(${o.id})" title="Clicca per aprire — doppio click per modificare" ondblclick="event.stopPropagation();openEditFatt(${o.id})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;">
+        <div style="min-width:0;">
+          <strong style="font-size:14px;color:var(--text-strong);">${esc(o.cliente_nome||'—')}</strong>
+          ${o.sede_nome ? `<div style="font-size:10.5px;color:var(--muted);margin-top:1px;">${esc(o.sede_nome)}</div>` : ''}
         </div>
-      </td>
-    </tr>`;
+        <input type="checkbox" class="sel-check fatt-chk" data-id="${o.id}" onclick="event.stopPropagation();" onchange="fattChkChange(${o.id},this)">
+      </div>
+      <div style="margin:6px 0;">
+        <div style="font-size:12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          ${TIPI_SERVIZIO[o.tipo_servizio]||o.tipo_servizio}
+          ${o.sub_codice ? `<span class="badge badge-sede">${esc(o.sub_codice)}</span>` : ''}
+          ${isDaFatturare?'<span style="font-size:9px;font-weight:700;color:#b8860b;background:rgba(250,204,21,.3);border-radius:8px;padding:1px 6px;">🟡 DA FATTURARE</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${esc(o.nome_servizio||'')}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 8px;">
+        <div style="font-size:11px;color:var(--muted);">
+          ${o.mese_riferimento ? MESI_NOMI[o.mese_riferimento] : '—'} ${o.anno_riferimento || ''}
+          ${o.numero_fattura ? ` · n.${esc(o.numero_fattura)}` : ''}
+        </div>
+        <div class="td-price" style="font-size:15px;">€ ${parseFloat(o.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${pagamentoBadge}
+          ${o.flag_contabilizzato
+            ? `<button class="btn btn-xs" style="background:rgba(16,185,129,.1);color:var(--green);" onclick="event.stopPropagation();fattToggleContabilizza(${o.id})" title="Contabilizzato">✅</button>`
+            : `<button class="btn btn-xs btn-danger" onclick="event.stopPropagation();fattToggleContabilizza(${o.id})" title="Non contabilizzato — clicca per contabilizzare">🔴</button>`}
+        </div>
+        <div style="display:flex;gap:4px;">
+          ${isPending ? `<button class="btn btn-success btn-xs" onclick="event.stopPropagation();fattPaga(${o.id})" title="Segna pagato">💳</button>` : ''}
+          <button class="btn btn-edit btn-xs" onclick="event.stopPropagation();openEditFatt(${o.id})" title="Modifica">✏️</button>
+          <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delFatt(${o.id})" title="Elimina">✕</button>
+        </div>
+      </div>
+    </div>`;
   }).join('');
 }
 
