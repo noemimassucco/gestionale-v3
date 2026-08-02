@@ -119,9 +119,13 @@ async function _syncOrdineFatturazione(pool, cf, userId) {
       : cf.attribuito_a_tipo === 'commessa' ? `commessa: ${cf.attribuito_a_testo || ''}`
       : cf.attribuito_a_tipo === 'centro_costo' ? `centro di costo: ${cf.attribuito_a_testo || ''}` : '';
     const nomeServizio = `Rifatturazione: ${(cf.fornitore_nome || cf.descrizione || 'spesa').slice(0, 80)}`;
-    const descrizione = [cf.descrizione, attribLabel, cf.criterio_riparto ? `criterio: ${cf.criterio_riparto}` : null]
+    const _dsRaw = cf.data_documento instanceof Date ? cf.data_documento.toISOString().slice(0, 10) : (cf.data_documento ? String(cf.data_documento).slice(0, 10) : null);
+    const dataSpesaLabel = _dsRaw ? `spesa del ${_dsRaw}` : null;
+    const descrizione = [cf.descrizione, dataSpesaLabel, attribLabel, cf.criterio_riparto ? `criterio: ${cf.criterio_riparto}` : null]
       .filter(Boolean).join(' — ');
-    const rifData = cf.data_documento ? new Date(cf.data_documento) : new Date();
+    // Il periodo di riferimento è QUANDO viene messa in fatturazione (oggi), non la data della
+    // spesa originale — altrimenti una spesa vecchia sparirebbe dall'export filtrato sull'anno corrente.
+    const rifData = new Date();
     const r = await pool.query(
       `INSERT INTO ordini_fatturazione
         (sub_id,inquilino_id,tipo_servizio,nome_servizio,descrizione,importo,periodicita,stato,
