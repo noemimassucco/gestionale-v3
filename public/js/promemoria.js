@@ -156,7 +156,7 @@ async function loadPromemoriaAttivi() {
           </div>
           ${p.descrizione ? `<div style="font-size:11px;color:var(--muted);font-style:italic;margin-top:2px;">${esc(p.descrizione.slice(0,60))}${p.descrizione.length>60?'…':''}</div>` : ''}
         </div>
-        <button class="btn btn-xs btn-gray" onclick="completaPromemoria(${p.id})" title="Segna completato" style="flex-shrink:0;">✓</button>
+        ${p.tipo!=='documento' ? `<button class="btn btn-xs btn-gray" onclick="completaPromemoria(${p.id})" title="Segna completato" style="flex-shrink:0;">✓</button>` : ''}
       </div>`;
   }).join('');
 }

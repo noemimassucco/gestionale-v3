@@ -101,26 +101,57 @@ router.get('/api/promemoria', authMiddleware, async (req, res) => {
 // ═══════════════════════════════════════════════════════════
 router.get('/api/promemoria/attivi-ora', authMiddleware, async (req, res) => {
   try {
-    const r = await pool.query(`
-      SELECT p.*,
-             i.ragione_sociale AS entita_nome_cliente,
-             s.codice          AS entita_nome_sub
-      FROM promemoria p
-      LEFT JOIN inquilini i ON p.entita_tipo = 'cliente' AND p.entita_id = i.id
-      LEFT JOIN subs      s ON p.entita_tipo = 'sub'     AND p.entita_id = s.id
-      WHERE p.user_id     = $1
-        AND p.completato  = false
-        AND p.data_evento <= CURRENT_DATE + INTERVAL '7 days'
-      ORDER BY p.data_evento, p.ora_evento NULLS LAST
-    `, [req.user.id]);
+    const [rProm, rDoc] = await Promise.all([
+      pool.query(`
+        SELECT p.*,
+               i.ragione_sociale AS entita_nome_cliente,
+               s.codice          AS entita_nome_sub
+        FROM promemoria p
+        LEFT JOIN inquilini i ON p.entita_tipo = 'cliente' AND p.entita_id = i.id
+        LEFT JOIN subs      s ON p.entita_tipo = 'sub'     AND p.entita_id = s.id
+        WHERE p.user_id     = $1
+          AND p.completato  = false
+          AND p.data_evento <= CURRENT_DATE + INTERVAL '7 days'
+        ORDER BY p.data_evento, p.ora_evento NULLS LAST
+      `, [req.user.id]),
+      // Scadenze documenti (contratti, assicurazioni, ecc.): non sono righe della
+      // tabella promemoria, ma devono comunque comparire qui — altrimenti restano
+      // visibili solo nel Calendario/email e passano inosservate.
+      pool.query(`
+        SELECT d.id, d.nome AS titolo, d.scadenza AS data_evento,
+               s.codice AS sub_codice, sd.nome AS sede_nome
+        FROM documenti d
+        LEFT JOIN subs s  ON d.sub_id = s.id
+        LEFT JOIN sedi sd ON d.sede_id = sd.id
+        WHERE d.scadenza IS NOT NULL
+          AND d.scadenza BETWEEN CURRENT_DATE - INTERVAL '14 days' AND CURRENT_DATE + INTERVAL '7 days'
+        ORDER BY d.scadenza
+      `),
+    ]);
 
-    const attivi = r.rows
+    const attiviProm = rProm.rows
       .filter(p => isAttivo(p))
       .map(p => ({
         ...p,
+        tipo: 'promemoria',
         urgenza: urgenza(p),
         entita_nome: p.entita_nome_cliente || p.entita_nome_sub || null,
       }));
+
+    const attiviDoc = rDoc.rows.map(d => ({
+      id: 'doc-' + d.id,
+      tipo: 'documento',
+      titolo: '📄 Scadenza documento — ' + d.titolo,
+      data_evento: d.data_evento,
+      ora_evento: null,
+      descrizione: null,
+      urgenza: urgenza({ data_evento: d.data_evento }),
+      // Sempre indicato a quale SUB/sede si riferisce, altrimenti non si capisce di cosa si tratta
+      entita_nome: d.sub_codice ? ('SUB ' + d.sub_codice + (d.sede_nome ? ' · ' + d.sede_nome : '')) : (d.sede_nome || 'senza SUB/sede associati'),
+    }));
+
+    const attivi = [...attiviProm, ...attiviDoc]
+      .sort((a, b) => new Date(a.data_evento) - new Date(b.data_evento));
 
     res.json(attivi);
   } catch(e) {
