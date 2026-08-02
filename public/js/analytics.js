@@ -41,6 +41,7 @@ async function loadAffitti(){
   el.innerHTML=filtered.map(p=>`
     <div class="int-card" style="border-left:3px solid ${statoColors[p.stato]||'var(--border)'};">
       <div class="int-card-hdr">
+        <input type="checkbox" class="sel-check pagamenti_affitto-chk" data-id="${p.id}" onchange="genToggle('pagamenti_affitto',${p.id},this)" onclick="event.stopPropagation()" style="display:none;">
         ${statoIcons[p.stato]||''} <strong style="font-size:13px;color:#0f172a;">${p.sub_codice?'SUB '+esc(p.sub_codice):'—'}</strong>
         <span style="font-size:12px;color:var(--muted);">${mesi[p.mese]||p.mese} ${p.anno}</span>
         ${p.inquilino_nome?`<span style="font-size:12px;color:var(--muted);">👤 ${esc(p.inquilino_nome)}</span>`:''}
@@ -52,6 +53,7 @@ async function loadAffitti(){
         <button class="btn btn-danger btn-sm" onclick="delAffitto(${p.id})">✕</button>
       </div>
     </div>`).join('');
+  if(typeof restoreSelUI==='function')restoreSelUI('pagamenti_affitto');
 }
 
 // (filterSubBySede: si usa la versione di interventi.js)

@@ -1900,6 +1900,46 @@ async function backupAdesso(){
   toast('💾 Backup completato ✓');
 }
 
+// Scarica la copia completa sul computer
+function backupScarica(){
+  const a=document.createElement('a');
+  a.href=fileUrl('/api/backup');
+  a.download='gestionale_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  toast('⬇ Download del backup avviato');
+}
+
+// Invia la copia completa via email
+async function backupEmailAdesso(){
+  const st=document.getElementById('backup-status');
+  if(st){st.textContent='Invio email in corso…';st.style.color='var(--muted)';}
+  const r=await api('/api/backup/email',{method:'POST'});
+  if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'invio fallito');st.style.color='var(--danger)';}return;}
+  if(st){st.textContent='✉️ Copia inviata alla tua email ('+r.righe+' righe)';st.style.color='var(--success)';}
+  toast('✉️ Backup inviato via email ✓');
+}
+
+// Ripristino da file JSON (con doppia conferma: è distruttivo)
+async function restoreDaFile(input){
+  const f=input.files[0];input.value='';
+  if(!f)return;
+  let dati;
+  try{ dati=JSON.parse(await f.text()); }
+  catch(e){ toast('File non valido: non è un backup del gestionale','error'); return; }
+  if(!dati.tables){ toast('File non valido: manca la sezione dati','error'); return; }
+  const nTab=Object.keys(dati.tables).length;
+  const quando=dati.exported?new Date(dati.exported).toLocaleString('it-IT'):'data sconosciuta';
+  if(!await appConfirm(`Ripristinare il backup del ${quando}?\n\n${dati.totalRows||'?'} righe in ${nTab} tabelle.\n\n⚠ I DATI ATTUALI VERRANNO SOSTITUITI con quelli del backup.`,{danger:true,icon:'🛟',title:'Ripristino backup',okText:'Continua'}))return;
+  if(!await appConfirm('Ultima conferma: questa operazione non si può annullare. Procedere davvero col ripristino?',{danger:true,icon:'⚠️',title:'Conferma definitiva',okText:'Sì, ripristina'}))return;
+  const st=document.getElementById('backup-status');
+  if(st){st.textContent='Ripristino in corso… non chiudere la pagina';st.style.color='var(--warning)';}
+  const r=await api('/api/restore',{method:'POST',body:JSON.stringify(dati)});
+  if(!r||r.error){if(st){st.textContent='❌ '+(r?.error||'ripristino fallito');st.style.color='var(--danger)';}toast('❌ Ripristino fallito','error');return;}
+  if(st){st.textContent='✅ '+(r.message||'Ripristino completato');st.style.color='var(--success)';}
+  toast('🛟 '+(r.message||'Ripristino completato')+' — ricarico…');
+  setTimeout(()=>location.reload(),1800);
+}
+
 
 // ═══════ SCHEDE TECNICHE IMPIANTI (con suggerimenti) ═══════
 const IMPIANTI_CAMPI = {

@@ -309,6 +309,17 @@ function genSelAll(type) {
   document.getElementById(type + '-mass-bar')?.classList.remove('hidden');
 }
 
+// Dopo un re-render: se la selezione è attiva, rimostra i checkbox e ripristina i flag
+function restoreSelUI(table){
+  const bar=document.getElementById(table+'-mass-bar');
+  if(!bar||bar.classList.contains('hidden'))return;
+  const set=getSelSet(table);
+  document.querySelectorAll('.'+table+'-chk').forEach(el=>{
+    el.style.display='';
+    el.checked=set.has(parseInt(el.dataset.id));
+  });
+}
+
 function genDeselAll(type) {
   getSelSet(type).clear();
   document.querySelectorAll('.' + type + '-chk').forEach(el => { el.checked = false; });

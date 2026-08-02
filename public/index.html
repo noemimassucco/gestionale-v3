@@ -1409,9 +1409,15 @@ input,select,textarea{border-radius:8px;}
         </div>
         <div class="card">
           <div class="card-title">🗄️ Salvaguardia dati</div>
-          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Ogni domenica alle 3:00 viene salvata da sola una copia completa dei dati su Cloudinary. Puoi anche farne una adesso.</p>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;"><strong>Ogni notte alle 3:00</strong> viene salvata da sola una copia completa su Cloudinary (ultime 30 notti + una copia storica al mese, per sempre). <strong>Ogni domenica</strong> una copia ti arriva anche via email. E qui sotto puoi fare tutto a mano:</p>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+            <button class="btn btn-sm btn-gray" onclick="backupAdesso()">💾 Backup adesso</button>
+            <button class="btn btn-sm btn-gray" onclick="backupScarica()">⬇ Scarica copia</button>
+            <button class="btn btn-sm btn-gray" onclick="backupEmailAdesso()">✉️ Inviamelo via email</button>
+          </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-sm btn-gray" onclick="backupAdesso()">💾 Esegui backup adesso</button>
+            <button class="btn btn-sm" style="background:#fdf3f2;color:var(--danger);border:1px solid rgba(142,67,67,.3);" onclick="document.getElementById('restore-file').click()">🛟 Ripristina da file</button>
+            <input type="file" id="restore-file" accept=".json" style="display:none" onchange="restoreDaFile(this)">
             <span id="backup-status" style="font-size:11px;color:var(--muted);"></span>
           </div>
         </div>
@@ -1720,7 +1726,16 @@ input,select,textarea{border-radius:8px;}
     <div id="sec-bollette" class="section">
       <div class="flex-between mb-16">
         <div><h2 class="page-title">⚡ Bollette</h2><p class="page-sub" id="boll-lbl">Luce, gas, acqua, internet, rifiuti, condominio</p></div>
-        <button class="btn btn-primary" onclick="openModalBoll()">+ Nuova Bolletta</button>
+        <div class="flex">
+          <button class="btn btn-sm btn-gray" onclick="toggleTableSel('bollette')" id="bollette-sel-btn">☑ Selezione</button>
+          <button class="btn btn-primary" onclick="openModalBoll()">+ Nuova Bolletta</button>
+        </div>
+      </div>
+      <div id="bollette-mass-bar" class="mass-bar hidden">
+        <span id="bollette-mass-cnt" style="font-size:13px;font-weight:600;color:var(--accent);">0 selezionati</span>
+        <button class="btn btn-sm btn-gray" onclick="tableSelAll('bollette')">☑ Seleziona tutti</button>
+        <button class="btn btn-sm btn-gray" onclick="genDeselAll('bollette')">Deseleziona</button>
+        <button class="btn btn-danger btn-sm" onclick="bulkDelete('bollette','bollette-mass-cnt',()=>{toggleTableSel('bollette');loadBollette();})">🗑 Elimina selezionati</button>
       </div>
       <div id="boll-scad-banner" class="hidden" style="background:#fee2e2;border:1px solid rgba(239,68,68,.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;">
         <div style="font-size:12px;font-weight:600;color:var(--red);margin-bottom:8px;">🔴 Bollette in scadenza nei prossimi 30 giorni</div>
@@ -1787,7 +1802,16 @@ input,select,textarea{border-radius:8px;}
     <div id="sec-affitti" class="section">
       <div class="flex-between mb-16">
         <div><h2 class="page-title">💳 Affitti</h2><p class="page-sub">Pagamenti affitto per SUB e anno</p></div>
-        <button class="btn btn-primary" onclick="subActionNuovoAffitto()">+ Registra pagamento</button>
+        <div class="flex">
+          <button class="btn btn-sm btn-gray" onclick="toggleTableSel('pagamenti_affitto')" id="pagamenti_affitto-sel-btn">☑ Selezione</button>
+          <button class="btn btn-primary" onclick="subActionNuovoAffitto()">+ Registra pagamento</button>
+        </div>
+      </div>
+      <div id="pagamenti_affitto-mass-bar" class="mass-bar hidden">
+        <span id="pagamenti_affitto-mass-cnt" style="font-size:13px;font-weight:600;color:var(--accent);">0 selezionati</span>
+        <button class="btn btn-sm btn-gray" onclick="tableSelAll('pagamenti_affitto')">☑ Seleziona tutti</button>
+        <button class="btn btn-sm btn-gray" onclick="genDeselAll('pagamenti_affitto')">Deseleziona</button>
+        <button class="btn btn-danger btn-sm" onclick="bulkDelete('pagamenti_affitto','pagamenti_affitto-mass-cnt',()=>{toggleTableSel('pagamenti_affitto');loadAffitti();})">🗑 Elimina selezionati</button>
       </div>
       <div id="affitti-stats" class="home-kpi" style="margin-bottom:20px;"></div>
       <div class="filter-bar mb-16">

@@ -24,6 +24,7 @@ async function loadBollette(){
     const scadColor=b.stato==='pagato'?'var(--green)':(!isNaN(gg)&&gg<0?'var(--red)':!isNaN(gg)&&gg<30?'var(--orange)':'var(--muted)');
     const statoLabel={da_pagare:'Da pagare',pagato:'Pagato',scaduto:'Scaduto'}[b.stato]||b.stato;
     return`<div class="boll-card">
+      <input type="checkbox" class="sel-check bollette-chk" data-id="${b.id}" onchange="genToggle('bollette',${b.id},this)" onclick="event.stopPropagation()" style="display:none;align-self:center;">
       <div class="boll-icon">${BOLL_ICONS[b.tipo]||'📄'}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;color:#0f172a;">${esc(b.tipo.charAt(0).toUpperCase()+b.tipo.slice(1))} ${b.fornitore_nome?'— '+esc(b.fornitore_nome):''}</div>
@@ -42,6 +43,7 @@ async function loadBollette(){
       </div>
     </div>`;
   }).join('');
+  if(typeof restoreSelUI==='function')restoreSelUI('bollette');
 }
 
 function openModalBoll(subId=null){

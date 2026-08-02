@@ -22,6 +22,16 @@ router.post('/api/backup/adesso', authMiddleware, requireAdmin, async (req, res)
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/backup/email — invia la copia completa via email (admin)
+router.post('/api/backup/email', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { backupViaEmail } = require('../cron/backup.cron');
+    const r = await backupViaEmail();
+    if (!r.ok) return res.status(400).json({ error: r.motivo || 'Invio non riuscito' });
+    res.json(r);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ═══════════════════════════════════════════════════════════
 // GET /api/export — Excel con interventi + subs
 // ═══════════════════════════════════════════════════════════
@@ -237,15 +247,32 @@ router.post('/api/restore', authMiddleware, requireAdmin, async (req, res) => {
   try {
     await client.query('BEGIN');
 
+    // ── 0. SALVA GLI UTENTI: il TRUNCATE CASCADE di inquilini li spazzerebbe via
+    //       (users.inquilino_id → inquilini) e nessuno potrebbe più accedere ──
+    const usersSnap = await client.query('SELECT * FROM users');
+
     // ── 1. TRUNCATE nell'ordine giusto (figli prima dei padri) ──
     for (const table of TRUNCATE_ORDER) {
       if (tables[table] === undefined) continue;
       try {
+        await client.query('SAVEPOINT sp_tr');
         await client.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);
       } catch(e) {
-        // Ignore if table doesn't exist
+        try { await client.query('ROLLBACK TO SAVEPOINT sp_tr'); } catch(_) {}
       }
     }
+
+    // ── 1b. RIPRISTINA SUBITO GLI UTENTI (password comprese) ──
+    for (const u of usersSnap.rows) {
+      const uCols = Object.keys(u);
+      try {
+        await client.query('SAVEPOINT sp_u');
+        await client.query(
+          `INSERT INTO users (${uCols.map(c=>`"${c}"`).join(',')}) VALUES (${uCols.map((_,i)=>`$${i+1}`).join(',')}) ON CONFLICT (id) DO NOTHING`,
+          uCols.map(c => u[c]));
+      } catch(e) { try { await client.query('ROLLBACK TO SAVEPOINT sp_u'); } catch(_) {} }
+    }
+    try { await client.query(`SELECT setval(pg_get_serial_sequence('users','id'), COALESCE((SELECT MAX(id) FROM users),0)+1, false)`); } catch(_) {}
 
     // ── 2. INSERT nell'ordine giusto (padri prima dei figli) ──
     for (const table of RESTORE_ORDER) {
@@ -269,22 +296,26 @@ router.post('/api/restore', authMiddleware, requireAdmin, async (req, res) => {
         const colList = safeCols.map(c => `"${c}"`).join(',');
 
         try {
+          // SAVEPOINT per riga: un errore su UNA riga non deve mandare all'aria TUTTO il ripristino
+          await client.query('SAVEPOINT sp_row');
           await client.query(
             `INSERT INTO ${table} (${colList}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
             vals
           );
           inserted++;
         } catch(e) {
+          try { await client.query('ROLLBACK TO SAVEPOINT sp_row'); } catch(_) {}
           errors.push(`${table}[${row.id}]: ${e.message.slice(0,80)}`);
         }
       }
 
       // Reset sequence to max id + 1
       try {
+        await client.query('SAVEPOINT sp_seq');
         await client.query(
           `SELECT setval(pg_get_serial_sequence('${table}','id'), COALESCE(MAX(id),0)+1, false) FROM ${table}`
         );
-      } catch(_) {}
+      } catch(_) { try { await client.query('ROLLBACK TO SAVEPOINT sp_seq'); } catch(__) {} }
 
       counts[table] = inserted;
     }

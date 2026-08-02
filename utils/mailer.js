@@ -34,11 +34,11 @@ function _spiegaErrore(e) {
   return msg;
 }
 
-async function sendMail({ to, subject, html }) {
+async function sendMail({ to, subject, html, attachments }) {
   const t = getTransport();
   if (!t) return { error: 'SMTP non configurato: imposta SMTP_HOST, SMTP_USER e SMTP_PASS su Render (per Gmail: smtp.gmail.com + password per le app)' };
   try {
-    await t.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html });
+    await t.sendMail({ from: process.env.SMTP_FROM || process.env.SMTP_USER, to, subject, html, ...(attachments ? { attachments } : {}) });
     return { ok: true };
   } catch (e) {
     console.error('[mailer]', e.message);

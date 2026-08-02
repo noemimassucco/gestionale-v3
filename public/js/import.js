@@ -130,10 +130,21 @@ function loadSubImport(input) {
     const mapped = Object.values(subImportMap).filter(Boolean).length;
     const info = document.getElementById('sub-import-info');
     const prev = document.getElementById('sub-import-prev');
-    if (info) info.innerHTML = `<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:7px;padding:10px 12px;margin-bottom:8px;">
-      <div style="color:var(--green);font-weight:600;margin-bottom:6px;">✅ ${subImportRows.length} SUB trovati · ${mapped}/${Object.keys(SUB_MAP_X).length} colonne riconosciute</div>
-      <div style="font-size:10px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;">
-        ${Object.entries(subImportMap).map(([k,v]) => v ? `<span style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:3px;padding:1px 6px;">${k}→<strong>${v}</strong></span>` : '').filter(Boolean).join('')}
+    // Se il codice non è stato trovato da solo, si sceglie a mano — mai più bloccati
+    const selCol = (field, label) => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">${label}
+      <select onchange="subImportMap.${field}=this.value||undefined" style="font-size:11px;padding:4px 7px;border:1px solid var(--border-2);border-radius:6px;background:var(--card);max-width:150px;">
+        <option value="">— nessuna —</option>
+        ${cols.map(c => `<option value="${esc(c)}"${subImportMap[field]===c?' selected':''}>${esc(c)}</option>`).join('')}
+      </select></label>`;
+    if (info) info.innerHTML = `<div style="background:${subImportMap.codice?'rgba(16,185,129,.08)':'rgba(194,84,46,.08)'};border:1px solid ${subImportMap.codice?'rgba(16,185,129,.2)':'rgba(194,84,46,.3)'};border-radius:7px;padding:10px 12px;margin-bottom:8px;">
+      <div style="color:${subImportMap.codice?'var(--green)':'var(--terra,#c2542e)'};font-weight:600;margin-bottom:6px;">${subImportMap.codice?`✅ ${subImportRows.length} righe trovate · ${mapped}/${Object.keys(SUB_MAP_X).length} colonne riconosciute`:`⚠ ${subImportRows.length} righe trovate, ma non ho capito quale colonna è il codice SUB — sceglila qui sotto`}</div>
+      <div style="font-size:10px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+        ${Object.entries(subImportMap).map(([k,v]) => v ? `<span style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:3px;padding:1px 6px;">${k}→<strong>${esc(v)}</strong></span>` : '').filter(Boolean).join('')}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;">
+        ${selCol('codice','Colonna codice SUB:')}
+        ${selCol('sede','Sede:')}
+        ${selCol('ex_sub','Ex SUB:')}
       </div></div>`;
     if (prev) prev.innerHTML = '';
 
