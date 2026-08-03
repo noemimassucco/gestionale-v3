@@ -13,6 +13,22 @@ Dopo l'analisi qui sotto hai deciso così, ed è stato implementato e testato:
 
 Testato in locale prima di consegnare: login, SUB/bollette/interventi/manutenzioni/chat team tutti funzionanti; `/api/ticket` e `/api/chat` ora rispondono 404 come previsto; bulk-delete rifiuta correttamente "ticket" come tabella non più consentita; portale inquilino carica senza la tab segnalazioni.
 
+## ✅ Ciclo di lavoro "analizza e migliora senza stravolgere" (03/08/2026)
+
+Completato in ordine di priorità (bug reali → sicurezza → semplificazione → dashboard → performance → pulizia). Ogni punto testato in locale e committato separatamente:
+
+- **Sicurezza — token portale isolato dal gestionale**: un token del portale inquilino non può più chiamare le API interne (backup, utenti, ecc.). Nessuna modifica al login principale, email/SMTP/reset password non toccati.
+- **Sicurezza — blocco auto-promozione ad admin**: `PUT /api/users/:id` ora richiede ruolo admin e non permette a un utente di auto-assegnarsi `ruolo:'admin'`.
+- **Sicurezza — rate limit sui login**: max 8 tentativi/15 min su `/api/auth/login` e `/api/portale/login`.
+- **Sicurezza — blocco upload pericolosi**: bloccati SVG/HTML/eseguibili/JS negli upload; PDF, immagini e lo zip di smart-import continuano a funzionare come prima.
+- **Semplificazione — unificato il controllo "SUB non attivo"**: era duplicato identico in 5 file, ora centralizzato in un unico helper (`utils/subGuard.js`), stesso comportamento in tutti i punti.
+- **Dashboard — rimosso codice morto**: due blocchi (SUB critici, scadenze 7gg) scrivevano in contenitori nascosti (`display:none`) e non erano mai visibili — rimossi, i dati equivalenti sono già nella lista "Da fare adesso". Aggiunta anche una riga per i SUB con dati incompleti (mancava inquilino/dati catastali/canone), dato già calcolato dal backend ma prima mai mostrato da nessuna parte. Nessuna nuova tabella, nessun redesign.
+- **Performance — 3 indici mancanti aggiunti**: `storico_inquilini.sub_id`, `contratti.sub_id`, `allegati.intervento_id`.
+- **Performance — eliminato un pattern lento in `/api/riepilogo`**: prima caricava tutti gli interventi in memoria e faceva un confronto per ogni SUB uno per uno; ora usa una singola query con aggregazioni (stesso identico risultato, verificato con dati di test).
+- **Portale inquilini — disattivato in modo reversibile**: la riga che lo attiva in `app.js` è stata commentata (non cancellata). Nessun dato toccato, nessuna tabella rimossa — per riattivarlo basta togliere il commento da quella riga.
+
+Nota: devi lanciare `npm install` in locale (per `express-rate-limit`, aggiunto solo a `package.json`) e poi pushare i commit accumulati da GitHub Desktop quando vuoi.
+
 ---
 
 ## PARTE 1 — Estetica (index.html + portale.html)
