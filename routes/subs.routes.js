@@ -3,6 +3,7 @@ const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const { updateSaluteImmobile } = require('../utils/helpers');
+const { subNonAttivoErroreDaRiga } = require('../utils/subGuard');
 
 router.get('/api/subs', authMiddleware, async (req, res) => {
   // Query ottimizzata: JOIN aggregati invece di 4 subquery correlate per riga
@@ -571,9 +572,8 @@ router.post('/api/subs/:id/scissione', authMiddleware, async (req, res) => {
   const orig = origRes.rows[0];
 
   // Blocco sicurezza
-  if (orig.stato_sub && orig.stato_sub !== 'attivo') {
-    return res.status(400).json({ error: `SUB non attivo (stato: ${orig.stato_sub})` });
-  }
+  const subErr = subNonAttivoErroreDaRiga(orig);
+  if (subErr) return res.status(400).json({ error: subErr });
 
   // Modalità legacy (un solo figlio)
   if (!sub_figlio_1 && req.body.nuovo_codice) {

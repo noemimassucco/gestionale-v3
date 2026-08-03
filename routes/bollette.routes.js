@@ -4,6 +4,7 @@ const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { registraUscita, rimuoviUscita } = require('../utils/controlloFatturazione');
+const { subNonAttivoErrore } = require('../utils/subGuard');
 
 // ── Cloudinary v2 ──
 const cloudinary = require('cloudinary').v2;
@@ -29,13 +30,8 @@ router.get('/api/bollette', authMiddleware, async (req, res) => {
 router.post('/api/bollette', authMiddleware, upload.single('file'), async (req, res) => {
   const f = req.body;
   const { sub_id } = f;
-  // ── Blocco sicurezza: SUB deve essere attivo ──────────────
-  if (sub_id) {
-    const subCheck = await pool.query('SELECT stato_sub FROM subs WHERE id=$1', [sub_id]);
-    if (subCheck.rows.length && subCheck.rows[0].stato_sub && subCheck.rows[0].stato_sub !== 'attivo') {
-      return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
-    }
-  }
+  const subErr = await subNonAttivoErrore(pool, sub_id);
+  if (subErr) return res.status(400).json({ error: subErr });
   if (f.importo !== undefined && f.importo !== null && f.importo !== '' && parseFloat(f.importo) < 0) {
     return res.status(400).json({ error: 'Importo non può essere negativo' });
   }

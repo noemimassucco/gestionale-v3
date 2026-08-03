@@ -2,6 +2,7 @@
 const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
+const { subNonAttivoErroreDaRiga } = require('../utils/subGuard');
 
 router.get('/api/riaccatastamenti/:sub_id', authMiddleware, async (req, res) => {
   try {
@@ -301,9 +302,8 @@ router.post('/api/subs/riaccatastamento', authMiddleware, async (req, res) => {
   if (!origRes.rows.length) return res.status(404).json({ error: 'SUB origine non trovato' });
   const orig = origRes.rows[0];
 
-  if (orig.stato_sub && orig.stato_sub !== 'attivo') {
-    return res.status(400).json({ error: `SUB non attivo (stato: ${orig.stato_sub})` });
-  }
+  const subErr = subNonAttivoErroreDaRiga(orig);
+  if (subErr) return res.status(400).json({ error: subErr });
 
   const client = await pool.connect();
   try {

@@ -3,6 +3,7 @@ const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const { registraUscita, rimuoviUscita } = require('../utils/controlloFatturazione');
+const { subNonAttivoErrore } = require('../utils/subGuard');
 
 async function _registraUscitaManutenzione(m){
   if (!m) return;
@@ -39,14 +40,8 @@ router.get('/api/manutenzioni', authMiddleware, async (req, res) => {
 
 router.post('/api/manutenzioni', authMiddleware, async (req, res) => {
   const v = req.body;
-  // Stessa regola già applicata alle bollette: su un SUB fuso/scisso/chiuso non si
-  // dovrebbero programmare nuove manutenzioni — prima qui non c'era alcun controllo.
-  if (v.sub_id) {
-    const subCheck = await pool.query('SELECT stato_sub FROM subs WHERE id=$1', [v.sub_id]);
-    if (subCheck.rows.length && subCheck.rows[0].stato_sub && subCheck.rows[0].stato_sub !== 'attivo') {
-      return res.status(400).json({ error: `SUB non attivo (stato: ${subCheck.rows[0].stato_sub}) — operazione non consentita` });
-    }
-  }
+  const subErr = await subNonAttivoErrore(pool, v.sub_id);
+  if (subErr) return res.status(400).json({ error: subErr });
   if (v.costo !== undefined && v.costo !== null && v.costo !== '' && parseFloat(v.costo) < 0) {
     return res.status(400).json({ error: 'Costo non può essere negativo' });
   }
