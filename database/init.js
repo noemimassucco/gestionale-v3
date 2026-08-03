@@ -428,6 +428,9 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_bollette_sub ON bollette(sub_id);
       CREATE INDEX IF NOT EXISTS idx_ticket_sub ON ticket(sub_id);
       CREATE INDEX IF NOT EXISTS idx_sub_storia_sub ON sub_storia(sub_id);
+      CREATE INDEX IF NOT EXISTS idx_storico_inquilini_sub ON storico_inquilini(sub_id);
+      CREATE INDEX IF NOT EXISTS idx_contratti_sub ON contratti(sub_id);
+      CREATE INDEX IF NOT EXISTS idx_allegati_intervento ON allegati(intervento_id);
     `).catch(()=>{}); // ignore if already exist
   } finally { client.release(); }
 }
