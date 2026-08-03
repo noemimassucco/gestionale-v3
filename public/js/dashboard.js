@@ -67,6 +67,11 @@ async function loadDashboard(){
       voci.push({ico:'⚡',t:'Bolletta da pagare — '+(n.titolo||'')+(n.sub?' · SUB '+n.sub:''),
         d:g==null?'senza scadenza':g<0?'scaduta!':g===0?'oggi':'tra '+g+'g',urg:g!=null&&g<=7?2:1,run:`showSection('bollette')`});
     });
+    // SUB con dati incompleti (manca inquilino/dati catastali/canone) — già calcolati da /api/notifiche
+    // ma prima esclusi solo dal contatore badge (riga nc sopra) e mai mostrati da nessun'altra parte.
+    (notifiche||[]).filter(n=>n.tipo==='incompleto').slice(0,3).forEach(n=>{
+      voci.push({ico:'📋',t:'Dati incompleti — '+(n.titolo||'')+(n.descrizione?' · '+n.descrizione:''),d:'completa',urg:0,run:`openSubDetail(${n.id})`});
+    });
     voci.sort((a,b)=>b.urg-a.urg);
     todoEl.innerHTML=voci.length?voci.slice(0,8).map(v2=>`
       <div class="row-click" onclick="${v2.run}" style="display:flex;align-items:center;gap:11px;padding:9px 6px;border-bottom:1px solid var(--border);cursor:pointer;border-radius:6px;">
@@ -118,34 +123,6 @@ async function loadDashboard(){
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:9px;height:9px;border-radius:2px;background:rgba(100,116,139,.35);display:inline-block;"></span> Liberi: <strong>${lib}</strong></div>
         ${lib>0?`<div style="font-size:10px;color:var(--muted);">${lib} SUB da mettere a reddito</div>`:''}
       </div>`;
-  }
-
-  // SUB da attenzionare
-  const critEl=document.getElementById('dash-critici');
-  if(critEl){
-    const crit=(dash.subsCritici||[]).slice(0,5);
-    critEl.innerHTML=crit.length?crit.map(c=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;" onclick="openSubDetail(${c.id})">
-      <span>🟡</span>
-      <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:600;color:#0f172a;">${esc(c.codice)}</div><div style="font-size:10px;color:var(--muted);">${esc(c.sede||'—')}${c.inquilino?' · '+esc(c.inquilino):''}</div></div>
-      <span style="font-size:10px;font-weight:700;color:var(--orange);">${c.urgenze||0} urgenze</span>
-    </div>`).join(''):'<div style="color:var(--green);font-size:11px;">✅ Tutto sotto controllo</div>';
-  }
-
-  // Scadenze 7gg
-  const scadEl=document.getElementById('dash-scadenze');
-  if(scadEl){
-    const prox=(cal||[]).filter(e=>{
-      const gg=Math.floor((new Date(e.scadenza)-new Date())/(1000*60*60*24));
-      return gg>=0&&gg<=7;
-    }).slice(0,5);
-    scadEl.innerHTML=prox.length?prox.map(e=>{
-      const gg=Math.floor((new Date(e.scadenza)-new Date())/(1000*60*60*24));
-      return`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
-        <span>${e.icon||'📌'}</span>
-        <div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:600;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.titolo||'')}</div><div style="font-size:10px;color:var(--muted);">${e.sub?'SUB '+esc(e.sub)+' · ':''}</div></div>
-        <span style="font-size:10px;font-weight:700;color:${gg<=2?'var(--red)':gg<=5?'var(--orange)':'var(--muted)'};">${gg===0?'Oggi':gg+'gg'}</span>
-      </div>`;
-    }).join(''):'<div style="color:var(--green);font-size:11px;">🎉 Nessuna scadenza nei prossimi 7 giorni</div>';
   }
 
   // Ultime attività
