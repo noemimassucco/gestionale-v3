@@ -5,11 +5,12 @@ const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 const { JWT_SECRET }       = require('../middleware/auth');
 const { requireInquilino } = require('../middleware/portale');
+const { loginLimiter }     = require('../middleware/rateLimiter');
 
 // ═══════════════════════════════════════════════════════════
 // POST /api/portale/login
 // ═══════════════════════════════════════════════════════════
-router.post('/api/portale/login', async (req, res) => {
+router.post('/api/portale/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email e password obbligatori' });
   try {

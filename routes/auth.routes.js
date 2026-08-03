@@ -2,10 +2,11 @@
 const router = require('express').Router();
 const pool   = require('../config/db');
 const { authMiddleware, JWT_SECRET } = require('../middleware/auth');
+const { loginLimiter } = require('../middleware/rateLimiter');
 const bcrypt = require('bcryptjs');
 const jwt    = require('jsonwebtoken');
 
-router.post('/api/auth/login', async (req, res) => {
+router.post('/api/auth/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   try {
     const r = await pool.query('SELECT * FROM users WHERE email=$1 AND attivo=true', [email]);
@@ -136,7 +137,18 @@ router.post('/api/users/:id/password', authMiddleware, async (req, res) => {
 });
 
 router.put('/api/users/:id', authMiddleware, async (req, res) => {
+  // Prima qualunque utente autenticato poteva modificare ruolo/stato di chiunque,
+  // incluso sé stesso — bastava un PUT con {ruolo:'admin'} per auto-promuoversi.
+  if ((req.user?.ruolo || '') !== 'admin') {
+    return res.status(403).json({ error: 'Solo un admin può modificare gli utenti' });
+  }
   const { nome, ruolo, attivo } = req.body;
+  if (ruolo && !['admin', 'operatore', 'inquilino'].includes(ruolo)) {
+    return res.status(400).json({ error: 'Ruolo non valido' });
+  }
+  if (parseInt(req.params.id, 10) === req.user.id && ruolo && ruolo !== req.user.ruolo) {
+    return res.status(400).json({ error: 'Non puoi cambiare il tuo stesso ruolo' });
+  }
   const r = await pool.query('UPDATE users SET nome=$1,ruolo=$2,attivo=$3 WHERE id=$4 RETURNING *', [nome, ruolo, attivo, req.params.id]);
   res.json(r.rows[0]);
 });
