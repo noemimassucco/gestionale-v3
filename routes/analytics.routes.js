@@ -262,44 +262,50 @@ router.get('/api/news', authMiddleware, async (req, res) => {
 });
 
 router.get('/api/riepilogo', authMiddleware, async (req, res) => {
-  // All subs, even those with 0 interventions
-  const subsR = await pool.query(`
+  // Query ottimizzata: JOIN aggregati (come in GET /api/subs) invece di caricare
+  // TUTTI gli interventi in memoria e fare un filter() per ogni SUB (O(subs × interventi)).
+  const r = await pool.query(`
     SELECT s.id, s.codice, s.ex_sub, s.stato_salute,
       sd.nome as sede, sd.id as sede_id,
-      inq.ragione_sociale as inquilino
+      inq.ragione_sociale as inquilino,
+      COALESCE(agg.num_interventi, 0) as num_interventi,
+      COALESCE(agg.totale, 0) as totale,
+      COALESCE(forn.fornitori, '{}'::json) as fornitori,
+      COALESCE(anni.anni, '{}'::int[]) as anni
     FROM subs s
     LEFT JOIN sedi sd ON s.sede_id=sd.id
     LEFT JOIN inquilini inq ON s.inquilino_id=inq.id
+    LEFT JOIN (
+      SELECT sub_id, COUNT(*) as num_interventi, COALESCE(SUM(prezzo),0) as totale
+      FROM interventi GROUP BY sub_id
+    ) agg ON agg.sub_id = s.id
+    LEFT JOIN (
+      SELECT sub_id, json_object_agg(fornitore, tot) as fornitori
+      FROM (
+        SELECT i.sub_id, f.ragione_sociale as fornitore, SUM(COALESCE(i.prezzo,0)) as tot
+        FROM interventi i JOIN fornitori f ON i.fornitore_id=f.id
+        GROUP BY i.sub_id, f.ragione_sociale
+      ) x GROUP BY sub_id
+    ) forn ON forn.sub_id = s.id
+    LEFT JOIN (
+      SELECT sub_id, array_agg(DISTINCT anno_fattura ORDER BY anno_fattura) as anni
+      FROM interventi WHERE anno_fattura IS NOT NULL GROUP BY sub_id
+    ) anni ON anni.sub_id = s.id
     ORDER BY sd.nome, s.codice`);
 
-  const intR = await pool.query(`
-    SELECT i.sub_id, i.fornitore_id, COALESCE(i.prezzo,0) as prezzo,
-      i.anno_fattura, f.ragione_sociale as fornitore
-    FROM interventi i
-    LEFT JOIN fornitori f ON i.fornitore_id=f.id`);
-
-  const result = subsR.rows.map(sub => {
-    const ints = intR.rows.filter(x => x.sub_id === sub.id);
-    const totale = ints.reduce((s, x) => s + parseFloat(x.prezzo || 0), 0);
-    const fornitori = {};
-    ints.forEach(x => {
-      if (x.fornitore) fornitori[x.fornitore] = (fornitori[x.fornitore] || 0) + parseFloat(x.prezzo || 0);
-    });
-    const anniSet = [...new Set(ints.map(x => x.anno_fattura).filter(Boolean))].sort();
-    return {
-      sub_id: sub.id,
-      sub: sub.codice,
-      ex_sub: sub.ex_sub,
-      sede: sub.sede,
-      sede_id: sub.sede_id,
-      inquilino: sub.inquilino,
-      stato_salute: sub.stato_salute,
-      num_interventi: ints.length,
-      totale,
-      fornitori,
-      anni: anniSet,
-    };
-  });
+  const result = r.rows.map(sub => ({
+    sub_id: sub.id,
+    sub: sub.codice,
+    ex_sub: sub.ex_sub,
+    sede: sub.sede,
+    sede_id: sub.sede_id,
+    inquilino: sub.inquilino,
+    stato_salute: sub.stato_salute,
+    num_interventi: parseInt(sub.num_interventi),
+    totale: parseFloat(sub.totale),
+    fornitori: sub.fornitori,
+    anni: sub.anni || [],
+  }));
   res.json(result);
 });
 
