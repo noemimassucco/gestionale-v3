@@ -96,25 +96,27 @@ async function loadFatturazione() {
 
 function renderFattTable(rows) {
   const tbody = document.getElementById('fatt-tbody');
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="9" class="empty">Nessun ordine per i filtri selezionati</td></tr>'; return; }
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">Nessun ordine per i filtri selezionati</td></tr>'; return; }
   tbody.innerHTML = rows.map(o => {
-    const isPending = o.stato_pagamento === 'non_pagato';
     const isFatturato = !!o.numero_fattura;
-    // "Da fatturare" evidenziato in giallo — sia le rifatturazioni arrivate dal Controllo
-    // Fatturazione (uscite) sia, più in generale, qualunque ordine attivo non ancora fatturato/pagato,
+    // "Da fatturare" evidenziato in giallo — sia le rifatturazioni di spese aggiunte a mano
+    // sia, più in generale, qualunque ordine attivo non ancora fatturato,
     // stesso colore usato per gli alert ISTAT in scadenza.
     const isDaFatturare = (o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato')
       || (o.tipo_servizio === 'canone_locazione' && o.stato === 'da_fatturare');
     const rowBg = isDaFatturare ? 'background:rgba(250,204,21,.14);' : '';
-    // Ciò che conta davvero: è da fatturare o no · è stata fatturata (dopo il reimport dalla contabile) · è pagata.
-    const fatturatoBadge = isFatturato
-      ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(37,99,235,.12);color:#2563eb;">🧾 n.${esc(o.numero_fattura)}</span>`
-      : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg2);color:var(--muted);">⏳ Non ancora</span>`;
-    const pagamentoBadge = o.stato_pagamento === 'pagato'
-      ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(16,185,129,.15);color:var(--green);">✅ Pagato</span>`
-      : o.stato_pagamento === 'parziale'
-      ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(184,134,11,.15);color:var(--primary-dark);">⚠️ Parziale</span>`
-      : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(239,68,68,.15);color:var(--red);">⏳ Non pagato</span>`;
+    // Colonna Fatturato: per i canoni mostra lo stesso stato di Piano canoni
+    // (Da fatturare/Esportato/Fatturato/Sospeso); per gli altri servizi, se ha un numero
+    // fattura oppure no — niente più "pagato/non pagato", quello lo segue la contabilità.
+    let fatturatoBadge;
+    if (o.tipo_servizio === 'canone_locazione' && typeof CA_RATA_STATO !== 'undefined' && CA_RATA_STATO[o.stato]) {
+      const c = CA_RATA_STATO[o.stato];
+      fatturatoBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${c.bg};color:${c.col};">${c.label}</span>`;
+    } else {
+      fatturatoBadge = isFatturato
+        ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(37,99,235,.12);color:#2563eb;">🧾 n.${esc(o.numero_fattura)}</span>`
+        : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg2);color:var(--muted);">⏳ Non ancora</span>`;
+    }
     return `<tr style="${rowBg}cursor:pointer;" onclick="openFattDetail(${o.id})" title="Clicca per aprire — doppio click per modificare" ondblclick="event.stopPropagation();openEditFatt(${o.id})">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="sel-check fatt-chk" data-id="${o.id}" onchange="fattChkChange(${o.id},this)"></td>
       <td>
@@ -129,10 +131,8 @@ function renderFattTable(rows) {
       <td style="font-size:11px;color:var(--muted);">${o.periodo_dal ? fmt(o.periodo_dal)+' → '+fmt(o.periodo_al) : (o.mese_riferimento ? MESI_NOMI[o.mese_riferimento]+' '+(o.anno_riferimento||'') : '—')}</td>
       <td class="td-price">€ ${parseFloat(o.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</td>
       <td>${fatturatoBadge}</td>
-      <td>${pagamentoBadge}</td>
       <td onclick="event.stopPropagation()">
         <div style="display:flex;gap:4px;">
-          ${isPending ? `<button class="btn btn-success btn-xs" onclick="fattPaga(${o.id})" title="Segna pagato">💳</button>` : ''}
           <button class="btn btn-edit btn-xs" onclick="openEditFatt(${o.id})" title="Modifica">✏️</button>
           <button class="btn btn-danger btn-xs" onclick="delFatt(${o.id})" title="Elimina">✕</button>
         </div>
@@ -145,14 +145,14 @@ function renderFattKpi(rows) {
   const el = document.getElementById('fatt-kpi');
   if (!el) return;
   const totale = rows.reduce((s, o) => s + parseFloat(o.importo || 0), 0);
-  const pagato = rows.filter(o => o.stato_pagamento === 'pagato').reduce((s, o) => s + parseFloat(o.importo || 0), 0);
-  const nonPagato = rows.filter(o => o.stato_pagamento !== 'pagato').reduce((s, o) => s + parseFloat(o.importo || 0), 0);
+  const fatturato = rows.filter(o => !!o.numero_fattura).reduce((s, o) => s + parseFloat(o.importo || 0), 0);
+  const nonFatturato = rows.filter(o => !o.numero_fattura).reduce((s, o) => s + parseFloat(o.importo || 0), 0);
   const daFatturare = rows.filter(o => o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato').length;
   el.innerHTML = [
     { label: 'Totale ordini', val: rows.length, color: 'var(--info)' },
     { label: 'Totale importi', val: '€ ' + totale.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: 'var(--accent)' },
-    { label: 'Incassato', val: '€ ' + pagato.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: 'var(--green)' },
-    { label: 'Da incassare', val: '€ ' + nonPagato.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: nonPagato > 0 ? 'var(--red)' : 'var(--muted)' },
+    { label: 'Fatturato', val: '€ ' + fatturato.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: 'var(--green)' },
+    { label: 'Non fatturato', val: '€ ' + nonFatturato.toLocaleString('it-IT', {maximumFractionDigits: 0}), color: nonFatturato > 0 ? '#b8860b' : 'var(--muted)' },
     { label: 'Da fatturare', val: daFatturare, color: daFatturare > 0 ? '#b8860b' : 'var(--muted)' },
   ].map(k => `<div class="home-kpi-card"><div class="stat-label">${k.label}</div><div style="font-size:18px;font-weight:700;color:${k.color};font-family:monospace;">${k.val}</div></div>`).join('');
 }
