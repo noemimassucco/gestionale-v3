@@ -110,6 +110,18 @@ router.get('/api/fatturazione/export', authMiddleware, async (req, res) => {
   res.json(r.rows);
 });
 
+// Segna come "esportato" le rate canone incluse in un export verso la contabilità.
+// Solo per le rate ancora "da_fatturare" — non retrocede mai una riga già fatturata.
+router.post('/api/fatturazione/segna-esportato', authMiddleware, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) return res.json({ aggiornate: 0 });
+  const r = await pool.query(
+    `UPDATE ordini_fatturazione SET stato='esportato', updated_at=NOW()
+     WHERE id=ANY($1) AND tipo_servizio='canone_locazione' AND stato='da_fatturare'`,
+    [ids]);
+  res.json({ aggiornate: r.rowCount });
+});
+
 // Le intestazioni Excel sono in italiano (vedi headers in fattExport, public/js/fatturazione.js);
 // XLSX.sheet_to_json restituisce le chiavi con il testo esatto della colonna, non i nomi dei
 // campi del DB — senza questa mappa il reimport non trovava MAI corrispondenza su nessun campo
@@ -146,7 +158,10 @@ router.post('/api/fatturazione/reimport', authMiddleware, async (req, res) => {
       if(row.note_contabili)updates.note_contabili=row.note_contabili;
       if(!Object.keys(updates).length)continue;
       const sets=Object.entries(updates).map(([k],i)=>`${k}=$${i+2}`).join(',');
-      const r=await pool.query(`UPDATE ordini_fatturazione SET ${sets},updated_at=NOW() WHERE ${field}=$1`,[key,...Object.values(updates)]);
+      // Rate canone (contratti_affitto): appena arriva il numero fattura dalla contabile,
+      // lo stato passa automaticamente a "fatturato" — non tocca righe di altro tipo_servizio.
+      const setStatoCanone = updates.numero_fattura ? `, stato = CASE WHEN tipo_servizio='canone_locazione' THEN 'fatturato' ELSE stato END` : '';
+      const r=await pool.query(`UPDATE ordini_fatturazione SET ${sets}${setStatoCanone},updated_at=NOW() WHERE ${field}=$1`,[key,...Object.values(updates)]);
       if(r.rowCount>0) updated++; else notFound++;
     }catch(e){errors.push({row:row.numero_fattura||row.id,error:e.message});}
   }

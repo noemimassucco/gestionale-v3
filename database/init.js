@@ -432,6 +432,48 @@ async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_contratti_sub ON contratti(sub_id);
       CREATE INDEX IF NOT EXISTS idx_allegati_intervento ON allegati(intervento_id);
     `).catch(()=>{}); // ignore if already exist
+
+    // Step 6: Contratto e canone — nuova tabella dedicata al contratto di locazione
+    // (distinta dalla tabella "contratti", che è per i contratti/documenti con i FORNITORI:
+    // manutenzione, assicurazione ecc. — non va confusa né riusata per l'inquilino).
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS contratti_affitto (
+        id SERIAL PRIMARY KEY,
+        sub_id INTEGER NOT NULL REFERENCES subs(id) ON DELETE CASCADE,
+        inquilino_id INTEGER REFERENCES inquilini(id),
+        tipo_contratto VARCHAR(100),
+        data_inizio DATE NOT NULL,
+        data_fine DATE,
+        canone DECIMAL(12,2) NOT NULL,
+        periodicita VARCHAR(20) NOT NULL DEFAULT 'mensile',
+        giorno_fatturazione INTEGER,
+        istat_percentuale DECIMAL(5,2),
+        istat_periodicita VARCHAR(30) DEFAULT '12_mesi',
+        istat_data_ultima_revisione DATE,
+        istat_data_prossima_revisione DATE,
+        istat_tipo VARCHAR(30) DEFAULT 'automatico',
+        note TEXT,
+        documento_url TEXT,
+        documento_cloudinary_id VARCHAR(300),
+        stato VARCHAR(20) NOT NULL DEFAULT 'attivo',
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_contratti_affitto_sub ON contratti_affitto(sub_id);
+      CREATE INDEX IF NOT EXISTS idx_contratti_affitto_stato ON contratti_affitto(sub_id, stato);
+    `).catch(()=>{});
+
+    // Collega le rate generate da un contratto allo Schema Fatturazione esistente
+    // (ordini_fatturazione), invece di duplicare un sistema di fatturazione a parte.
+    await client.query(`
+      ALTER TABLE ordini_fatturazione ADD COLUMN IF NOT EXISTS contratto_affitto_id INTEGER REFERENCES contratti_affitto(id) ON DELETE SET NULL;
+      ALTER TABLE ordini_fatturazione ADD COLUMN IF NOT EXISTS periodo_dal DATE;
+      ALTER TABLE ordini_fatturazione ADD COLUMN IF NOT EXISTS periodo_al DATE;
+      CREATE INDEX IF NOT EXISTS idx_of_contratto_affitto ON ordini_fatturazione(contratto_affitto_id);
+      CREATE INDEX IF NOT EXISTS idx_of_sub ON ordini_fatturazione(sub_id);
+      CREATE TABLE IF NOT EXISTS contratti_affitto_files (contratto_affitto_id INTEGER PRIMARY KEY REFERENCES contratti_affitto(id) ON DELETE CASCADE, mime VARCHAR(150), size INTEGER, data BYTEA);
+    `).catch(()=>{});
   } finally { client.release(); }
 }
 

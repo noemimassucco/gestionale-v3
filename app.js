@@ -23,6 +23,7 @@ app.use('/', require('./routes/sedi.routes'));
 app.use('/', require('./routes/manutenzioni.routes'));
 app.use('/', require('./routes/bollette.routes'));
 app.use('/', require('./routes/affitti.routes'));
+app.use('/', require('./routes/contratti-affitto.routes'));
 app.use('/', require('./routes/fatturazione.routes'));
 app.use('/', require('./routes/analytics.routes'));
 app.use('/', require('./routes/import.routes'));

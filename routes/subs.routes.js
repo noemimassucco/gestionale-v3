@@ -267,7 +267,7 @@ router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
     const padriIds = genR.rows.map(r => r.sub_padre);
     const idsStorico = [parseInt(id), ...padriIds];
 
-    const [subR, interventiR, documentiR, manutenzioniR, storiaR, pagamentiR, storInqR, contrattiR, bolletteEconR] = await Promise.all([
+    const [subR, interventiR, documentiR, manutenzioniR, storiaR, pagamentiR, storInqR, contrattiR, bolletteEconR, contrattiAffittoR, rateCanoneR] = await Promise.all([
       pool.query(`SELECT s.*,sd.nome as sede_nome,i.ragione_sociale as inquilino_nome,i.tel as inquilino_tel,i.email as inquilino_email,
         (SELECT COUNT(*) FROM interventi WHERE sub_id=ANY($2)) as num_interventi,
         (SELECT COALESCE(SUM(prezzo),0) FROM interventi WHERE sub_id=ANY($2)) as totale_spese,
@@ -287,6 +287,10 @@ router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
       // mostrando un utile più alto di quello reale (la tab "Costi" della scheda, calcolata
       // lato pagina, le includeva già — le due cifre nella stessa scheda non coincidevano).
       pool.query(`SELECT COALESCE(SUM(importo),0) as totale FROM bollette WHERE sub_id=ANY($1) AND stato='pagato'`, [idsStorico]),
+      // Contratto e canone: contratto di locazione (distinto dalla tabella "contratti", che è
+      // per i contratti con i FORNITORI — manutenzione, assicurazione ecc.)
+      pool.query(`SELECT ca.*,i.ragione_sociale as inquilino_nome,i.tel,i.email FROM contratti_affitto ca LEFT JOIN inquilini i ON ca.inquilino_id=i.id WHERE ca.sub_id=ANY($1) ORDER BY ca.data_inizio DESC NULLS LAST`, [idsStorico]),
+      pool.query(`SELECT stato, COUNT(*) as n FROM ordini_fatturazione WHERE sub_id=ANY($1) AND tipo_servizio='canone_locazione' GROUP BY stato`, [idsStorico]),
     ]);
     if (!subR.rows.length) return res.status(404).json({ error: 'SUB non trovato' });
 
@@ -326,6 +330,9 @@ router.get('/api/subs/:id/detail', authMiddleware, async (req, res) => {
       costiFornitore: costiFornR.rows, scadenze: scadenzeR.rows, pagamenti,
       storicoInquilini: storInqR.rows,
       contratti: contrattiR.rows,
+      contrattoAffitto: contrattiAffittoR.rows.find(c => c.stato === 'attivo') || null,
+      contrattiAffittoStorico: contrattiAffittoR.rows.filter(c => c.stato !== 'attivo'),
+      rateCanoneRiepilogo: rateCanoneR.rows.reduce((acc, r) => { acc[r.stato] = parseInt(r.n); return acc; }, {}),
       economico: { totEntrate, totUscite, profittoNetto: totEntrate - totUscite, entratePerAnno },
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
