@@ -976,7 +976,7 @@ input,select,textarea{border-radius:8px;}
           <button class="sb-subitem" onclick="subMenuGo('impianti')">Impianti</button>
           <button class="sb-subitem" onclick="subMenuGo('certificazioni')">Certificazioni</button>
           <button class="sb-subitem" onclick="subMenuGo('foto')">Foto</button>
-          <button class="sb-subitem" onclick="subMenuGo('contratti')">Contratti</button>
+          <!-- Scorciatoia "Contratti" (fornitori) disattivata insieme alla tab -->
           <button class="sb-subitem" onclick="subMenuGo('manutenzioni')">Manutenzioni</button>
           <button class="sb-subitem" onclick="subMenuGo('interventi')">Interventi</button>
           <button class="sb-subitem" onclick="subMenuGo('economico')">Economico</button>
@@ -985,7 +985,7 @@ input,select,textarea{border-radius:8px;}
           <button class="sb-subitem" onclick="subMenuGo('timeline')">Storico</button>
           <div class="sb-submenu-sep"></div>
           <button class="sb-subitem" onclick="showSection('bollette')">⌂ Tutte le bollette</button>
-          <button class="sb-subitem" onclick="showSection('affitti')">⌂ Tutti gli affitti</button>
+          <button class="sb-subitem" onclick="showSection('affitti')">⌂ Piano canoni</button>
         </div>
         <button class="sb-item" id="sb-inquilini" onclick="showSection('inquilini')"><span class="sb-ico">👤</span><span class="sb-lbl">Clienti</span></button>
         <button class="sb-item" id="sb-catasto" onclick="showSection('catasto')"><span class="sb-ico">🏛️</span><span class="sb-lbl">Catasto & ISTAT</span></button>
@@ -1768,30 +1768,26 @@ input,select,textarea{border-radius:8px;}
       <div id="boll-list"><div class="empty">Caricamento…</div></div>
     </div>
 
-    <!-- SEZIONE AFFITTI -->
+    <!-- SEZIONE PIANO CANONI (ex Affitti) — vista sul piano di fatturazione dei canoni di
+         locazione, generato dai contratti. Non gestisce incassi/pagati: quella parte resta
+         alla contabilità esterna; se un canone risulta pagato per davvero (reimport dalla
+         contabilità), lo mostriamo, altrimenti non lo indichiamo. -->
     <div id="sec-affitti" class="section">
       <div class="flex-between mb-16">
-        <div><h2 class="page-title">💳 Affitti</h2><p class="page-sub">Pagamenti affitto per SUB e anno</p></div>
-        <div class="flex">
-          <button class="btn btn-sm btn-gray" onclick="toggleTableSel('pagamenti_affitto')" id="pagamenti_affitto-sel-btn">☑ Selezione</button>
-          <button class="btn btn-primary" onclick="subActionNuovoAffitto()">+ Registra pagamento</button>
-        </div>
-      </div>
-      <div id="pagamenti_affitto-mass-bar" class="mass-bar hidden">
-        <span id="pagamenti_affitto-mass-cnt" style="font-size:13px;font-weight:600;color:var(--accent);">0 selezionati</span>
-        <button class="btn btn-sm btn-gray" onclick="tableSelAll('pagamenti_affitto')">☑ Seleziona tutti</button>
-        <button class="btn btn-sm btn-gray" onclick="genDeselAll('pagamenti_affitto')">Deseleziona</button>
-        <button class="btn btn-danger btn-sm" onclick="bulkDelete('pagamenti_affitto','pagamenti_affitto-mass-cnt',()=>{toggleTableSel('pagamenti_affitto');loadAffitti();})">🗑 Elimina selezionati</button>
+        <div><h2 class="page-title">🏠 Piano canoni</h2><p class="page-sub">Rate di canone generate dai contratti, per SUB e periodo</p></div>
       </div>
       <div id="affitti-stats" class="home-kpi" style="margin-bottom:20px;"></div>
       <div class="filter-bar mb-16">
         <div class="filter-grid">
-          <div class="field"><label>Anno</label><input type="number" id="af-anno" value="2024" onchange="loadAffitti()"></div>
+          <div class="field"><label>Anno</label><input type="number" id="af-anno" value="2026" onchange="loadAffitti()"></div>
           <div class="field"><label>SUB</label><select id="af-sub" onchange="loadAffitti()"><option value="">Tutti</option></select></div>
-          <div class="field"><label>Stato</label>
+          <div class="field"><label>Stato fatturazione</label>
             <select id="af-stato" onchange="loadAffitti()">
-              <option value="">Tutti</option><option value="pagato">✅ Pagato</option>
-              <option value="atteso">⏳ Atteso</option><option value="insoluto">🔴 Insoluto</option>
+              <option value="">Tutti</option>
+              <option value="da_fatturare">Da fatturare</option>
+              <option value="esportato">Esportato</option>
+              <option value="fatturato">Fatturato</option>
+              <option value="sospeso">Sospeso</option>
             </select>
           </div>
         </div>
@@ -2167,12 +2163,16 @@ input,select,textarea{border-radius:8px;}
       <div id="sub-action-bar" class="subdet-actions" style="display:none;">
         <button class="btn btn-primary btn-sm" onclick="subActionNuovoIntervento()" title="Nuovo intervento">➕ Intervento</button>
         <button class="btn btn-sm btn-gray" onclick="subActionNuovoDoc()" title="Aggiungi documento">📄 Documento</button>
+        <!-- "Registra pagamento affitto" e "Genera anno affitti" disattivati: la gestione pagamenti/incassi
+             è sulla contabilità esterna, e la generazione rate ora parte dal contratto (tab "Contratto e canone").
+             Funzioni e dati restano intatti, si riattivano rimettendo qui i due bottoni sotto:
         <button class="btn btn-sm btn-gray" onclick="subActionPagamento()" title="Registra pagamento affitto">💳 Affitto</button>
+        <button class="btn btn-sm btn-gray" onclick="subActionGeneraAnno()" title="Genera tutti i mesi dell'anno">📅 Genera anno affitti</button>
+        -->
         <button class="btn btn-sm btn-gray" onclick="subActionCambioInquilino()" title="Cambia inquilino">👤 Inquilino</button>
         <button class="btn btn-sm btn-gray" onclick="subActionManutenzione()" title="Nuova manutenzione">🔨 Manutenzione</button>
         <button class="btn btn-sm btn-gray" onclick="subActionNota()" title="Aggiungi nota storico">📝 Nota</button>
         <button class="btn btn-sm btn-gray" onclick="openAiMail(currentSubData?.sub?.inquilino_email||'')" title="Scrivi una email col supporto AI">✉️ Email AI</button>
-        <button class="btn btn-sm btn-gray" onclick="subActionGeneraAnno()" title="Genera tutti i mesi dell'anno">📅 Genera anno affitti</button>
         <button class="btn btn-sm btn-gray" onclick="subActionScissione()" title="Scissione SUB">🔀 Scissione</button>
         <a href="https://www.agenziaentrate.gov.it" target="_blank" class="btn btn-sm btn-gray" title="Vai al Catasto">🏛️ Catasto</a>
       </div>
@@ -2190,7 +2190,9 @@ input,select,textarea{border-radius:8px;}
           <div class="subdet-nav-title">Gestione</div>
           <button class="tab-btn" onclick="setSubDetTab('inquilini',this)"><span class="sn-ico">👤</span>Inquilini</button>
           <button class="tab-btn" onclick="setSubDetTab('canone',this)"><span class="sn-ico">🏠</span>Contratto e canone</button>
+          <!-- Tab "Contratti fornitori" disattivata su richiesta (non serve) — dati e route restano intatti, si riattiva rimettendo il bottone qui sotto:
           <button class="tab-btn" onclick="setSubDetTab('contratti',this)"><span class="sn-ico">📝</span>Contratti fornitori</button>
+          -->
           <button class="tab-btn" onclick="setSubDetTab('manutenzioni',this)"><span class="sn-ico">🔨</span>Manutenzioni</button>
           <button class="tab-btn" onclick="setSubDetTab('interventi',this)"><span class="sn-ico">🛠️</span>Interventi</button>
           <div class="subdet-nav-title">Amministrazione</div>

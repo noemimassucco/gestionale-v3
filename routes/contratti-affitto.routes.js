@@ -248,4 +248,42 @@ router.post('/api/contratti-affitto/:id/genera-rate', authMiddleware, async (req
   res.json({ create, saltate, totale: rate.length });
 });
 
+// ═══════════════════════════════════════════════════════════
+// PIANO CANONI — vista unificata sulle rate canone già generate (ordini_fatturazione,
+// tipo_servizio='canone_locazione'). Non duplica dati: legge la stessa tabella dello
+// Schema Fatturazione. Il campo pagato/data pagamento viene mostrato SOLO se stato_pagamento
+// risulta valorizzato — cosa che oggi succede solo tramite il reimport reale dalla
+// contabilità (vedi /api/fatturazione/reimport), mai da inserimento manuale in questa vista.
+// ═══════════════════════════════════════════════════════════
+router.get('/api/canoni', authMiddleware, async (req, res) => {
+  const { anno, sub_id, stato } = req.query;
+  let where = [`o.tipo_servizio='canone_locazione'`], params = [], p = 1;
+  if (anno)   { where.push(`o.anno_riferimento=$${p++}`); params.push(anno); }
+  if (sub_id) { where.push(`o.sub_id=$${p++}`); params.push(sub_id); }
+  if (stato)  { where.push(`o.stato=$${p++}`); params.push(stato); }
+
+  const rows = await pool.query(`
+    SELECT o.id, o.sub_id, o.inquilino_id, o.importo, o.stato, o.numero_fattura, o.data_fatturazione,
+           o.periodo_dal, o.periodo_al, o.mese_riferimento, o.anno_riferimento,
+           o.stato_pagamento, o.data_pagamento,
+           s.codice as sub_codice, sd.nome as sede_nome, i.ragione_sociale as inquilino_nome
+    FROM ordini_fatturazione o
+    LEFT JOIN subs s ON o.sub_id=s.id
+    LEFT JOIN sedi sd ON s.sede_id=sd.id
+    LEFT JOIN inquilini i ON o.inquilino_id=i.id
+    WHERE ${where.join(' AND ')}
+    ORDER BY o.periodo_dal DESC NULLS LAST, o.anno_riferimento DESC NULLS LAST, o.mese_riferimento DESC NULLS LAST`,
+    params);
+
+  const totali = rows.rows.reduce((acc, r) => {
+    const imp = parseFloat(r.importo) || 0;
+    acc.previsto += imp;
+    if (r.stato === 'fatturato') acc.fatturato += imp;
+    if (r.stato === 'da_fatturare') acc.daFatturare += imp;
+    return acc;
+  }, { previsto: 0, fatturato: 0, daFatturare: 0 });
+
+  res.json({ righe: rows.rows, totali });
+});
+
 module.exports = router;
