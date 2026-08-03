@@ -11,8 +11,14 @@ router.get('/api/fatturazione', authMiddleware, async (req, res) => {
   if (mese) { where.push(`o.mese_riferimento=$${p++}`); params.push(parseInt(mese)); }
   if (stato_pagamento) { where.push(`o.stato_pagamento=$${p++}`); params.push(stato_pagamento); }
   if (contabilizzato !== undefined && contabilizzato !== '') { where.push(`o.flag_contabilizzato=$${p++}`); params.push(contabilizzato === 'true'); }
-  // "Fatturato" = numero_fattura valorizzato — di solito arriva dal reimport della contabile
-  if (fatturato !== undefined && fatturato !== '') { where.push(fatturato === 'true' ? `o.numero_fattura IS NOT NULL` : `o.numero_fattura IS NULL`); }
+  // "Fatturato" = numero fattura o data fatturazione valorizzati (dal reimport della contabile
+  // oppure segnato a mano con l'azione rapida "Segna fatturato"), oppure per i canoni lo stato
+  // della rata è già 'fatturato'.
+  if (fatturato !== undefined && fatturato !== '') {
+    where.push(fatturato === 'true'
+      ? `(o.numero_fattura IS NOT NULL OR o.data_fatturazione IS NOT NULL OR o.stato='fatturato')`
+      : `(o.numero_fattura IS NULL AND o.data_fatturazione IS NULL AND o.stato<>'fatturato')`);
+  }
   if (sub_id) { where.push(`o.sub_id=$${p++}`); params.push(sub_id); }
   if (inquilino_id) { where.push(`o.inquilino_id=$${p++}`); params.push(inquilino_id); }
   try {
@@ -84,6 +90,26 @@ router.post('/api/fatturazione/:id/paga', authMiddleware, async (req, res) => {
     `UPDATE ordini_fatturazione SET stato_pagamento='pagato',data_pagamento=$1,importo_pagato=COALESCE($2::numeric,importo),updated_at=NOW() WHERE id=$3 RETURNING *`,
     [data_pagamento||new Date().toISOString().split('T')[0],importo_pagato||null,req.params.id]);
   res.json(r.rows[0]);
+});
+
+// Azione rapida "Segna fatturato": non serve aprire tutto il modulo di modifica.
+// N° fattura è facoltativo (magari non lo si ha ancora sotto mano), la data di
+// fatturazione di default è oggi. Per le rate canone allinea anche lo stato
+// (da_fatturare/esportato → fatturato), coerente con Piano canoni.
+router.post('/api/fatturazione/:id/fattura', authMiddleware, async (req, res) => {
+  const { numero_fattura, data_fatturazione } = req.body;
+  try {
+    const r = await pool.query(
+      `UPDATE ordini_fatturazione SET
+         numero_fattura=COALESCE($1,numero_fattura),
+         data_fatturazione=$2,
+         stato=CASE WHEN tipo_servizio='canone_locazione' THEN 'fatturato' ELSE stato END,
+         updated_at=NOW()
+       WHERE id=$3 RETURNING *`,
+      [numero_fattura || null, data_fatturazione || new Date().toISOString().split('T')[0], req.params.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Ordine non trovato' });
+    res.json(r.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/api/fatturazione/:id/contabilizza', authMiddleware, async (req, res) => {

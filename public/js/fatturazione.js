@@ -12,8 +12,11 @@ async function openFattDetail(id) {
   const container = document.getElementById('fatt-detail-body');
   if (!container) { openEditFatt(id); return; }
 
-  const statusLabel = { pagato:'✅ Pagato', non_pagato:'⏳ Non pagato', parziale:'⚠️ Parziale' };
-  const statusColor = { pagato:'var(--green)', non_pagato:'var(--red)', parziale:'var(--orange)' };
+  // "Fatturato" = ha un numero fattura o una data di fatturazione, oppure per i canoni
+  // la rata è già in stato 'fatturato'. Il pagamento non è più un'azione da qui:
+  // lo segue la contabilità, e se risulta pagato per davvero (dal reimport) lo mostriamo
+  // solo come informazione, senza pulsanti da gestire a mano.
+  const isFatturato = !!obj.numero_fattura || !!obj.data_fatturazione || (obj.tipo_servizio === 'canone_locazione' && obj.stato === 'fatturato');
 
   container.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -27,21 +30,18 @@ async function openFattDetail(id) {
         ${obj.descrizione ? `<div class="detail-row"><span>Descrizione</span><strong>${esc(obj.descrizione)}</strong></div>` : ''}
       </div>
       <div>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">Importi e pagamento</div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">Importo e fatturazione</div>
         <div class="detail-row"><span>Importo</span><strong style="font-size:18px;color:var(--accent);font-family:monospace;">€ ${parseFloat(obj.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</strong></div>
         <div class="detail-row"><span>Periodicità</span><strong>${obj.periodicita||'—'}</strong></div>
-        <div class="detail-row"><span>Stato pagamento</span><strong style="color:${statusColor[obj.stato_pagamento]||'var(--muted)'};">${statusLabel[obj.stato_pagamento]||obj.stato_pagamento||'—'}</strong></div>
-        ${obj.data_pagamento ? `<div class="detail-row"><span>Data pagamento</span><strong>${fmt(obj.data_pagamento)}</strong></div>` : ''}
-        ${obj.importo_pagato ? `<div class="detail-row"><span>Importo pagato</span><strong>€ ${parseFloat(obj.importo_pagato).toLocaleString('it-IT',{minimumFractionDigits:2})}</strong></div>` : ''}
-        <div class="detail-row"><span>Fatturato</span><strong>${obj.numero_fattura ? '🧾 Sì — n.'+esc(obj.numero_fattura) : '⏳ Non ancora'}</strong></div>
+        <div class="detail-row"><span>Fatturato</span><strong style="color:${isFatturato?'var(--green)':'var(--muted)'};">${isFatturato ? '🧾 Sì'+(obj.numero_fattura?' — n.'+esc(obj.numero_fattura):'') : '⏳ Non ancora'}</strong></div>
+        ${obj.data_fatturazione ? `<div class="detail-row"><span>Data fatturazione</span><strong>${fmt(obj.data_fatturazione)}</strong></div>` : ''}
+        ${obj.stato_pagamento === 'pagato' ? `<div class="detail-row"><span>Pagamento</span><strong style="color:var(--green);">✓ Risulta pagato${obj.data_pagamento?' il '+fmt(obj.data_pagamento):''}</strong></div>` : ''}
       </div>
     </div>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
       <div>
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">Riferimento contabile</div>
-        ${obj.numero_fattura ? `<div class="detail-row"><span>N° fattura</span><strong>${esc(obj.numero_fattura)}</strong></div>` : ''}
-        ${obj.data_fatturazione ? `<div class="detail-row"><span>Data fatturazione</span><strong>${fmt(obj.data_fatturazione)}</strong></div>` : ''}
-        <div class="detail-row"><span>Periodo</span><strong>${obj.mese_riferimento ? MESI_NOMI[obj.mese_riferimento]+' '+obj.anno_riferimento : '—'}</strong></div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;">Periodo</div>
+        <div class="detail-row"><span>Riferimento</span><strong>${obj.mese_riferimento ? MESI_NOMI[obj.mese_riferimento]+' '+obj.anno_riferimento : '—'}</strong></div>
         ${obj.data_inizio ? `<div class="detail-row"><span>Dal</span><strong>${fmt(obj.data_inizio)}</strong></div>` : ''}
         ${obj.data_fine ? `<div class="detail-row"><span>Al</span><strong>${fmt(obj.data_fine)}</strong></div>` : ''}
       </div>
@@ -52,7 +52,7 @@ async function openFattDetail(id) {
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
-      ${obj.stato_pagamento !== 'pagato' ? `<button class="btn btn-success btn-sm" onclick="fattPaga(${obj.id});closeM('modal-fatt-detail')">💳 Segna pagato</button>` : ''}
+      ${!isFatturato ? `<button class="btn btn-success btn-sm" onclick="closeM('modal-fatt-detail');apriSegnaFatturato(${obj.id})">🧾 Segna fatturato</button>` : ''}
       <button class="btn btn-sm" style="background:rgba(107,142,107,.15);color:#93c5fd;" onclick="closeM('modal-fatt-detail');openEditFatt(${obj.id})">✏️ Modifica</button>
     </div>`;
 
@@ -98,7 +98,10 @@ function renderFattTable(rows) {
   const tbody = document.getElementById('fatt-tbody');
   if (!rows.length) { tbody.innerHTML = '<tr><td colspan="8" class="empty">Nessun ordine per i filtri selezionati</td></tr>'; return; }
   tbody.innerHTML = rows.map(o => {
-    const isFatturato = !!o.numero_fattura;
+    // "Fatturato" = ha un numero fattura o una data di fatturazione (dal reimport della
+    // contabile o segnato a mano), oppure per i canoni la rata è già in stato 'fatturato'.
+    const isFatturatoCanone = o.tipo_servizio === 'canone_locazione' && o.stato === 'fatturato';
+    const isFatturato = !!o.numero_fattura || !!o.data_fatturazione || isFatturatoCanone;
     // "Da fatturare" evidenziato in giallo — sia le rifatturazioni di spese aggiunte a mano
     // sia, più in generale, qualunque ordine attivo non ancora fatturato,
     // stesso colore usato per gli alert ISTAT in scadenza.
@@ -107,14 +110,14 @@ function renderFattTable(rows) {
     const rowBg = isDaFatturare ? 'background:rgba(250,204,21,.14);' : '';
     // Colonna Fatturato: per i canoni mostra lo stesso stato di Piano canoni
     // (Da fatturare/Esportato/Fatturato/Sospeso); per gli altri servizi, se ha un numero
-    // fattura oppure no — niente più "pagato/non pagato", quello lo segue la contabilità.
+    // fattura/data oppure no — niente più "pagato/non pagato", quello lo segue la contabilità.
     let fatturatoBadge;
     if (o.tipo_servizio === 'canone_locazione' && typeof CA_RATA_STATO !== 'undefined' && CA_RATA_STATO[o.stato]) {
       const c = CA_RATA_STATO[o.stato];
       fatturatoBadge = `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${c.bg};color:${c.col};">${c.label}</span>`;
     } else {
       fatturatoBadge = isFatturato
-        ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(37,99,235,.12);color:#2563eb;">🧾 n.${esc(o.numero_fattura)}</span>`
+        ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:rgba(37,99,235,.12);color:#2563eb;">🧾 ${o.numero_fattura ? 'n.'+esc(o.numero_fattura) : 'Fatturato'}</span>`
         : `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:var(--bg2);color:var(--muted);">⏳ Non ancora</span>`;
     }
     return `<tr style="${rowBg}cursor:pointer;" onclick="openFattDetail(${o.id})" title="Clicca per aprire — doppio click per modificare" ondblclick="event.stopPropagation();openEditFatt(${o.id})">
@@ -133,6 +136,7 @@ function renderFattTable(rows) {
       <td>${fatturatoBadge}</td>
       <td onclick="event.stopPropagation()">
         <div style="display:flex;gap:4px;">
+          ${!isFatturato ? `<button class="btn btn-success btn-xs" onclick="apriSegnaFatturato(${o.id})" title="Segna fatturato">🧾</button>` : ''}
           <button class="btn btn-edit btn-xs" onclick="openEditFatt(${o.id})" title="Modifica">✏️</button>
           <button class="btn btn-danger btn-xs" onclick="delFatt(${o.id})" title="Elimina">✕</button>
         </div>
@@ -144,9 +148,10 @@ function renderFattTable(rows) {
 function renderFattKpi(rows) {
   const el = document.getElementById('fatt-kpi');
   if (!el) return;
+  const isFatt = o => !!o.numero_fattura || !!o.data_fatturazione || (o.tipo_servizio === 'canone_locazione' && o.stato === 'fatturato');
   const totale = rows.reduce((s, o) => s + parseFloat(o.importo || 0), 0);
-  const fatturato = rows.filter(o => !!o.numero_fattura).reduce((s, o) => s + parseFloat(o.importo || 0), 0);
-  const nonFatturato = rows.filter(o => !o.numero_fattura).reduce((s, o) => s + parseFloat(o.importo || 0), 0);
+  const fatturato = rows.filter(isFatt).reduce((s, o) => s + parseFloat(o.importo || 0), 0);
+  const nonFatturato = rows.filter(o => !isFatt(o)).reduce((s, o) => s + parseFloat(o.importo || 0), 0);
   const daFatturare = rows.filter(o => o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato').length;
   el.innerHTML = [
     { label: 'Totale ordini', val: rows.length, color: 'var(--info)' },
@@ -189,14 +194,13 @@ function openModalFatt(obj = null) {
     v('fatt-dinizio', obj.data_inizio?.split('T')[0]); v('fatt-dfine', obj.data_fine?.split('T')[0]);
     v('fatt-mese', obj.mese_riferimento); v('fatt-anno', obj.anno_riferimento);
     v('fatt-nfatt', obj.numero_fattura); v('fatt-dfatt', obj.data_fatturazione?.split('T')[0]);
-    v('fatt-statopag', obj.stato_pagamento); v('fatt-note', obj.note);
+    v('fatt-note', obj.note);
     document.getElementById('modal-fatt').__editId = obj.id;
   } else {
     document.getElementById('fatt-modal-title').textContent = '🧾 Nuovo Ordine / Servizio';
     ['fatt-tipo','fatt-nome','fatt-desc','fatt-inq','fatt-sub','fatt-importo','fatt-dinizio',
      'fatt-dfine','fatt-nfatt','fatt-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     v('fatt-stato', 'attivo'); v('fatt-period', 'mensile');
-    v('fatt-statopag', 'non_pagato');
     v('fatt-mese', now.getMonth() + 1);
     v('fatt-anno', now.getFullYear());
     document.getElementById('modal-fatt').__editId = null;
@@ -216,7 +220,8 @@ async function saveFatt() {
     data_inizio: v('fatt-dinizio') || null, data_fine: v('fatt-dfine') || null,
     mese_riferimento: parseInt(v('fatt-mese')) || null, anno_riferimento: parseInt(v('fatt-anno')) || null,
     numero_fattura: v('fatt-nfatt') || null, data_fatturazione: v('fatt-dfatt') || null,
-    stato_pagamento: v('fatt-statopag'), note: v('fatt-note') || null,
+    // Stato pagamento non si imposta più da qui: lo aggiorna solo il reimport dalla contabilità.
+    note: v('fatt-note') || null,
   };
   const r = editId
     ? await api('/api/fatturazione/' + editId, { method: 'PUT', body: JSON.stringify(payload) })
@@ -243,6 +248,25 @@ async function fattPaga(id) {
   await api('/api/fatturazione/' + id + '/paga', { method: 'POST', body: JSON.stringify({ data_pagamento: dp }) });
   loadFatturazione();
   toast('✅ Segnato come pagato');
+}
+
+// Azione rapida "Segna fatturato": un click sulla riga, niente da aprire nel modulo di
+// modifica completo. N° fattura è facoltativo, la data è già precompilata con oggi.
+function apriSegnaFatturato(id) {
+  document.getElementById('sf-nfatt').value = '';
+  document.getElementById('sf-dfatt').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-segna-fatturato').__id = id;
+  document.getElementById('modal-segna-fatturato').classList.add('open');
+}
+
+async function confermaSegnaFatturato() {
+  const id = document.getElementById('modal-segna-fatturato').__id;
+  const numero_fattura = document.getElementById('sf-nfatt').value.trim() || null;
+  const data_fatturazione = document.getElementById('sf-dfatt').value || new Date().toISOString().split('T')[0];
+  await api('/api/fatturazione/' + id + '/fattura', { method: 'POST', body: JSON.stringify({ numero_fattura, data_fatturazione }) });
+  closeM('modal-segna-fatturato');
+  loadFatturazione();
+  toast('🧾 Segnato come fatturato');
 }
 
 async function fattToggleContabilizza(id) {

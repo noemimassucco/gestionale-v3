@@ -13,7 +13,11 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- xlsx-js-style al posto della xlsx "community" normale: stessa API (XLSX.utils, XLSX.read,
+       XLSX.writeFile...), ma questa scrive DAVVERO i colori di sfondo nelle celle — la versione
+       gratuita di SheetJS li ignora in silenzio quando genera il file, per questo il giallo
+       non compariva mai nell'export scaricato. -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
   <style>
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
 
@@ -2773,7 +2777,7 @@ input,select,textarea{border-radius:8px;}
       <div class="field"><label>Data inizio</label><input type="date" id="fatt-dinizio"></div>
       <div class="field"><label>Data fine</label><input type="date" id="fatt-dfine"></div>
 
-      <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;">Riferimento contabile</div>
+      <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;">Periodo di riferimento</div>
       <div class="field"><label>Mese riferimento</label>
         <select id="fatt-mese">
           <option value="">—</option>
@@ -2784,15 +2788,11 @@ input,select,textarea{border-radius:8px;}
         </select>
       </div>
       <div class="field"><label>Anno riferimento</label><input type="number" id="fatt-anno" placeholder="2024"></div>
-      <div class="field"><label>N° fattura</label><input id="fatt-nfatt" placeholder="es. FT/2024/001"></div>
+      <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;">Fatturato — compila se hai già emesso la fattura</div>
+      <div class="field"><label>N° fattura <span style="font-weight:400;color:var(--muted);">(facoltativo)</span></label><input id="fatt-nfatt" placeholder="es. FT/2024/001"></div>
       <div class="field"><label>Data fatturazione</label><input type="date" id="fatt-dfatt"></div>
-      <div class="field"><label>Stato pagamento</label>
-        <select id="fatt-statopag">
-          <option value="non_pagato">⏳ Non pagato</option>
-          <option value="pagato">✅ Pagato</option>
-          <option value="parziale">⚠️ Parziale</option>
-        </select>
-      </div>
+      <!-- Stato pagamento tolto dal modulo: il pagamento lo segue la contabilità (arriva dal
+           reimport). Il campo/valore restano nel database, semplicemente non si modificano più da qui. -->
       <div class="field form-full"><label>Note</label><input id="fatt-note" placeholder="Note operative…"></div>
     </div>
     <div class="modal-footer">
@@ -2842,6 +2842,21 @@ input,select,textarea{border-radius:8px;}
     <div id="fatt-detail-body"></div>
     <div class="modal-footer">
       <button class="btn btn-gray" onclick="closeM('modal-fatt-detail')">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AZIONE RAPIDA: SEGNA FATTURATO -->
+<div id="modal-segna-fatturato" class="overlay">
+  <div class="modal">
+    <div class="modal-title">🧾 Segna fatturato</div>
+    <div class="form-grid">
+      <div class="field"><label>N° fattura <span style="font-weight:400;color:var(--muted);">(facoltativo)</span></label><input id="sf-nfatt" placeholder="es. FT/2026/001"></div>
+      <div class="field"><label>Data fatturazione</label><input type="date" id="sf-dfatt"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-segna-fatturato')">Annulla</button>
+      <button class="btn btn-success" onclick="confermaSegnaFatturato()">✓ Segna fatturato</button>
     </div>
   </div>
 </div>
