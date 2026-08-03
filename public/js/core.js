@@ -120,7 +120,6 @@ async function exportInterventi() {
 }
 async function exportDocumenti()   { exportCSV(await api('/api/documenti'),    'documenti',    ['id','nome','tipo','sub_codice','sede_nome','data_documento','scadenza','importo']); }
 async function exportManutenzioni(){ exportCSV(await api('/api/manutenzioni'), 'manutenzioni', ['id','tipo','sub_codice','priorita','stato','data_programmata','costo']); }
-async function exportTicket()      { exportCSV(await api('/api/ticket'),       'ticket',       ['id','titolo','sub_codice','categoria','priorita','stato','created_at']); }
 async function exportSubs()        { exportCSV(await api('/api/subs'),         'subs',         ['id','codice','sede_nome','piano','inquilino_nome','stato_occupazione','categoria_cat','mq_commerciali','rendita','canone_annuo']); }
 async function exportFornitori()   { exportCSV(await api('/api/fornitori'),    'fornitori',    ['id','ragione_sociale','piva','citta','tel','email','spec']); }
 async function exportInquilini()   { exportCSV(await api('/api/inquilini'),    'inquilini',    ['id','ragione_sociale','piva','cf','citta','tel','email']); }

@@ -1412,11 +1412,6 @@ function subActionNuovoDoc() { subAddDocPreset('documento'); }
 
 function subActionManutenzione() { openModalMan(); setTimeout(()=>{ document.getElementById('man-sub').value=currentSubId; },100); }
 
-function subActionNuovoTicket() {
-  
-  openModalTicket(currentSubId);
-}
-
 function subActionNuovaBolletta() {
   
   openModalBoll(currentSubId);
@@ -1560,11 +1555,6 @@ async function pagaBolletta(id,data){
   else loadBollette();
 }
 
-async function updateTicketStato(id,stato){
-  await api('/api/ticket/'+id,{method:'PUT',body:JSON.stringify({stato})});
-  loadTicket();toast(stato==='chiuso'?'✓ Ticket chiuso':'Stato aggiornato');
-}
-
 async function segnaAffittoPagato(id){
   await api('/api/pagamenti-affitto/'+id,{method:'PUT',body:JSON.stringify({stato:'pagato',data_pagamento:new Date().toISOString().split('T')[0]})});
   loadAffitti();toast('✓ Pagamento registrato');
@@ -1575,10 +1565,6 @@ async function delAffitto(id){if(!await appConfirm('Eliminare?'))return;await ap
 function getDaysUntil(dateStr){
   if(!dateStr||dateStr==='senza data')return 999;
   return Math.floor((new Date(dateStr)-new Date())/(1000*60*60*24));
-}
-
-function subActionTicket(subId){
-  openModalTicket(subId||currentSubId);
 }
 
 function subActionBolletta(subId){
@@ -1597,8 +1583,6 @@ function openModalPagamento(){
     document.getElementById('modal-pagamento').classList.add('open');
   }
 }
-
-function quickChat(msg){const input=document.getElementById('chat-input-page');if(input){input.value=msg;sendChatPage();}}
 
 function docFileSelected(input){docFileInput=input.files[0];if(docFileInput)document.getElementById('doc-file-zone').textContent=`✓ ${docFileInput.name} (${Math.round(docFileInput.size/1024)} KB)`;if(typeof _docAiRowRefresh==='function')_docAiRowRefresh();}
 
@@ -1626,45 +1610,6 @@ async function addNota(){
   document.getElementById('nota-testo').value='';
   openTimeline(timelineSubId,document.getElementById('timeline-sub-name').textContent.split('SUB ')[1]||'');
   toast('Nota aggiunta ✓');
-}
-
-function toggleChat(){
-  chatOpen=!chatOpen;
-  const panel=document.getElementById('chat-panel');
-  panel.style.display=chatOpen?'flex':'none';
-  if(chatOpen)setTimeout(()=>document.getElementById('chat-input')?.focus(),100);
-}
-
-async function sendChat(){
-  const input=document.getElementById('chat-input');
-  const msg=input.value.trim();if(!msg)return;
-  input.value='';
-  addChatMsg(msg,'user');
-  addChatMsg('⏳ Sto cercando…','bot','chat-loading');
-  const r=await api('/api/chat',{method:'POST',body:JSON.stringify({messaggio:msg})});
-  document.getElementById('chat-loading')?.remove();
-  if(!r){addChatMsg('Errore di connessione.','bot');return;}
-  let html=r.risposta.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
-  if(r.dati?.length){
-    html+=r.dati.slice(0,5).map(d=>{
-      if(r.tipo==='interventi')return`<div class="chat-result" onclick="openDet(${d.id})">📋 <strong>${esc(d.sub||'?')}</strong> — ${esc((d.descrizione||'').slice(0,50))} ${d.prezzo?'<strong style="color:var(--primary-dark);">€'+parseFloat(d.prezzo).toLocaleString('it-IT')+'</strong>':''}`;
-      if(r.tipo==='fornitori')return`<div class="chat-result">🔧 <strong>${esc(d.ragione_sociale)}</strong> — ${d.num_int} int · <strong style="color:var(--primary-dark);">€ ${parseFloat(d.totale||0).toLocaleString('it-IT')}</strong></div>`;
-      if(r.tipo==='subs')return`<div class="chat-result" onclick="document.getElementById('ff-sub').value='${d.id||''}';showSec('interventi',document.querySelectorAll('.nb')[0]);loadInt();">🏠 <strong>SUB ${esc(d.sub||d.codice||'?')}</strong> (${esc(d.sede||'')}) — <strong style="color:var(--primary-dark);">€ ${parseFloat(d.totale||0).toLocaleString('it-IT')}</strong></div>`;
-      return`<div class="chat-result">📄 ${esc(d.nome||d.descrizione||'').slice(0,60)}</div>`;
-    }).join('');
-    if(r.dati.length>5)html+=`<div style="font-size:10px;color:var(--muted);margin-top:4px;">... e altri ${r.dati.length-5}</div>`;
-  }
-  addChatMsg(html,'bot',null,true);
-}
-
-function addChatMsg(html,role,id=null,isHtml=false){
-  const msgs=document.getElementById('chat-messages');
-  const div=document.createElement('div');
-  div.className='chat-msg '+role;
-  if(id)div.id=id;
-  if(isHtml)div.innerHTML=html;else div.textContent=html;
-  msgs.appendChild(div);
-  msgs.scrollTop=msgs.scrollHeight;
 }
 
 // ═══ Adeguamento ISTAT (tab Economico) ═══

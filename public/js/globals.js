@@ -50,7 +50,6 @@ let _ctxActive  = null;
 // ── PRIORITY COLORS & ICONS (used in interventi and manutenzioni cards) ──
 const PRIOR_COLORS = { urgente:'#ef4444', alta:'#f97316', normale:'#6b8e6b', bassa:'#6b7280' };
 const PRIOR_ICONS  = { urgente:'🔴', alta:'🟠', normale:'🔵', bassa:'⚪' };
-const PRIOR_ICONS2 = { urgente:'🚨', alta:'⬆️', normale:'📋', bassa:'⬇️' };
 
 
 const TIPI_SERVIZIO = {
@@ -91,7 +90,6 @@ const DOC_ICONS={fattura:'🧾',contratto:'📄',preventivo:'💼',verbale:'📋
 // ═══ Globali usati tra più file (prima erano impliciti) ═══
 let sT=null;                 // debounce ricerca globale
 let currentRiepTab='fornitori';
-let chatOpen=false;
 let currentSubData=null;
 let subDetTab='overview';
 let manEditId=null;

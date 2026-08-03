@@ -255,12 +255,6 @@ tr:hover td{background:rgba(107,142,107,.04);}
 .boll-card:hover{border-color:rgba(107,142,107,.3);}
 .boll-icon{font-size:22px;flex-shrink:0;}
 
-/* ── TICKET CARD ── */
-.tick-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:9px;border-left:3px solid var(--border);}
-.tick-card.aperto{border-left-color:var(--accent);}
-.tick-card.in_corso{border-left-color:var(--orange);}
-.tick-card.chiuso{border-left-color:var(--green);opacity:.7;}
-
 /* ── GENEALOGIA TREE ── */
 .tree-node{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:all .15s;}
 .tree-node:hover{border-color:rgba(107,142,107,.4);}
@@ -346,10 +340,6 @@ tr:hover td{background:rgba(107,142,107,.04);}
 .import-zone:hover{border-color:var(--primary);color:var(--text);}
 .progress-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin:8px 0;}
 .progress-bar-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .3s;}
-.chat-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-word;}
-.chat-msg.user{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:3px;}
-.chat-msg.bot{background:#f1f5f9;color:var(--text);align-self:flex-start;border-bottom-left-radius:3px;border:1px solid #e2e8f0;}
-.chat-result{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 10px;margin-top:5px;font-size:11px;cursor:pointer;}
 .btn-orange{background:var(--warning-bg);color:var(--warning);border:1px solid rgba(184,134,11,.3);}
 @media(max-width:900px){.dash-3col{grid-template-columns:1fr 1fr!important;}.dash-2col{grid-template-columns:1fr!important;}.dash-main{grid-template-columns:1fr!important;}}
 @media(max-width:600px){.dash-3col{grid-template-columns:1fr!important;}}
@@ -797,7 +787,7 @@ input,select,textarea{border-radius:8px;}
 .doc-meta{overflow:hidden;text-overflow:ellipsis;}
 .tab-btns{max-width:100%;}
 
-/* Ticket e Fatturazione: pill e ordine */
+/* Fatturazione: pill e ordine */
 .pill-stato{display:inline-flex;align-items:center;gap:5px;border-radius:12px;padding:2px 11px;font-size:10px;font-weight:700;white-space:nowrap;}
 .avatar-ini{width:34px;height:34px;border-radius:50%;background:var(--primary-bg);color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;letter-spacing:.5px;}
 .ct-quick{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:var(--bg2);text-decoration:none;font-size:12px;filter:grayscale(.4);transition:background .12s;}
@@ -1005,7 +995,6 @@ input,select,textarea{border-radius:8px;}
         <div class="sb-group-title">Operatività</div>
         <button class="sb-item" id="sb-interventi" onclick="showSection('interventi')"><span class="sb-ico">📋</span><span class="sb-lbl">Interventi</span></button>
         <button class="sb-item" id="sb-manutenzioni" onclick="showSection('manutenzioni')"><span class="sb-ico">🔨</span><span class="sb-lbl">Manutenzioni</span></button>
-        <button class="sb-item" id="sb-ticket" onclick="showSection('ticket')"><span class="sb-ico">🎫</span><span class="sb-lbl">Ticket</span></button>
         <button class="sb-item" id="sb-fornitori" onclick="showSection('fornitori')"><span class="sb-ico">🔧</span><span class="sb-lbl">Fornitori</span></button>
       </div>
       <div class="sb-divider"></div>
@@ -1026,7 +1015,6 @@ input,select,textarea{border-radius:8px;}
       <div class="sb-group">
         <button class="sb-item" id="sb-notifiche" onclick="showSection('notifiche')"><span class="sb-ico">🔔</span><span class="sb-lbl">Notifiche</span><span id="sb-notif-badge" class="badge hidden">0</span></button>
         <button class="sb-item" id="sb-teamchat" onclick="showSection('teamchat')"><span class="sb-ico">💬</span><span class="sb-lbl">Chat Team</span><span id="sb-teamchat-badge" class="badge hidden">0</span></button>
-        <button class="sb-item" id="sb-chat" onclick="showSection('chat')"><span class="sb-ico">🤖</span><span class="sb-lbl">Chat AI</span></button>
         <button class="sb-item" id="sb-calendario" onclick="showSection('calendario')"><span class="sb-ico">📅</span><span class="sb-lbl">Calendario</span></button>
       </div>
       <div class="sb-divider"></div>
@@ -1780,41 +1768,6 @@ input,select,textarea{border-radius:8px;}
       <div id="boll-list"><div class="empty">Caricamento…</div></div>
     </div>
 
-    <!-- SEZIONE TICKET -->
-    <div id="sec-ticket" class="section">
-      <div class="flex-between mb-16">
-        <div><h2 class="page-title">🎫 Ticket</h2><p class="page-sub" id="tick-lbl">Segnalazioni e richieste di intervento</p></div>
-        <button class="btn btn-sm btn-gray" onclick="toggleTableSel('ticket')" id="ticket-sel-btn">☑ Selezione</button>
-          <button class="btn btn-sm btn-gray" onclick="exportTicket()">⬇️ Export</button>
-        <button class="btn btn-primary" onclick="openModalTicket()">+ Nuovo Ticket</button>
-      </div>
-
-      <div id="ticket-mass-bar" class="mass-bar hidden">
-        <span id="ticket-mass-cnt" style="font-size:13px;font-weight:600;color:var(--accent);">0 selezionati</span>
-        <button class="btn btn-danger btn-sm" onclick="bulkDelete('ticket','ticket-mass-cnt',()=>{toggleTableSel('ticket');loadTicket();})">🗑 Elimina selezionati</button>
-        <button class="btn btn-sm btn-gray" onclick="tableSelAll('ticket')">Seleziona tutti</button>
-        <button class="btn btn-sm btn-gray" onclick="getSelSet('ticket').clear();document.querySelectorAll('.ticket-chk').forEach(c=>c.checked=false);document.getElementById('ticket-mass-cnt').textContent='0 selezionati';document.getElementById('ticket-mass-bar').classList.add('hidden')">Deseleziona</button>
-      </div>
-      <div class="filter-bar mb-16">
-        <div class="filter-grid">
-          <div class="field"><label>Stato</label>
-            <select id="tf-stato" onchange="loadTicket()">
-              <option value="">Tutti</option><option value="aperto">Aperto</option>
-              <option value="in_corso">In corso</option><option value="chiuso">Chiuso</option>
-            </select>
-          </div>
-          <div class="field"><label>Priorità</label>
-            <select id="tf-prior" onchange="loadTicket()">
-              <option value="">Tutte</option><option value="urgente">🔴 Urgente</option>
-              <option value="alta">🟠 Alta</option><option value="normale">🟡 Normale</option>
-            </select>
-          </div>
-          <div class="field"><label>SUB</label><select id="tf-sub" onchange="loadTicket()"><option value="">Tutti</option></select></div>
-        </div>
-      </div>
-      <div id="tick-list"><div class="empty">Caricamento…</div></div>
-    </div>
-
     <!-- SEZIONE AFFITTI -->
     <div id="sec-affitti" class="section">
       <div class="flex-between mb-16">
@@ -1891,48 +1844,6 @@ input,select,textarea{border-radius:8px;}
       </div>
       <div class="card" style="margin-bottom:16px;padding:12px;"><div id="fc-calendar"></div></div>
       <div class="card"><div class="card-title" style="margin-bottom:10px;">📋 Prossime scadenze</div><div id="cal-list"><div class="empty" style="padding:24px;">Caricamento…</div></div></div>
-    </div>
-
-    <!-- SEZIONE CHAT AI -->
-    <div id="sec-chat" class="section">
-      <h2 class="page-title">🤖 Chat AI</h2>
-      <p class="page-sub">Fai domande sul tuo gestionale in linguaggio naturale</p>
-      <div style="max-width:680px;margin:0 auto;">
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;height:520px;display:flex;flex-direction:column;">
-          <div style="background:linear-gradient(135deg,var(--accent),var(--primary-2));padding:16px 20px;display:flex;align-items:center;gap:12px;">
-            <div style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;">🤖</div>
-            <div>
-              <div style="font-weight:600;font-size:15px;color:#0f172a;">Assistente Gestionale</div>
-              <div style="font-size:11px;color:rgba(255,255,255,.7);">Cerca interventi, SUB, spese, scadenze…</div>
-            </div>
-          </div>
-          <div id="chat-messages-page" style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:12px;">
-            <div class="chat-msg bot">👋 Ciao! Sono il tuo assistente immobiliare. Posso aiutarti a trovare informazioni nel gestionale.<br><br>
-              <strong>Prova a chiedermi:</strong><br>
-              • "Mostrami interventi idraulici"<br>
-              • "Spese per fornitore"<br>
-              • "Interventi urgenti"<br>
-              • "Situazione SUB OB-01"<br>
-              • "Scadenze documenti"<br>
-              • "Quali SUB sono in perdita"
-            </div>
-          </div>
-          <div style="padding:14px 16px;border-top:1px solid var(--border);display:flex;gap:10px;">
-            <input id="chat-input-page" placeholder="Scrivi la tua domanda…"
-              style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:22px;padding:10px 16px;color:var(--text);font-size:13px;outline:none;font-family:inherit;"
-              onkeydown="if(event.key==='Enter')sendChatPage()">
-            <button onclick="sendChatPage()" style="background:var(--accent);border:none;color:#fff;width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:18px;flex-shrink:0;">→</button>
-          </div>
-        </div>
-        <div style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">
-          <button class="btn btn-gray btn-sm" onclick="quickChat('Mostrami interventi urgenti')">⚠️ Interventi urgenti</button>
-          <button class="btn btn-gray btn-sm" onclick="quickChat('Spese per fornitore')">🔧 Spese per fornitore</button>
-          <button class="btn btn-gray btn-sm" onclick="quickChat('Scadenze documenti')">📅 Scadenze prossime</button>
-          <button class="btn btn-gray btn-sm" onclick="quickChat('Situazione economica')">💰 Situazione economica</button>
-          <button class="btn btn-gray btn-sm" onclick="quickChat('Interventi idraulici')">💧 Interventi idraulici</button>
-          <button class="btn btn-gray btn-sm" onclick="quickChat('SUB con più spese')">🏠 SUB con più spese</button>
-        </div>
-      </div>
     </div>
 
     <!-- SEZIONE CONTROLLO FATTURAZIONE -->
@@ -2811,28 +2722,6 @@ input,select,textarea{border-radius:8px;}
   </div>
 </div>
 
-<!-- CHAT PANEL -->
-<div id="chat-btn" onclick="toggleChat()" style="position:fixed;bottom:28px;right:28px;z-index:500;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--primary-2));box-shadow:0 6px 24px rgba(107,142,107,.5);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:22px;transition:all .2s;" title="Assistente intelligente">💬</div>
-
-<div id="chat-panel" style="display:none;position:fixed;bottom:90px;right:28px;z-index:500;width:360px;height:500px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.6);display:none;flex-direction:column;overflow:hidden;">
-  <div style="background:linear-gradient(135deg,var(--accent),var(--primary-2));padding:14px 18px;display:flex;align-items:center;justify-content:space-between;">
-    <div>
-      <div style="font-weight:600;font-size:14px;color:#0f172a;">💬 Assistente Gestionale</div>
-      <div style="font-size:11px;color:rgba(255,255,255,.7);">Cerca interventi, spese, documenti…</div>
-    </div>
-    <button onclick="toggleChat()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;">✕</button>
-  </div>
-  <div id="chat-messages" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;">
-    <div class="chat-msg bot">👋 Ciao! Sono il tuo assistente. Chiedimi qualsiasi cosa sul gestionale.<br><br>
-    Esempi:<br>• "Mostrami interventi idraulici"<br>• "Spese per fornitore"<br>• "Interventi urgenti"<br>• "Situazione SUB OB-01"<br>• "Scadenze documenti"</div>
-  </div>
-  <div style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
-    <input id="chat-input" placeholder="Scrivi un messaggio…" style="flex:1;background:#0b0f1a;border:1px solid var(--border);border-radius:20px;padding:8px 14px;color:var(--text);font-size:13px;outline:none;font-family:inherit;" onkeydown="if(event.key==='Enter')sendChat()">
-    <button onclick="sendChat()" style="background:var(--accent);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;">→</button>
-  </div>
-</div>
-
-<!-- CHAT PANEL -->
 <!-- MODAL NUOVO ORDINE FATTURAZIONE -->
 <div id="modal-fatt" class="overlay">
   <div class="modal modal-wide">
@@ -2997,31 +2886,6 @@ input,select,textarea{border-radius:8px;}
   </div>
 </div>
 
-<!-- MODAL TICKET -->
-<div id="modal-ticket" class="overlay">
-  <div class="modal">
-    <div class="modal-title">🎫 Nuovo Ticket</div>
-    <div class="form-grid">
-      <div class="field form-full"><label>Titolo *</label><input id="tick-titolo" placeholder="es. Perdita acqua bagno, Guasto ascensore…"></div>
-      <div class="field"><label>Sede</label><select id="tick-sede" onchange="filterSubBySedeModal('tick-sub', this.value)"><option value="">— Tutte le sedi —</option></select></div>
-      <div class="field"><label>SUB</label><select id="tick-sub"><option value="">— Nessuno —</option></select></div>
-      <div class="field"><label>Inquilino</label><select id="tick-inq"><option value="">— Nessuno —</option></select></div>
-      <div class="field"><label>Priorità</label>
-        <select id="tick-prior">
-          <option value="urgente">🔴 Urgente</option><option value="alta">🟠 Alta</option>
-          <option value="normale" selected>🟡 Normale</option><option value="bassa">🟢 Bassa</option>
-        </select>
-      </div>
-      <div class="field"><label>Categoria</label><input id="tick-cat" placeholder="es. Idraulico, Elettrico…"></div>
-      <div class="field form-full"><label>Descrizione</label><textarea id="tick-desc" rows="2" placeholder="Dettagli del problema…"></textarea></div>
-      <div class="field form-full"><label>Note interne</label><input id="tick-note" placeholder="Note operative…"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-gray" onclick="closeM('modal-ticket')">Annulla</button>
-      <button class="btn btn-success" onclick="saveTicket()">✓ Crea ticket</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL FUSIONE SUB -->
 <div id="modal-fusione" class="overlay">
@@ -3289,12 +3153,10 @@ input,select,textarea{border-radius:8px;}
   <script src="js/documenti.js?v=10"></script>
   <script src="js/manutenzioni.js?v=10"></script>
   <script src="js/bollette.js?v=10"></script>
-  <script src="js/ticket.js?v=10"></script>
   <script src="js/fatturazione.js?v=10"></script>
   <script src="js/import.js?v=10"></script>
   <script src="js/notifications.js?v=10"></script>
   <script src="js/dashboard.js?v=10"></script>
-  <script src="js/chat.js?v=10"></script>
   <script src="js/calendar.js?v=10"></script>
   <script src="js/analytics.js?v=10"></script>
   <script src="js/finanze.js?v=10"></script>

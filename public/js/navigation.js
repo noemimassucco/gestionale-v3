@@ -80,10 +80,6 @@ function showSection(name){
     document.getElementById('bf-sub').innerHTML='<option value="">Tutti</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
     loadBollette();
   }
-  else if(name==='ticket'){
-    document.getElementById('tf-sub').innerHTML='<option value="">Tutti</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
-    loadTicket();
-  }
   else if(name==='affitti'){
     document.getElementById('af-sub').innerHTML='<option value="">Tutti</option>'+DB.subs.map(s=>`<option value="${s.id}">${s.codice}</option>`).join('');
     document.getElementById('af-anno').value=new Date().getFullYear();
@@ -102,9 +98,6 @@ function showSection(name){
   else if(name==='inquilini'){ loadClienti(_clientiTabAttivo||'attivo'); _updateClienteTabCounts(); }
   else if(name==='fornitori')renderTbForn();
   else if(name==='teamchat'){ loadTeamChat(); startTeamChatPolling(); }
-  else if(name==='chat'){
-    setTimeout(()=>document.getElementById('chat-input-page')?.focus(),200);
-  }
   else if(name==='anagrafiche'){
     renderTbSubs(); renderTbForn(); renderTbInq(); renderTbSedi(); renderTbCat();
   }
@@ -133,7 +126,6 @@ function showSubCtx(e, subId, codice) {
     <div class="ctx-item" onclick="closeCtx();openModalDoc();setTimeout(()=>{const el=document.getElementById('doc-sub');if(el)el.value=${subId};},100)">📄 Aggiungi documento</div>
     <div class="ctx-item" onclick="closeCtx();openNewFatt(${subId})">🧾 Crea fattura/ordine</div>
     <div class="ctx-item" onclick="closeCtx();currentSubId=${subId};subActionPagamento()">💳 Registra affitto</div>
-    <div class="ctx-item" onclick="closeCtx();openModalTicket(${subId})">🎫 Apri ticket</div>
     <div class="ctx-sep"></div>
     <div class="ctx-item" style="font-weight:600;color:var(--accent);" onclick="closeCtx();openRiaccatastamento(${subId})">🏛️ Riaccatasta SUB</div>
     <div class="ctx-item" onclick="closeCtx();quickScissione(${subId})">✂️ Scindi SUB</div>
@@ -186,7 +178,6 @@ function documentiSelAll() { tableSelAll('documenti'); }
 
 function manutenzioniSelAll() { tableSelAll('manutenzioni'); }
 
-function ticketSelAll() { tableSelAll('ticket'); }
 // Applica le preferenze del menu all'avvio (gli script sono in fondo al body, il DOM c'è già)
 try { applyMenuPrefs(); } catch(e) {}
 

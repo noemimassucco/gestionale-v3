@@ -203,7 +203,7 @@ async function deleteMass(){
 }
 
 function getIntData(){const v=id=>document.getElementById(id)?.value||'';const anno=v('fi-anno')||(v('fi-df')?v('fi-df').split('-')[0]:null);return{sede_id:parseInt(v('fi-sede'))||null,sub_id:parseInt(v('fi-sub'))||null,inquilino_id:parseInt(v('fi-inq'))||null,fornitore_id:parseInt(v('fi-forn'))||null,categoria_id:parseInt(v('fi-cat'))||null,protocollo:v('fi-prot'),num_fattura:v('fi-nf'),anno_fattura:anno?parseInt(anno):null,data_intervento:v('fi-di')||null,data_fattura:v('fi-df')||null,prezzo:v('fi-pr')||null,descrizione:v('fi-desc'),note:v('fi-note')};}
-// ── filterSubBySedeModal — generico per bollette/manutenzioni/ticket ──
+// ── filterSubBySedeModal — generico per bollette/manutenzioni ──
 function filterSubBySedeModal(subSelectId, sedeId) {
   const sel = document.getElementById(subSelectId);
   if (!sel) return;

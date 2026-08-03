@@ -9,7 +9,7 @@ router.post('/api/bulk-delete', authMiddleware, async (req, res) => {
   const allowed = {
     interventi:'interventi', documenti:'documenti', manutenzioni:'manutenzioni',
     subs:'subs', fornitori:'fornitori', inquilini:'inquilini',
-    bollette:'bollette', ticket:'ticket', pagamenti_affitto:'pagamenti_affitto',
+    bollette:'bollette', pagamenti_affitto:'pagamenti_affitto',
     ordini_fatturazione:'ordini_fatturazione',
   };
   if (!allowed[table]) return res.status(400).json({ error: 'Tabella non consentita: ' + table });

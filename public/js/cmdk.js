@@ -36,7 +36,7 @@ function _cmdkBuild(q){
   if(forn.length)out.push({group:'Fornitori',items:forn.map(f=>({ico:'🔧',label:f.ragione_sociale,sub:f.citta||'',run:()=>{showSection('fornitori');}}))});
 
   // Sezioni
-  const sezioni=[['🏠','Dashboard','dashboard'],['🏢','SUB','subs'],['👤','Clienti','inquilini'],['🏛️','Catasto & ISTAT','catasto'],['📋','Interventi','interventi'],['🔨','Manutenzioni','manutenzioni'],['🎫','Ticket','ticket'],['🔧','Fornitori','fornitori'],['📄','Documenti','documenti'],['⬆️','Import / OCR','import'],['🧾','Fatturazione','fatturazione'],['💳','Affitti','affitti'],['⚡','Bollette','bollette'],['📊','Riepilogo','riepilogo'],['🔔','Notifiche','notifiche'],['💬','Chat Team','teamchat'],['🤖','Chat AI','chat'],['📅','Calendario','calendario'],['⚙️','Impostazioni','impostazioni']]
+  const sezioni=[['🏠','Dashboard','dashboard'],['🏢','SUB','subs'],['👤','Clienti','inquilini'],['🏛️','Catasto & ISTAT','catasto'],['📋','Interventi','interventi'],['🔨','Manutenzioni','manutenzioni'],['🔧','Fornitori','fornitori'],['📄','Documenti','documenti'],['⬆️','Import / OCR','import'],['🧾','Fatturazione','fatturazione'],['💳','Affitti','affitti'],['⚡','Bollette','bollette'],['📊','Riepilogo','riepilogo'],['🔔','Notifiche','notifiche'],['💬','Chat Team','teamchat'],['📅','Calendario','calendario'],['⚙️','Impostazioni','impostazioni']]
     .filter(x=>hit(x[1])).slice(0,q?6:0);
   if(sezioni.length)out.push({group:'Vai a',items:sezioni.map(x=>({ico:x[0],label:x[1],sub:'sezione',run:()=>showSection(x[2])}))});
 

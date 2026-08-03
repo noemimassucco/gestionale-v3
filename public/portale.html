@@ -121,14 +121,12 @@
       <button class="nav-tab" onclick="showTab('pagamenti',this)">💶 Pagamenti</button>
       <button class="nav-tab" onclick="showTab('bollette',this)">⚡ Bollette</button>
       <button class="nav-tab" onclick="showTab('documenti',this)">📄 Documenti</button>
-      <button class="nav-tab" onclick="showTab('ticket',this)">🎫 Segnalazioni</button>
     </div>
 
     <div id="tab-dashboard"></div>
     <div id="tab-pagamenti" style="display:none"></div>
     <div id="tab-bollette"  style="display:none"></div>
     <div id="tab-documenti" style="display:none"></div>
-    <div id="tab-ticket"    style="display:none"></div>
   </div>
 </div>
 
@@ -213,10 +211,10 @@ async function api(url, opts={}) {
 function showTab(name, btn) {
   document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  ['dashboard','pagamenti','bollette','documenti','ticket'].forEach(t => {
+  ['dashboard','pagamenti','bollette','documenti'].forEach(t => {
     document.getElementById('tab-'+t).style.display = t===name ? '' : 'none';
   });
-  const loaders = { dashboard:loadDashboard, pagamenti:loadPagamenti, bollette:loadBollette, documenti:loadDocumenti, ticket:loadTicket };
+  const loaders = { dashboard:loadDashboard, pagamenti:loadPagamenti, bollette:loadBollette, documenti:loadDocumenti };
   if (loaders[name]) loaders[name]();
 }
 
@@ -226,23 +224,20 @@ function showTab(name, btn) {
 async function loadDashboard() {
   const el = document.getElementById('tab-dashboard');
   el.innerHTML = '<div class="empty">Caricamento…</div>';
-  const [subs, pagamenti, bollette, ticket] = await Promise.all([
+  const [subs, pagamenti, bollette] = await Promise.all([
     api('/api/portale/miei-sub'),
     api('/api/portale/pagamenti'),
     api('/api/portale/bollette'),
-    api('/api/portale/ticket'),
   ]);
   if (!subs) return;
-  pData = {subs, pagamenti:pagamenti||[], bollette:bollette||[], ticket:ticket||[]};
+  pData = {subs, pagamenti:pagamenti||[], bollette:bollette||[]};
 
   const nScadenze = (bollette||[]).filter(b => b.stato==='da_pagare').length;
-  const nTicketAperti = (ticket||[]).filter(t => t.stato!=='chiuso').length;
   const ultimoPag = (pagamenti||[]).find(p => p.stato==='pagato');
 
   let html = '<div class="kpi-grid">' +
     kpi((subs||[]).length, 'Immobili') +
     kpi(nScadenze > 0 ? '⚠️ '+nScadenze : '✓ 0', 'Bollette da pagare', nScadenze > 0 ? 'var(--warning)' : 'var(--success)') +
-    kpi(nTicketAperti, 'Segnalazioni aperte') +
     (ultimoPag ? kpi('€ '+parseFloat(ultimoPag.importo).toLocaleString('it-IT'), 'Ultimo pagamento') : '') +
   '</div>';
 
@@ -386,74 +381,6 @@ async function loadDocumenti() {
   }
   html += '</div>';
   el.innerHTML = html;
-}
-
-// ═══════════════════════════════════════════════════════════
-// Ticket
-// ═══════════════════════════════════════════════════════════
-async function loadTicket() {
-  const el = document.getElementById('tab-ticket');
-  const data = await api('/api/portale/ticket');
-  const subs  = pData.subs || [];
-
-  const STATO_C = {aperto:'badge-warn', in_lavorazione:'badge-info', chiuso:'badge-ok', annullato:'badge-muted'};
-
-  let html = '<div class="card" style="margin-bottom:12px;">' +
-    '<div class="card-title">➕ Nuova segnalazione</div>' +
-    '<div class="field"><label>Immobile (opzionale)</label><select id="new-tick-sub"><option value="">— Seleziona —</option>' +
-      subs.map(s => '<option value="'+s.id+'">'+esc(s.codice)+' — '+esc(s.sede_nome||'')+'</option>').join('') +
-    '</select></div>' +
-    '<div class="field"><label>Titolo *</label><input type="text" id="new-tick-title" placeholder="Es. Infiltrazione tetto bagno"></div>' +
-    '<div class="field"><label>Descrizione</label><textarea id="new-tick-desc" rows="3" placeholder="Descriva il problema…"></textarea></div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-      '<div class="field"><label>Categoria</label><select id="new-tick-cat"><option value="">—</option><option>Idraulico</option><option>Elettrico</option><option>Strutturale</option><option>Climatizzazione</option><option>Sicurezza</option><option>Altro</option></select></div>' +
-      '<div class="field"><label>Priorità</label><select id="new-tick-pri"><option value="normale">Normale</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>' +
-    '</div>' +
-    '<button class="btn btn-primary" onclick="submitTicket()">📤 Invia segnalazione</button>' +
-  '</div>';
-
-  html += '<div class="card"><div class="card-title">🎫 Le mie segnalazioni</div>';
-  if (!data || !data.length) {
-    html += '<div class="empty">Nessuna segnalazione inviata.</div>';
-  } else {
-    data.forEach(t => {
-      html += '<div class="list-row">' +
-        '<div class="list-icon">' + (t.stato==='chiuso'?'✅':t.priorita==='urgente'?'🚨':'🎫') + '</div>' +
-        '<div class="list-body">' +
-          '<div class="list-title">' + esc(t.titolo) + '</div>' +
-          '<div class="list-meta">' +
-            esc(t.sub_codice||'') + (t.categoria?' · '+esc(t.categoria):'') + ' · ' + fmt(t.created_at) +
-            (t.data_chiusura ? ' · Chiuso '+fmt(t.data_chiusura) : '') +
-          '</div>' +
-        '</div>' +
-        '<div class="list-right">' +
-          '<span class="badge '+(STATO_C[t.stato]||'badge-muted')+'">' + esc(t.stato||'aperto') + '</span>' +
-        '</div>' +
-      '</div>';
-    });
-  }
-  html += '</div>';
-  el.innerHTML = html;
-}
-
-async function submitTicket() {
-  const titolo = document.getElementById('new-tick-title').value.trim();
-  if (!titolo) { toast('Inserisci il titolo della segnalazione', 'error'); return; }
-  const r = await api('/api/portale/ticket', {
-    method:'POST',
-    body: JSON.stringify({
-      sub_id:     document.getElementById('new-tick-sub').value  || null,
-      titolo,
-      descrizione: document.getElementById('new-tick-desc').value || null,
-      categoria:   document.getElementById('new-tick-cat').value  || null,
-      priorita:    document.getElementById('new-tick-pri').value  || 'normale',
-    })
-  });
-  if (!r) return;
-  toast('✅ Segnalazione inviata');
-  document.getElementById('new-tick-title').value = '';
-  document.getElementById('new-tick-desc').value  = '';
-  loadTicket();
 }
 
 // ═══════════════════════════════════════════════════════════

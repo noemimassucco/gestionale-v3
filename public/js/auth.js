@@ -42,8 +42,6 @@ function _showApp() {
   if (aw) aw.classList.add('active');
   const badge = document.getElementById('user-badge');
   if (badge) badge.textContent = '👤 ' + (currentUser?.nome || currentUser?.email || '');
-  const cb = document.getElementById('chat-btn');
-  if (cb) cb.style.display = 'flex';
 }
 
 async function doLogin() {
