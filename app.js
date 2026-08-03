@@ -28,7 +28,9 @@ app.use('/', require('./routes/analytics.routes'));
 app.use('/', require('./routes/import.routes'));
 app.use('/', require('./routes/riaccatastamento.routes'));
 app.use('/', require('./routes/backup.routes'));
-app.use('/', require('./routes/portale.routes'));
+// Portale Inquilini disattivato (non più utilizzato) — disattivazione reversibile:
+// nessun dato toccato, basta togliere il commento da questa riga per riattivarlo.
+// app.use('/', require('./routes/portale.routes'));
 app.use('/', require('./routes/clienti.routes'));
 app.use('/', require('./routes/promemoria.routes'));
 app.use('/', require('./routes/team.routes'));
