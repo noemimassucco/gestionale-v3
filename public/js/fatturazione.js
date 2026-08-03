@@ -314,18 +314,20 @@ async function exportFatturazione() {
       r.mese||'', r.anno||'', r.numero_fattura||'', r.data_fatturazione||'',
       r.stato_pagamento||'', r.data_pagamento||'', r.contabilizzato||'NO', r.note||''
     ]);
-    // Mark yellow if sub has ISTAT due
-    rowStyles.push(istatSubIds.has(r.sub) ? 'istat' : null);
+    // Stessa identica regola della tabella a schermo (renderFattTable): giallo se la
+    // riga è "da fatturare" — rifatturazione spesa senza numero fattura e non pagata,
+    // oppure rata canone ancora in stato da_fatturare.
+    const isDaFatturare = (r.tipo_servizio === 'rifatturazione_spesa' && !r.numero_fattura && r.stato_pagamento !== 'pagato')
+      || (r.tipo_servizio === 'canone_locazione' && r.stato === 'da_fatturare');
+    // Se il SUB ha anche un adeguamento ISTAT in scadenza, resta comunque giallo (stesso colore, non si sommano evidenziazioni diverse)
+    rowStyles.push((isDaFatturare || istatSubIds.has(r.sub)) ? 'giallo' : null);
   });
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-  // Apply yellow fill to ISTAT rows
-  const istatFill = { fgColor: { rgb: 'FFF9C4' } }; // light yellow
-  const istatFont = { bold: false };
-
+  // Applica lo sfondo giallo (stesso usato nel gestionale per "da fatturare")
   rowStyles.forEach((style, rowIdx) => {
-    if (style === 'istat') {
+    if (style === 'giallo') {
       for (let colIdx = 0; colIdx < headers.length; colIdx++) {
         const cellAddr = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
         if (!ws[cellAddr]) ws[cellAddr] = { v: '', t: 's' };

@@ -39,7 +39,10 @@ app.use('/', require('./routes/solleciti.routes'));
 app.use('/', require('./routes/smartzip.routes'));
 app.use('/', require('./routes/aimail.routes'));
 app.use('/', require('./routes/user-notifiche.routes'));
-app.use('/', require('./routes/controllo-fatturazione.routes'));
+// Controllo Fatturazione disattivato su richiesta: la decisione di rifatturazione si fa
+// ora a mano direttamente in Schema Fatturazione. Route e dati restano intatti, si
+// riattiva rimettendo la riga qui sotto:
+// app.use('/', require('./routes/controllo-fatturazione.routes'));
 app.use('/', require('./routes/spese-condominiali.routes'));
 
 // ── 404 API ──

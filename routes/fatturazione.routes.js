@@ -101,7 +101,7 @@ router.get('/api/fatturazione/export', authMiddleware, async (req, res) => {
   const r=await pool.query(`
     SELECT o.id,i.ragione_sociale as cliente,o.nome_servizio as servizio,o.tipo_servizio,
       s.codice as sub,o.importo,o.periodicita,o.data_fatturazione,o.numero_fattura,
-      o.stato_pagamento,o.data_pagamento,o.importo_pagato,
+      o.stato_pagamento,o.data_pagamento,o.importo_pagato,o.stato,
       CASE WHEN o.flag_contabilizzato THEN 'SI' ELSE 'NO' END as contabilizzato,
       o.note_contabili as note,o.mese_riferimento as mese,o.anno_riferimento as anno
     FROM ordini_fatturazione o

@@ -1007,7 +1007,7 @@ input,select,textarea{border-radius:8px;}
       <div class="sb-group">
         <div class="sb-group-title">Economico</div>
         <button class="sb-item" id="sb-finanze" onclick="showSection('finanze')"><span class="sb-ico">💶</span><span class="sb-lbl">Incassi &amp; Uscite</span></button>
-        <button class="sb-item" id="sb-controllofatt" onclick="showSection('controllofatt')"><span class="sb-ico">🔄</span><span class="sb-lbl">Controllo Fatturazione</span></button>
+        <!-- Voce "Controllo Fatturazione" disattivata su richiesta -->
         <button class="sb-item" id="sb-fatturazione" onclick="showSection('fatturazione')"><span class="sb-ico">🧾</span><span class="sb-lbl">Schema Fatturazione</span></button>
         <button class="sb-item" id="sb-riepilogo" onclick="showSection('riepilogo')"><span class="sb-ico">📊</span><span class="sb-lbl">Riepilogo</span></button>
       </div>
@@ -1353,7 +1353,7 @@ input,select,textarea{border-radius:8px;}
         <!-- Spese condominiali con ripartizione automatica per millesimi -->
         <div class="card">
           <div class="card-title">📐 Import Spese Condominiali (ripartizione automatica)</div>
-          <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Importa spese condominiali complessive per sede: ogni spesa viene ripartita automaticamente fra tutti i SUB in base ai millesimi già impostati sulla loro scheda. Ogni quota entra come uscita nel <a href="#" onclick="event.preventDefault();showSection('controllofatt')" style="color:var(--accent);font-weight:600;">Controllo Fatturazione</a>.</p>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:12px;">Importa spese condominiali complessive per sede: ogni spesa viene ripartita automaticamente fra tutti i SUB in base ai millesimi già impostati sulla loro scheda. Se una quota va rifatturata, crea la riga corrispondente a mano nello <a href="#" onclick="event.preventDefault();showSection('fatturazione')" style="color:var(--accent);font-weight:600;">Schema Fatturazione</a>.</p>
           <div style="background:#fef3c7;border:1px solid rgba(184,134,11,.2);border-radius:7px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:#b8860b;">⚠️ Prima configura i millesimi dei SUB (scheda SUB → tab 📐 Millesimi)</div>
           <div class="import-zone" onclick="document.getElementById('speseCondoFile').click()">
             <div style="font-size:22px;margin-bottom:5px;">📂</div>
@@ -1842,8 +1842,12 @@ input,select,textarea{border-radius:8px;}
       <div class="card"><div class="card-title" style="margin-bottom:10px;">📋 Prossime scadenze</div><div id="cal-list"><div class="empty" style="padding:24px;">Caricamento…</div></div></div>
     </div>
 
-    <!-- SEZIONE CONTROLLO FATTURAZIONE -->
-    <div id="sec-controllofatt" class="section">
+    <!-- SEZIONE CONTROLLO FATTURAZIONE — disattivata su richiesta (si decide tutto a mano
+         in Schema Fatturazione). Markup conservato dentro <template> (inerte, non visibile,
+         non eseguito) invece che cancellato: si riattiva spostando questo <template> fuori
+         e togliendo la riga corrispondente in app.js. -->
+    <template id="tpl-sec-controllofatt">
+    <div id="sec-controllofatt-disattivata" class="section">
       <div class="flex-between mb-16" style="flex-wrap:wrap;gap:10px;">
         <div>
           <h2 class="page-title">🔄 Controllo Fatturazione</h2>
@@ -1956,6 +1960,8 @@ input,select,textarea{border-radius:8px;}
         </div>
       </div>
     </div>
+    </template>
+    <div id="sec-controllofatt" class="section" style="display:none;"></div>
 
     <!-- SEZIONE FATTURAZIONE -->
     <div id="sec-fatturazione" class="section">
@@ -1964,7 +1970,7 @@ input,select,textarea{border-radius:8px;}
       <div class="flex-between mb-16">
         <div>
           <h2 class="page-title">🧾 Schema di Fatturazione</h2>
-          <p class="page-sub">Tutti i servizi da fatturare ai clienti — canoni, domiciliazioni, sale riunioni, box auto, servizi vari e le uscite marcate "da fatturare" dal <a href="#" onclick="event.preventDefault();showSection('controllofatt')" style="color:var(--accent);font-weight:600;">Controllo Fatturazione</a> (evidenziate in giallo qui sotto)</p>
+          <p class="page-sub">Tutti i servizi da fatturare ai clienti — canoni, domiciliazioni, sale riunioni, box auto, servizi vari e le spese da rifatturare aggiunte a mano (evidenziate in giallo quando sono "da fatturare")</p>
         </div>
         <button class="btn btn-primary" onclick="openModalFatt()">+ Nuovo ordine</button>
       </div>
@@ -3217,7 +3223,7 @@ input,select,textarea{border-radius:8px;}
   <script src="js/calendar.js?v=10"></script>
   <script src="js/analytics.js?v=10"></script>
   <script src="js/finanze.js?v=10"></script>
-  <script src="js/controllo-fatturazione.js?v=1"></script>
+  <!-- <script src="js/controllo-fatturazione.js?v=1"></script> disattivato su richiesta -->
   <script src="js/spese-condominiali.js?v=1"></script>
   <script src="js/contratti-affitto.js?v=1"></script>
   <script src="js/misc.js?v=10"></script>
