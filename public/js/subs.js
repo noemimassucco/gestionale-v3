@@ -42,6 +42,14 @@ async function openSubDetail(id) {
   const data=await api('/api/subs/'+id+'/detail');
   if(!data?.sub){document.getElementById('sub-det-content').innerHTML='<div class="empty">Errore caricamento</div>';return;}
   currentSubData=data;
+  renderSubDetHeader(data);
+  renderSubDetTab('overview');
+}
+
+// Estratta da openSubDetail per poter essere richiamata anche dopo un'azione che cambia
+// inquilino/canone (cambio inquilino, contratto e canone) senza dover ricaricare l'intera
+// scheda — altrimenti Conduttore/Canone in alto restavano non aggiornati fino a riapertura.
+function renderSubDetHeader(data) {
   const s=data.sub;
   // Foto dell'immobile (la prima caricata nella cartella Foto)
   const _fotoDoc=(data.documenti||[]).find(x=>(x.tipo||'').startsWith('foto')&&x.url);
@@ -79,7 +87,7 @@ async function openSubDetail(id) {
   if (bannerEl) bannerEl.innerHTML = _subStatoBanner(s);
   _disableSubButtons(s);
 
-  document.getElementById('sub-det-edit-btn').onclick=()=>{openAnaById('sub',id);};
+  document.getElementById('sub-det-edit-btn').onclick=()=>{openAnaById('sub',s.id);};
 
   // Aggiorna il sottomenu laterale con il SUB aperto
   const _smc=document.getElementById('sb-subs-sub-code');
@@ -87,8 +95,6 @@ async function openSubDetail(id) {
   const _sm=document.getElementById('sb-subs-sub');
   const _ch=document.querySelector('#sb-subs .sb-chev-btn');
   if(_sm&&_sm.style.display==='none'){_sm.style.display='';if(_ch)_ch.classList.add('open');}
-
-  renderSubDetTab('overview');
 }
 
 function subActionPagamento() {

@@ -58,6 +58,7 @@ const TIPI_SERVIZIO = {
   smart_office:'💻 Smart office', box_auto:'🚗 Box auto',
   posto_auto:'🅿️ Posto auto', locazione_tetto:'📡 Locazione tetto',
   servizio_vario:'⚙️ Servizio vario', rifatturazione_spesa:'🔄 Rifatturazione spesa',
+  canone_locazione:'🏠 Canone di locazione',
 };
 const MESI_NOMI = ['','Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 

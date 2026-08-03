@@ -844,6 +844,8 @@ async function renderSubDetTab(tab) {
     await renderTabMillesimi(s);
   }else if(tab==='inquilini'){
     el.innerHTML=renderTabInquilini(data);
+  }else if(tab==='canone'){
+    el.innerHTML=renderTabCanone(data);
   }else if(tab==='interventi'){
     const items = data.interventi || [];
     const totale = items.reduce((s,x) => s + (parseFloat(x.prezzo)||0), 0);
@@ -1509,7 +1511,7 @@ async function saveCambioInquilino() {
   closeM('modal-cambio-inq');
   await loadDD();
   const data=await api('/api/subs/'+currentSubId+'/detail');
-  if(data){currentSubData=data;renderSubDetTab('inquilini');}
+  if(data){currentSubData=data;renderSubDetHeader(data);renderSubDetTab('inquilini');}
   toast('Inquilino aggiornato ✓');
 }
 

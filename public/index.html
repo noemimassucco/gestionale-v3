@@ -2189,7 +2189,8 @@ input,select,textarea{border-radius:8px;}
           <button class="tab-btn" onclick="setSubDetTab('foto',this)"><span class="sn-ico">📷</span>Foto</button>
           <div class="subdet-nav-title">Gestione</div>
           <button class="tab-btn" onclick="setSubDetTab('inquilini',this)"><span class="sn-ico">👤</span>Inquilini</button>
-          <button class="tab-btn" onclick="setSubDetTab('contratti',this)"><span class="sn-ico">📝</span>Contratti</button>
+          <button class="tab-btn" onclick="setSubDetTab('canone',this)"><span class="sn-ico">🏠</span>Contratto e canone</button>
+          <button class="tab-btn" onclick="setSubDetTab('contratti',this)"><span class="sn-ico">📝</span>Contratti fornitori</button>
           <button class="tab-btn" onclick="setSubDetTab('manutenzioni',this)"><span class="sn-ico">🔨</span>Manutenzioni</button>
           <button class="tab-btn" onclick="setSubDetTab('interventi',this)"><span class="sn-ico">🛠️</span>Interventi</button>
           <div class="subdet-nav-title">Amministrazione</div>
@@ -3010,6 +3011,62 @@ input,select,textarea{border-radius:8px;}
   </div>
 </div>
 
+<!-- MODAL CONTRATTO E CANONE -->
+<div id="modal-contratto-canone" class="overlay">
+  <div class="modal">
+    <div class="modal-title" id="ca-modal-title">🏠 Nuovo contratto di locazione</div>
+    <div class="form-grid">
+      <div class="field"><label>Inquilino</label><select id="ca-inq"><option value="">— Da assegnare —</option></select></div>
+      <div class="field"><label>Tipo contratto</label>
+        <select id="ca-tipo">
+          <option value="">—</option>
+          <option value="locazione_commerciale">Locazione commerciale</option>
+          <option value="locazione_abitativa">Locazione abitativa</option>
+          <option value="comodato_uso">Comodato d'uso</option>
+          <option value="affitto_ramo">Affitto ramo d'azienda</option>
+        </select>
+      </div>
+      <div class="field"><label>Data inizio *</label><input type="date" id="ca-data-inizio"></div>
+      <div class="field"><label>Data fine (se prevista)</label><input type="date" id="ca-data-fine"></div>
+      <div class="field"><label>Canone (€) *</label><div class="price-wrap"><span class="price-sym">€</span><input type="number" id="ca-canone" placeholder="0.00" step="0.01"></div></div>
+      <div class="field"><label>Periodicità</label>
+        <select id="ca-periodicita">
+          <option value="mensile">Mensile</option>
+          <option value="trimestrale">Trimestrale</option>
+          <option value="semestrale">Semestrale</option>
+          <option value="annuale">Annuale</option>
+        </select>
+      </div>
+      <div class="field"><label>Giorno indicativo fatturazione</label><input type="number" id="ca-giorno-fatt" min="1" max="28" placeholder="es. 5"></div>
+      <div class="field"><label>Adeguamento ISTAT %</label><input type="number" id="ca-istat-pct" step="0.01" placeholder="es. 1.5"></div>
+      <div class="field"><label>Periodicità ISTAT</label>
+        <select id="ca-istat-period">
+          <option value="6_mesi">Ogni 6 mesi</option>
+          <option value="12_mesi" selected>Ogni 12 mesi</option>
+          <option value="24_mesi">Ogni 24 mesi</option>
+        </select>
+      </div>
+      <div class="field form-full"><label>Note</label><input id="ca-note" placeholder="Note sul contratto…"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-contratto-canone')">Annulla</button>
+      <button class="btn btn-success" id="ca-modal-sub-btn" onclick="salvaContratto()">✓ Salva contratto</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ANTEPRIMA GENERAZIONE RATE -->
+<div id="modal-genera-rate" class="overlay">
+  <div class="modal">
+    <div class="modal-title">📅 Genera rate da fatturare</div>
+    <div id="ca-preview-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-gray" onclick="closeM('modal-genera-rate')">Annulla</button>
+      <button class="btn btn-success" id="ca-preview-confirm-btn" onclick="confermaGeneraRate()">✓ Genera le rate nuove</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL GENERA ANNO AFFITTI -->
 <div id="modal-genera-anno" class="overlay">
   <div class="modal">
@@ -3160,6 +3217,7 @@ input,select,textarea{border-radius:8px;}
   <script src="js/finanze.js?v=10"></script>
   <script src="js/controllo-fatturazione.js?v=1"></script>
   <script src="js/spese-condominiali.js?v=1"></script>
+  <script src="js/contratti-affitto.js?v=1"></script>
   <script src="js/misc.js?v=10"></script>
   <script src="js/cmdk.js?v=10"></script>
   <!-- app.js — init entry point (loaded last) -->

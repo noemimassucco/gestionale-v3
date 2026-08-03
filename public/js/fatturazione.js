@@ -103,7 +103,8 @@ function renderFattTable(rows) {
     // "Da fatturare" evidenziato in giallo — sia le rifatturazioni arrivate dal Controllo
     // Fatturazione (uscite) sia, più in generale, qualunque ordine attivo non ancora fatturato/pagato,
     // stesso colore usato per gli alert ISTAT in scadenza.
-    const isDaFatturare = o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato';
+    const isDaFatturare = (o.tipo_servizio === 'rifatturazione_spesa' && !o.numero_fattura && o.stato_pagamento !== 'pagato')
+      || (o.tipo_servizio === 'canone_locazione' && o.stato === 'da_fatturare');
     const rowBg = isDaFatturare ? 'background:rgba(250,204,21,.14);' : '';
     // Ciò che conta davvero: è da fatturare o no · è stata fatturata (dopo il reimport dalla contabile) · è pagata.
     const fatturatoBadge = isFatturato
@@ -125,7 +126,7 @@ function renderFattTable(rows) {
         <div style="font-size:11px;color:var(--muted);">${esc(o.nome_servizio||'')}</div>
       </td>
       <td>${o.sub_codice ? `<span class="badge badge-sede">${esc(o.sub_codice)}</span>` : '—'}</td>
-      <td style="font-size:11px;color:var(--muted);">${o.mese_riferimento ? MESI_NOMI[o.mese_riferimento] : '—'} ${o.anno_riferimento || ''}</td>
+      <td style="font-size:11px;color:var(--muted);">${o.periodo_dal ? fmt(o.periodo_dal)+' → '+fmt(o.periodo_al) : (o.mese_riferimento ? MESI_NOMI[o.mese_riferimento]+' '+(o.anno_riferimento||'') : '—')}</td>
       <td class="td-price">€ ${parseFloat(o.importo||0).toLocaleString('it-IT',{minimumFractionDigits:2})}</td>
       <td>${fatturatoBadge}</td>
       <td>${pagamentoBadge}</td>
